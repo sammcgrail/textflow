@@ -4723,6 +4723,31 @@ function applyGlow() {
 }
 
 var lastTime = 0;
+var fpsFrames = 0;
+var fpsLast = 0;
+var fpsDisplay = 0;
+
+function drawFPS() {
+  fpsFrames++;
+  var now = performance.now();
+  if (now - fpsLast > 500) {
+    fpsDisplay = Math.round(fpsFrames / ((now - fpsLast) / 1000));
+    fpsFrames = 0;
+    fpsLast = now;
+  }
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = 'rgba(80,80,80,0.5)';
+  ctx.textAlign = 'right';
+  ctx.fillText(fpsDisplay + ' fps', window.innerWidth - 6, 42);
+  ctx.textAlign = 'left';
+  ctx.restore();
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  ctx.textBaseline = 'top';
+}
+
 function loop(ts) {
   if (!ts) { requestAnimationFrame(loop); return; }
   if (!lastTime) lastTime = ts;
@@ -4732,6 +4757,7 @@ function loop(ts) {
   time += dt;
   renderers[currentMode]();
   applyGlow();
+  drawFPS();
   requestAnimationFrame(loop);
 }
 
