@@ -8258,6 +8258,7 @@ function renderTypewriter() {
   var text = TW_QUOTES[twIdx];
   // Click = skip to next quote
   if (pointer.clicked && currentMode === 'typewriter') {
+    pointer.clicked = false;
     // If still typing, complete it instantly
     if (twCharIdx < text.length) {
       twCharIdx = text.length;
