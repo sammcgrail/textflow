@@ -19,7 +19,15 @@ async function build() {
   const bundledJS = result.outputFiles[0].text;
 
   // Read the HTML template
-  const html = fs.readFileSync(path.join(__dirname, 'src', 'index.html'), 'utf8');
+  let html = fs.readFileSync(path.join(__dirname, 'src', 'index.html'), 'utf8');
+
+  // Inline CSS: replace <link rel="stylesheet" href="./styles/main.css"> with <style>...</style>
+  const cssLink = '<link rel="stylesheet" href="./styles/main.css">';
+  const cssIdx = html.indexOf(cssLink);
+  if (cssIdx !== -1) {
+    const css = fs.readFileSync(path.join(__dirname, 'src', 'styles', 'main.css'), 'utf8');
+    html = html.substring(0, cssIdx) + '<style>\n' + css + '</style>' + html.substring(cssIdx + cssLink.length);
+  }
 
   // Replace the module script tag with the inlined bundle
   // Use a function replacer to avoid $& / $' / $` special replacement patterns
