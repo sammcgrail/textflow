@@ -24,15 +24,19 @@ async function build() {
   // Inline CSS: replace <link rel="stylesheet" href="./styles/main.css"> with <style>...</style>
   const cssLink = '<link rel="stylesheet" href="./styles/main.css">';
   const cssIdx = html.indexOf(cssLink);
-  if (cssIdx !== -1) {
-    const css = fs.readFileSync(path.join(__dirname, 'src', 'styles', 'main.css'), 'utf8');
-    html = html.substring(0, cssIdx) + '<style>\n' + css + '</style>' + html.substring(cssIdx + cssLink.length);
+  if (cssIdx === -1) {
+    throw new Error('build.js: CSS link tag not found in src/index.html — cannot inline styles');
   }
+  const css = fs.readFileSync(path.join(__dirname, 'src', 'styles', 'main.css'), 'utf8');
+  html = html.substring(0, cssIdx) + '<style>\n' + css + '</style>' + html.substring(cssIdx + cssLink.length);
 
   // Replace the module script tag with the inlined bundle
   // Use a function replacer to avoid $& / $' / $` special replacement patterns
   const placeholder = '<script type="module" src="./entry.js"></script>';
   const idx = html.indexOf(placeholder);
+  if (idx === -1) {
+    throw new Error('build.js: Script tag not found in src/index.html — cannot inline JS bundle');
+  }
   const output = html.substring(0, idx) + '<script>\n' + bundledJS + '</script>' + html.substring(idx + placeholder.length);
 
   // Write to dist/
