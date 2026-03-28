@@ -6955,12 +6955,17 @@ function renderMandel() {
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var v = mandelImage[y * W + x];
-      if (v < 0.005) continue;
-      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length * 2) | 0);
+      if (v < 0.001) {
+        // Interior of set — subtle pulsing pattern
+        var pulse = Math.sin(x * 0.2 + y * 0.3 + time * 2) * 0.15 + 0.15;
+        if (pulse > 0.05) drawChar('.', x, y, 20, 10, (30 + pulse * 40) | 0, pulse);
+        continue;
+      }
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length * 3) | 0);
       if (ri >= RAMP_DENSE.length) ri = RAMP_DENSE.length - 1;
       var ch = RAMP_DENSE[ri];
       var hue = (v * 720 + time * 20) % 360;
-      drawCharHSL(ch, x, y, hue | 0, 80, (5 + v * 55) | 0);
+      drawCharHSL(ch, x, y, hue | 0, 85, (10 + v * 60) | 0);
     }
   }
   // Show zoom level
