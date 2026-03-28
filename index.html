@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="18 canvas-based ASCII art modes — lava, rain, fire, plasma, life, warp, bolt, rift, and more">
+<meta property="og:description" content="28 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="18 canvas-based ASCII art modes">
+<meta name="twitter:description" content="28 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -129,6 +129,16 @@
   <button data-mode="flock">flock</button>
   <button data-mode="roto">roto</button>
   <button data-mode="erosion">erosion</button>
+  <button data-mode="gravity">gravity</button>
+  <button data-mode="paint">paint</button>
+  <button data-mode="ripple">ripple</button>
+  <button data-mode="sand">sand</button>
+  <button data-mode="orbit">orbit</button>
+  <button data-mode="grow">grow</button>
+  <button data-mode="magnet">magnet</button>
+  <button data-mode="shatter">shatter</button>
+  <button data-mode="pulse">pulse</button>
+  <button data-mode="worm">worm</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -181,7 +191,10 @@ window.addEventListener('resize', function() {
   var inits = {
     lava: initBlobs, rain: initRain, fire: initFire, life: initLife,
     warp: initWarp, swirl: initSwirl, rift: initRift, voronoi: initVoronoi,
-    bolt: initBolt, glitch: initGlitch, flock: initFlock, erosion: initErosion
+    bolt: initBolt, glitch: initGlitch, flock: initFlock, erosion: initErosion,
+    gravity: initGravity, paint: initPaint, ripple: initRipple, sand: initSand,
+    orbit: initOrbit, grow: initGrow, magnet: initMagnet, shatter: initShatter,
+    pulse: initPulse, worm: initWorm
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -205,7 +218,17 @@ var glows = {
   glitch: { color: 'rgba(255,0,255,0.3)', blur: 8 },
   flock:  { color: 'rgba(255,200,50,0.3)', blur: 10 },
   roto:   { color: 'rgba(200,100,255,0.3)', blur: 12 },
-  erosion:{ color: 'rgba(200,180,140,0.25)', blur: 8 }
+  erosion:{ color: 'rgba(200,180,140,0.25)', blur: 8 },
+  gravity:{ color: 'rgba(100,200,255,0.35)', blur: 14 },
+  paint:  { color: 'rgba(255,100,200,0.3)', blur: 10 },
+  ripple: { color: 'rgba(0,180,255,0.35)', blur: 12 },
+  sand:   { color: 'rgba(220,180,100,0.3)', blur: 8 },
+  orbit:  { color: 'rgba(180,120,255,0.3)', blur: 12 },
+  grow:   { color: 'rgba(50,255,100,0.3)', blur: 10 },
+  magnet: { color: 'rgba(255,80,80,0.3)', blur: 12 },
+  shatter:{ color: 'rgba(200,200,255,0.35)', blur: 14 },
+  pulse:  { color: 'rgba(0,255,200,0.35)', blur: 12 },
+  worm:   { color: 'rgba(180,255,50,0.3)', blur: 10 }
 };
 
 function clearCanvas() {
@@ -1449,6 +1472,1131 @@ function renderErosion() {
 }
 
 // ============================================================
+// GRAVITY — Click to place gravity wells, particles stream
+// ============================================================
+
+var gravParticles = [];
+var gravWells = [];
+var NUM_GRAV_PARTICLES = 500;
+var MAX_GRAV_WELLS = 12;
+var gravPointerDown = false;
+var gravPointerX = 0, gravPointerY = 0;
+
+function initGravity() {
+  gravParticles = [];
+  gravWells = [];
+  gravPointerDown = false;
+  for (var i = 0; i < NUM_GRAV_PARTICLES; i++) {
+    gravParticles.push({
+      x: Math.random() * COLS, y: Math.random() * ROWS,
+      vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
+      ch: RAMP_DENSE[Math.floor(Math.random() * RAMP_DENSE.length)]
+    });
+  }
+}
+initGravity();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'gravity') return;
+  gravPointerDown = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  gravPointerX = g.gx; gravPointerY = g.gy;
+  if (gravWells.length >= MAX_GRAV_WELLS) gravWells.shift();
+  gravWells.push({ x: g.gx, y: g.gy, str: 0.5, born: time });
+});
+canvas.addEventListener('mousemove', function(e) {
+  if (!gravPointerDown || currentMode !== 'gravity') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  gravPointerX = g.gx; gravPointerY = g.gy;
+  // Strengthen latest well while held
+  if (gravWells.length > 0) {
+    var w = gravWells[gravWells.length - 1];
+    w.str = Math.min(w.str + 0.02, 5);
+  }
+});
+canvas.addEventListener('mouseup', function() { gravPointerDown = false; });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'gravity') return;
+  e.preventDefault();
+  gravPointerDown = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  gravPointerX = g.gx; gravPointerY = g.gy;
+  if (gravWells.length >= MAX_GRAV_WELLS) gravWells.shift();
+  gravWells.push({ x: g.gx, y: g.gy, str: 0.5, born: time });
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (!gravPointerDown || currentMode !== 'gravity') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  gravPointerX = g.gx; gravPointerY = g.gy;
+  if (gravWells.length > 0) gravWells[gravWells.length - 1].str = Math.min(gravWells[gravWells.length - 1].str + 0.02, 5);
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'gravity') gravPointerDown = false; });
+
+function renderGravity() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var trail = new Float32Array(W * H);
+
+  // Decay old wells
+  var i = gravWells.length;
+  while (i--) {
+    var age = time - gravWells[i].born;
+    if (age > 20 && !gravPointerDown) { gravWells[i].str *= 0.99; if (gravWells[i].str < 0.05) gravWells.splice(i, 1); }
+  }
+
+  // Update particles
+  for (var i = 0; i < gravParticles.length; i++) {
+    var p = gravParticles[i];
+    for (var j = 0; j < gravWells.length; j++) {
+      var w = gravWells[j];
+      var dx = w.x - p.x, dy = w.y - p.y;
+      var d = Math.sqrt(dx * dx + dy * dy) + 1;
+      var f = w.str / (d * d) * 0.5;
+      p.vx += dx / d * f;
+      p.vy += dy / d * f;
+    }
+    // Slight orbit tendency
+    var spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    if (spd > 2) { p.vx = p.vx / spd * 2; p.vy = p.vy / spd * 2; }
+    p.vx *= 0.995; p.vy *= 0.995;
+    p.x += p.vx; p.y += p.vy;
+    if (p.x < 0) p.x += W; if (p.x >= W) p.x -= W;
+    if (p.y < 0) p.y += H; if (p.y >= H) p.y -= H;
+
+    var gx = p.x | 0, gy = p.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      trail[gy * W + gx] = Math.min(trail[gy * W + gx] + 0.3 + spd * 0.2, 1);
+    }
+  }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = trail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (200 + v * 60 + time * 15) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + v * 30, 20 + v * 55);
+    }
+  }
+
+  // Draw wells as bright centers
+  for (var j = 0; j < gravWells.length; j++) {
+    var w = gravWells[j];
+    var wx = w.x | 0, wy = w.y | 0;
+    if (wx >= 0 && wx < W && wy >= 0 && wy < H) {
+      drawChar('@', wx, wy, 200, 230, 255, Math.min(1, w.str));
+    }
+  }
+}
+
+// ============================================================
+// PAINT — Click/drag to paint ASCII brushstrokes
+// ============================================================
+
+var paintGrid, paintHueGrid;
+var paintPointerDown = false;
+var paintLastX = -1, paintLastY = -1;
+var paintHue = 0;
+
+function initPaint() {
+  var sz = COLS * ROWS;
+  paintGrid = new Float32Array(sz);
+  paintHueGrid = new Float32Array(sz);
+  paintPointerDown = false;
+  paintLastX = -1; paintLastY = -1;
+  paintHue = 0;
+}
+initPaint();
+
+function paintStroke(gx, gy, radius) {
+  var W = COLS, H = ROWS;
+  var r = radius || 2;
+  for (var dy = -r; dy <= r; dy++) {
+    for (var dx = -r; dx <= r; dx++) {
+      var nx = (gx + dx) | 0, ny = (gy + dy) | 0;
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d > r) continue;
+      var strength = (1 - d / r) * 0.4;
+      var idx = ny * W + nx;
+      paintGrid[idx] = Math.min(paintGrid[idx] + strength, 1);
+      paintHueGrid[idx] = paintHue;
+    }
+  }
+}
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'paint') return;
+  paintPointerDown = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  paintLastX = g.gx; paintLastY = g.gy;
+  paintStroke(g.gx, g.gy, 2);
+});
+canvas.addEventListener('mousemove', function(e) {
+  if (!paintPointerDown || currentMode !== 'paint') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  // Interpolate between last and current for smooth strokes
+  var dx = g.gx - paintLastX, dy = g.gy - paintLastY;
+  var steps = Math.max(1, Math.sqrt(dx * dx + dy * dy) | 0);
+  for (var s = 0; s <= steps; s++) {
+    var t = s / steps;
+    paintStroke(paintLastX + dx * t, paintLastY + dy * t, 2);
+  }
+  paintLastX = g.gx; paintLastY = g.gy;
+  paintHue = (paintHue + 0.8) % 360;
+});
+canvas.addEventListener('mouseup', function() { if (currentMode === 'paint') { paintPointerDown = false; paintLastX = -1; } });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'paint') return;
+  e.preventDefault();
+  paintPointerDown = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  paintLastX = g.gx; paintLastY = g.gy;
+  paintStroke(g.gx, g.gy, 2);
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (!paintPointerDown || currentMode !== 'paint') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  var dx = g.gx - paintLastX, dy = g.gy - paintLastY;
+  var steps = Math.max(1, Math.sqrt(dx * dx + dy * dy) | 0);
+  for (var s = 0; s <= steps; s++) {
+    var tt = s / steps;
+    paintStroke(paintLastX + dx * tt, paintLastY + dy * tt, 2);
+  }
+  paintLastX = g.gx; paintLastY = g.gy;
+  paintHue = (paintHue + 0.8) % 360;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'paint') { paintPointerDown = false; paintLastX = -1; } });
+
+function renderPaint() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!paintGrid || paintGrid.length !== W * H) initPaint();
+
+  // Slow decay for trailing effect
+  for (var i = 0; i < paintGrid.length; i++) paintGrid[i] *= 0.998;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      var v = paintGrid[idx];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = paintHueGrid[idx];
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + v * 30, 20 + v * 55);
+    }
+  }
+
+  // Ambient shimmer on painted areas
+  if (!paintPointerDown) {
+    for (var i = 0; i < 5; i++) {
+      var rx = Math.floor(Math.random() * W);
+      var ry = Math.floor(Math.random() * H);
+      var idx = ry * W + rx;
+      if (paintGrid[idx] > 0.3) {
+        paintGrid[idx] = Math.min(paintGrid[idx] + 0.1, 1);
+      }
+    }
+  }
+}
+
+// ============================================================
+// RIPPLE — Click to create expanding wave rings
+// ============================================================
+
+var ripples = [];
+var rippleField;
+var MAX_RIPPLES = 20;
+
+function initRipple() {
+  ripples = [];
+  rippleField = new Float32Array(COLS * ROWS);
+}
+initRipple();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'ripple') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  if (ripples.length >= MAX_RIPPLES) ripples.shift();
+  ripples.push({ x: g.gx, y: g.gy, born: time, strength: 1 });
+});
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'ripple') return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  if (ripples.length >= MAX_RIPPLES) ripples.shift();
+  ripples.push({ x: g.gx, y: g.gy, born: time, strength: 1 });
+}, { passive: false });
+
+function renderRipple() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Prune old ripples
+  var i = ripples.length;
+  while (i--) { if (time - ripples[i].born > 12) ripples.splice(i, 1); }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var sum = 0;
+      var px = x * 0.55; // aspect ratio correction
+
+      // Base water texture
+      sum += Math.sin(x * 0.08 + time * 0.5) * 0.1 + Math.sin(y * 0.12 - time * 0.3) * 0.08;
+
+      for (var r = 0; r < ripples.length; r++) {
+        var rp = ripples[r];
+        var age = time - rp.born;
+        var dx = px - rp.x * 0.55, dy = y - rp.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        var radius = age * 4;
+        var ringDist = Math.abs(d - radius);
+        if (ringDist < 3) {
+          var wave = Math.cos(ringDist * 1.5) * rp.strength;
+          var fade = Math.max(0, 1 - age / 12);
+          var ringFade = 1 - ringDist / 3;
+          sum += wave * fade * ringFade * 0.8;
+        }
+      }
+
+      sum = sum * 0.5 + 0.5;
+      if (sum < 0.15 || sum > 0.85) {
+        var edge = sum < 0.15 ? sum / 0.15 : (1 - sum) / 0.15;
+        if (edge < 0.05) continue;
+      }
+      var v = Math.abs(sum - 0.5) * 2;
+      v = Math.min(1, v * 1.5);
+      if (v < 0.05) continue;
+
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      var hue = (200 + sum * 40 + time * 10) % 360;
+      drawCharHSL(RAMP_SOFT[ri], x, y, hue, 60 + v * 40, 20 + v * 50);
+    }
+  }
+}
+
+// ============================================================
+// SAND — Falling sand simulation, click to pour
+// ============================================================
+
+var sandGrid, sandColorGrid;
+var sandPointerDown = false;
+var sandPointerX = 0, sandPointerY = 0;
+var SAND_EMPTY = 0, SAND_GRAIN = 1, SAND_WALL = 2;
+var sandColors = [
+  [220,180,100], [200,160,80], [240,200,120], [180,140,60], [210,170,90]
+];
+
+function initSand() {
+  var sz = COLS * ROWS;
+  sandGrid = new Uint8Array(sz);
+  sandColorGrid = new Uint8Array(sz);
+  sandPointerDown = false;
+  // Add some walls for interest
+  for (var i = 0; i < 4; i++) {
+    var wx = Math.floor(COLS * 0.2 + Math.random() * COLS * 0.6);
+    var wy = Math.floor(ROWS * 0.4 + Math.random() * ROWS * 0.3);
+    var wl = 8 + Math.floor(Math.random() * 15);
+    var angle = Math.random() * Math.PI;
+    for (var j = 0; j < wl; j++) {
+      var px = (wx + j * Math.cos(angle)) | 0;
+      var py = (wy + j * Math.sin(angle)) | 0;
+      if (px >= 0 && px < COLS && py >= 0 && py < ROWS) {
+        sandGrid[py * COLS + px] = SAND_WALL;
+      }
+    }
+  }
+}
+initSand();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'sand') return;
+  sandPointerDown = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  sandPointerX = g.gx; sandPointerY = g.gy;
+});
+canvas.addEventListener('mousemove', function(e) {
+  if (!sandPointerDown || currentMode !== 'sand') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  sandPointerX = g.gx; sandPointerY = g.gy;
+});
+canvas.addEventListener('mouseup', function() { if (currentMode === 'sand') sandPointerDown = false; });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'sand') return;
+  e.preventDefault();
+  sandPointerDown = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  sandPointerX = g.gx; sandPointerY = g.gy;
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (!sandPointerDown || currentMode !== 'sand') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  sandPointerX = g.gx; sandPointerY = g.gy;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'sand') sandPointerDown = false; });
+
+function renderSand() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!sandGrid || sandGrid.length !== W * H) initSand();
+
+  // Spawn sand at pointer
+  if (sandPointerDown) {
+    for (var s = 0; s < 3; s++) {
+      var sx = ((sandPointerX + (Math.random() - 0.5) * 4) | 0);
+      var sy = ((sandPointerY + (Math.random() - 0.5) * 2) | 0);
+      if (sx >= 0 && sx < W && sy >= 0 && sy < H && sandGrid[sy * W + sx] === SAND_EMPTY) {
+        sandGrid[sy * W + sx] = SAND_GRAIN;
+        sandColorGrid[sy * W + sx] = Math.floor(Math.random() * sandColors.length);
+      }
+    }
+  }
+
+  // Physics — bottom-up scan
+  for (var y = H - 2; y >= 0; y--) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      if (sandGrid[idx] !== SAND_GRAIN) continue;
+      var below = (y + 1) * W + x;
+      if (sandGrid[below] === SAND_EMPTY) {
+        sandGrid[below] = SAND_GRAIN;
+        sandColorGrid[below] = sandColorGrid[idx];
+        sandGrid[idx] = SAND_EMPTY;
+      } else {
+        // Try diagonal
+        var dir = Math.random() < 0.5 ? -1 : 1;
+        var nx = x + dir;
+        if (nx >= 0 && nx < W && sandGrid[(y + 1) * W + nx] === SAND_EMPTY) {
+          sandGrid[(y + 1) * W + nx] = SAND_GRAIN;
+          sandColorGrid[(y + 1) * W + nx] = sandColorGrid[idx];
+          sandGrid[idx] = SAND_EMPTY;
+        } else {
+          nx = x - dir;
+          if (nx >= 0 && nx < W && sandGrid[(y + 1) * W + nx] === SAND_EMPTY) {
+            sandGrid[(y + 1) * W + nx] = SAND_GRAIN;
+            sandColorGrid[(y + 1) * W + nx] = sandColorGrid[idx];
+            sandGrid[idx] = SAND_EMPTY;
+          }
+        }
+      }
+    }
+  }
+
+  // Render
+  var sandChars = '.:;=+*#@';
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      if (sandGrid[idx] === SAND_WALL) {
+        drawChar('#', x, y, 80, 80, 100, 0.6);
+      } else if (sandGrid[idx] === SAND_GRAIN) {
+        var ci = sandColorGrid[idx];
+        var c = sandColors[ci];
+        // Height-based brightness — grains near bottom are more packed
+        var depth = y / H;
+        var ch = sandChars[Math.min(sandChars.length - 1, ((0.5 + depth * 0.5) * sandChars.length) | 0)];
+        drawChar(ch, x, y, c[0], c[1], c[2], 0.5 + depth * 0.5);
+      }
+    }
+  }
+}
+
+// ============================================================
+// ORBIT — Click to spawn orbiting text particles
+// ============================================================
+
+var orbitBodies = [];
+var orbitTrail;
+var orbitCenter = { x: 0, y: 0 };
+var MAX_ORBIT_BODIES = 200;
+var orbitPointerDown = false;
+
+function initOrbit() {
+  orbitBodies = [];
+  orbitTrail = new Float32Array(COLS * ROWS);
+  orbitCenter = { x: COLS / 2, y: ROWS / 2 };
+  orbitPointerDown = false;
+}
+initOrbit();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'orbit') return;
+  orbitPointerDown = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  orbitCenter.x = g.gx; orbitCenter.y = g.gy;
+  // Spawn a burst of particles
+  for (var i = 0; i < 15; i++) {
+    if (orbitBodies.length >= MAX_ORBIT_BODIES) orbitBodies.shift();
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 2 + Math.random() * 5;
+    orbitBodies.push({
+      x: g.gx + Math.cos(angle) * dist,
+      y: g.gy + Math.sin(angle) * dist,
+      vx: Math.sin(angle) * (0.5 + Math.random() * 0.5),
+      vy: -Math.cos(angle) * (0.5 + Math.random() * 0.5),
+      hue: (Math.random() * 360) | 0
+    });
+  }
+});
+canvas.addEventListener('mousemove', function(e) {
+  if (!orbitPointerDown || currentMode !== 'orbit') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  orbitCenter.x = g.gx; orbitCenter.y = g.gy;
+});
+canvas.addEventListener('mouseup', function() { if (currentMode === 'orbit') orbitPointerDown = false; });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'orbit') return;
+  e.preventDefault();
+  orbitPointerDown = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  orbitCenter.x = g.gx; orbitCenter.y = g.gy;
+  for (var i = 0; i < 15; i++) {
+    if (orbitBodies.length >= MAX_ORBIT_BODIES) orbitBodies.shift();
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 2 + Math.random() * 5;
+    orbitBodies.push({
+      x: g.gx + Math.cos(angle) * dist, y: g.gy + Math.sin(angle) * dist,
+      vx: Math.sin(angle) * (0.5 + Math.random() * 0.5),
+      vy: -Math.cos(angle) * (0.5 + Math.random() * 0.5),
+      hue: (Math.random() * 360) | 0
+    });
+  }
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (!orbitPointerDown || currentMode !== 'orbit') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  orbitCenter.x = g.gx; orbitCenter.y = g.gy;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'orbit') orbitPointerDown = false; });
+
+function renderOrbit() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!orbitTrail || orbitTrail.length !== W * H) initOrbit();
+
+  // Decay trails
+  for (var i = 0; i < orbitTrail.length; i++) orbitTrail[i] *= 0.96;
+
+  // Continuous spawn while held
+  if (orbitPointerDown && orbitBodies.length < MAX_ORBIT_BODIES) {
+    var angle = Math.random() * Math.PI * 2;
+    var dist = 1 + Math.random() * 3;
+    orbitBodies.push({
+      x: orbitCenter.x + Math.cos(angle) * dist,
+      y: orbitCenter.y + Math.sin(angle) * dist,
+      vx: Math.sin(angle) * 0.8, vy: -Math.cos(angle) * 0.8,
+      hue: (time * 30 + Math.random() * 60) % 360 | 0
+    });
+  }
+
+  // Update bodies — orbit around center
+  for (var i = 0; i < orbitBodies.length; i++) {
+    var b = orbitBodies[i];
+    var dx = orbitCenter.x - b.x, dy = orbitCenter.y - b.y;
+    var d = Math.sqrt(dx * dx + dy * dy) + 0.5;
+    var f = 1.5 / (d * d);
+    b.vx += dx / d * f; b.vy += dy / d * f;
+    var spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > 2.5) { b.vx = b.vx / spd * 2.5; b.vy = b.vy / spd * 2.5; }
+    b.x += b.vx; b.y += b.vy;
+
+    var gx = b.x | 0, gy = b.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      orbitTrail[gy * W + gx] = Math.min(orbitTrail[gy * W + gx] + 0.4, 1);
+    }
+  }
+
+  // Render trails
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = orbitTrail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (260 + v * 60 + time * 20) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 20 + v * 55);
+    }
+  }
+}
+
+// ============================================================
+// GROW — Click to plant fractal trees
+// ============================================================
+
+var growBranches = [];
+var growGrid;
+var growHueGrid;
+var MAX_GROW_BRANCHES = 2000;
+
+function initGrow() {
+  growBranches = [];
+  var sz = COLS * ROWS;
+  growGrid = new Float32Array(sz);
+  growHueGrid = new Float32Array(sz);
+}
+initGrow();
+
+function plantTree(gx, gy) {
+  var hue = (Math.random() * 120 + 80) | 0; // green-ish range
+  growBranches.push({
+    x: gx, y: gy, angle: -Math.PI / 2,
+    len: 0, maxLen: 6 + Math.random() * 8,
+    thickness: 3, depth: 0, maxDepth: 5 + Math.floor(Math.random() * 3),
+    speed: 0.15 + Math.random() * 0.1, hue: hue, growing: true
+  });
+}
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'grow') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  plantTree(g.gx, g.gy);
+});
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'grow') return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  plantTree(g.gx, g.gy);
+}, { passive: false });
+
+function renderGrow() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!growGrid || growGrid.length !== W * H) initGrow();
+
+  // Slow decay
+  for (var i = 0; i < growGrid.length; i++) growGrid[i] *= 0.999;
+
+  // Grow branches
+  var newBranches = [];
+  for (var i = 0; i < growBranches.length; i++) {
+    var b = growBranches[i];
+    if (!b.growing) continue;
+
+    b.len += b.speed;
+    // Plot current position
+    var tipX = b.x + Math.cos(b.angle) * b.len;
+    var tipY = b.y + Math.sin(b.angle) * b.len;
+    var gx = tipX | 0, gy = tipY | 0;
+
+    // Draw trunk/branch thickness
+    var thick = Math.max(1, b.thickness | 0);
+    for (var dy = -thick; dy <= thick; dy++) {
+      for (var dx = -thick; dx <= thick; dx++) {
+        var nx = gx + dx, ny = gy + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d <= thick) {
+            var idx = ny * W + nx;
+            growGrid[idx] = Math.min(growGrid[idx] + 0.3 * (1 - d / (thick + 1)), 1);
+            growHueGrid[idx] = b.hue + b.depth * 20;
+          }
+        }
+      }
+    }
+
+    if (b.len >= b.maxLen) {
+      b.growing = false;
+      // Fork into 2-3 branches
+      if (b.depth < b.maxDepth && growBranches.length + newBranches.length < MAX_GROW_BRANCHES) {
+        var numForks = 2 + (Math.random() < 0.3 ? 1 : 0);
+        for (var f = 0; f < numForks; f++) {
+          var spread = 0.3 + Math.random() * 0.5;
+          var forkAngle = b.angle + (f - (numForks - 1) / 2) * spread;
+          forkAngle += (Math.random() - 0.5) * 0.3; // jitter
+          newBranches.push({
+            x: tipX, y: tipY, angle: forkAngle,
+            len: 0, maxLen: b.maxLen * (0.6 + Math.random() * 0.2),
+            thickness: Math.max(0.5, b.thickness * 0.6),
+            depth: b.depth + 1, maxDepth: b.maxDepth,
+            speed: b.speed * 0.9, hue: b.hue, growing: true
+          });
+        }
+      }
+    }
+  }
+  for (var i = 0; i < newBranches.length; i++) growBranches.push(newBranches[i]);
+
+  // Render
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      var v = growGrid[idx];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = growHueGrid[idx] % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 15 + v * 50);
+    }
+  }
+}
+
+// ============================================================
+// MAGNET — Cursor distorts text field magnetically
+// ============================================================
+
+var magnetField;
+var magnetPointerX = -100, magnetPointerY = -100;
+var magnetPointerActive = false;
+
+function initMagnet() {
+  magnetField = null;
+  magnetPointerActive = false;
+}
+initMagnet();
+
+canvas.addEventListener('mousemove', function(e) {
+  if (currentMode !== 'magnet') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  magnetPointerX = g.gx; magnetPointerY = g.gy;
+  magnetPointerActive = true;
+});
+canvas.addEventListener('mouseleave', function() { if (currentMode === 'magnet') magnetPointerActive = false; });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'magnet') return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  magnetPointerX = g.gx; magnetPointerY = g.gy;
+  magnetPointerActive = true;
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (currentMode !== 'magnet') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  magnetPointerX = g.gx; magnetPointerY = g.gy;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'magnet') magnetPointerActive = false; });
+
+function renderMagnet() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var phrase = 'TEXTFLOW';
+  var magnetRadius = 12;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      // Base: regular grid of repeating text
+      var srcX = x, srcY = y;
+
+      if (magnetPointerActive) {
+        var dx = x - magnetPointerX, dy = y - magnetPointerY;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d < magnetRadius && d > 0.1) {
+          // Warp away from cursor (repel) or toward (attract based on distance)
+          var force = (1 - d / magnetRadius);
+          force = force * force * 8;
+          srcX = x + dx / d * force;
+          srcY = y + dy / d * force;
+        }
+      }
+
+      // Sample from warped position
+      var wx = ((srcX | 0) % W + W) % W;
+      var wy = ((srcY | 0) % H + H) % H;
+
+      // Generate base pattern (static noise field + text)
+      var n = simplex2(wx * 0.08 + time * 0.1, wy * 0.06) * 0.5 + 0.5;
+      n += Math.sin(wx * 0.15 + time * 0.3) * 0.2;
+
+      if (n < 0.2) continue;
+      n = Math.min(1, n);
+
+      var ci = ((wx + (time * 3 | 0)) % phrase.length + phrase.length) % phrase.length;
+      var ch = n > 0.5 ? phrase[ci] : RAMP_DENSE[Math.min(RAMP_DENSE.length - 1, (n * RAMP_DENSE.length) | 0)];
+
+      var hue, sat, lit;
+      if (magnetPointerActive) {
+        var dx2 = x - magnetPointerX, dy2 = y - magnetPointerY;
+        var d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+        var proximity = Math.max(0, 1 - d2 / magnetRadius);
+        hue = (0 + proximity * 40 + time * 20) % 360;
+        sat = 50 + proximity * 50;
+        lit = 20 + n * 40 + proximity * 30;
+      } else {
+        hue = (n * 30 + time * 10) % 360;
+        sat = 40 + n * 30;
+        lit = 15 + n * 40;
+      }
+      drawCharHSL(ch, x, y, hue, sat, lit);
+    }
+  }
+}
+
+// ============================================================
+// SHATTER — Click to shatter text into drifting fragments
+// ============================================================
+
+var shatterFrags = [];
+var shatterGrid;
+var shatterIntact = true;
+var MAX_SHATTER_FRAGS = 800;
+
+function initShatter() {
+  shatterFrags = [];
+  shatterIntact = true;
+  var sz = COLS * ROWS;
+  shatterGrid = new Uint8Array(sz);
+  // Fill with pattern
+  var chars = 'TEXTFLOW=+-*#@.:;';
+  for (var i = 0; i < sz; i++) shatterGrid[i] = 1;
+}
+initShatter();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'shatter') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  shatterAt(g.gx, g.gy);
+});
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'shatter') return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  shatterAt(g.gx, g.gy);
+}, { passive: false });
+
+function shatterAt(gx, gy) {
+  var W = COLS, H = ROWS;
+  var radius = 8 + Math.random() * 5;
+  var chars = 'TEXTFLOW=+-*#@.:;';
+  for (var dy = -radius; dy <= radius; dy++) {
+    for (var dx = -radius; dx <= radius; dx++) {
+      var nx = (gx + dx) | 0, ny = (gy + dy) | 0;
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d > radius) continue;
+      var idx = ny * W + nx;
+      if (shatterGrid[idx] === 0) continue;
+      shatterGrid[idx] = 0;
+      if (shatterFrags.length < MAX_SHATTER_FRAGS) {
+        var angle = Math.atan2(dy, dx);
+        var force = (1 - d / radius) * 2;
+        shatterFrags.push({
+          x: nx, y: ny,
+          vx: Math.cos(angle) * force + (Math.random() - 0.5) * 0.5,
+          vy: Math.sin(angle) * force + (Math.random() - 0.5) * 0.5,
+          ch: chars[Math.floor(Math.random() * chars.length)],
+          life: 5 + Math.random() * 8,
+          born: time,
+          hue: (Math.atan2(dy, dx) * 57.3 + 180) % 360
+        });
+      }
+    }
+  }
+  shatterIntact = false;
+}
+
+function renderShatter() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!shatterGrid || shatterGrid.length !== W * H) initShatter();
+
+  // Render intact grid
+  var chars = 'TEXTFLOW';
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (shatterGrid[y * W + x] === 0) continue;
+      var ci = (x + y * 3 + (time * 2 | 0)) % chars.length;
+      var v = simplex2(x * 0.05 + time * 0.08, y * 0.07) * 0.3 + 0.5;
+      var hue = (v * 40 + 200 + time * 5) % 360;
+      drawCharHSL(chars[ci], x, y, hue, 50, 20 + v * 25);
+    }
+  }
+
+  // Render fragments
+  var i = shatterFrags.length;
+  while (i--) {
+    var f = shatterFrags[i];
+    var age = time - f.born;
+    if (age > f.life) { shatterFrags.splice(i, 1); continue; }
+    f.x += f.vx; f.y += f.vy;
+    f.vy += 0.02; // gravity
+    f.vx *= 0.99; f.vy *= 0.99;
+    var fade = 1 - age / f.life;
+    var gx = f.x | 0, gy = f.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      drawCharHSL(f.ch, gx, gy, f.hue, 70 + fade * 30, 30 + fade * 50);
+    }
+  }
+
+  // Auto-heal slowly
+  if (!shatterIntact && shatterFrags.length === 0) {
+    for (var i = 0; i < 20; i++) {
+      var rx = Math.floor(Math.random() * W);
+      var ry = Math.floor(Math.random() * H);
+      shatterGrid[ry * W + rx] = 1;
+    }
+  }
+}
+
+// ============================================================
+// PULSE — Click to emit sonar pulse rings through noise
+// ============================================================
+
+var pulseRings = [];
+var MAX_PULSE_RINGS = 15;
+var pulsePointerDown = false;
+var pulsePointerX = 0, pulsePointerY = 0;
+var pulseSpawnTimer2 = 0;
+
+function initPulse() {
+  pulseRings = [];
+  pulsePointerDown = false;
+}
+initPulse();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'pulse') return;
+  pulsePointerDown = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  pulsePointerX = g.gx; pulsePointerY = g.gy;
+  if (pulseRings.length >= MAX_PULSE_RINGS) pulseRings.shift();
+  pulseRings.push({ x: g.gx, y: g.gy, born: time, strength: 1.5 });
+});
+canvas.addEventListener('mousemove', function(e) {
+  if (!pulsePointerDown || currentMode !== 'pulse') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  pulsePointerX = g.gx; pulsePointerY = g.gy;
+});
+canvas.addEventListener('mouseup', function() { if (currentMode === 'pulse') pulsePointerDown = false; });
+
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'pulse') return;
+  e.preventDefault();
+  pulsePointerDown = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  pulsePointerX = g.gx; pulsePointerY = g.gy;
+  if (pulseRings.length >= MAX_PULSE_RINGS) pulseRings.shift();
+  pulseRings.push({ x: g.gx, y: g.gy, born: time, strength: 1.5 });
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  if (!pulsePointerDown || currentMode !== 'pulse') return;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  pulsePointerX = g.gx; pulsePointerY = g.gy;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { if (currentMode === 'pulse') pulsePointerDown = false; });
+
+function renderPulse() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Continuous emit while held
+  if (pulsePointerDown) {
+    pulseSpawnTimer2++;
+    if (pulseSpawnTimer2 % 15 === 0) {
+      if (pulseRings.length >= MAX_PULSE_RINGS) pulseRings.shift();
+      pulseRings.push({ x: pulsePointerX, y: pulsePointerY, born: time, strength: 1 });
+    }
+  }
+
+  // Prune old
+  var i = pulseRings.length;
+  while (i--) { if (time - pulseRings[i].born > 10) pulseRings.splice(i, 1); }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var px = x * 0.55;
+      // Base noise terrain that pulses reveal
+      var terrain = fbm(x * 0.04, y * 0.06, 3) * 0.5 + 0.5;
+      var totalPulse = 0;
+
+      for (var r = 0; r < pulseRings.length; r++) {
+        var ring = pulseRings[r];
+        var age = time - ring.born;
+        var dx = px - ring.x * 0.55, dy = y - ring.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        var radius = age * 5;
+        var ringWidth = 2 + age * 0.5;
+        var ringDist = Math.abs(d - radius);
+        if (ringDist < ringWidth) {
+          var fade = Math.max(0, 1 - age / 10);
+          var ringFade = 1 - ringDist / ringWidth;
+          totalPulse += ring.strength * fade * ringFade;
+        }
+        // Also illuminate inside the ring (sonar reveal)
+        if (d < radius) {
+          var innerFade = Math.max(0, 1 - age / 10) * 0.15;
+          totalPulse += innerFade * terrain;
+        }
+      }
+
+      if (totalPulse < 0.05) continue;
+      totalPulse = Math.min(1, totalPulse);
+
+      var v = totalPulse * terrain + totalPulse * 0.3;
+      v = Math.min(1, v);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (160 + terrain * 40 + totalPulse * 60) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 15 + v * 55);
+    }
+  }
+}
+
+// ============================================================
+// WORM — Click to spawn text-eating worms
+// ============================================================
+
+var worms = [];
+var wormGrid;
+var wormTrail;
+var MAX_WORMS = 30;
+
+function initWorm() {
+  worms = [];
+  var sz = COLS * ROWS;
+  wormGrid = new Uint8Array(sz);
+  wormTrail = new Float32Array(sz);
+  // Fill grid with characters
+  for (var i = 0; i < sz; i++) wormGrid[i] = 1;
+}
+initWorm();
+
+canvas.addEventListener('mousedown', function(e) {
+  if (currentMode !== 'worm') return;
+  var g = screenToGrid(e.clientX, e.clientY);
+  spawnWorm(g.gx, g.gy);
+});
+canvas.addEventListener('touchstart', function(e) {
+  if (currentMode !== 'worm') return;
+  e.preventDefault();
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  spawnWorm(g.gx, g.gy);
+}, { passive: false });
+
+function spawnWorm(gx, gy) {
+  if (worms.length >= MAX_WORMS) worms.shift();
+  var angle = Math.random() * Math.PI * 2;
+  var segments = [];
+  for (var i = 0; i < 8; i++) {
+    segments.push({ x: gx - Math.cos(angle) * i, y: gy - Math.sin(angle) * i });
+  }
+  worms.push({
+    segments: segments,
+    angle: angle,
+    speed: 0.3 + Math.random() * 0.3,
+    turnRate: 0.1 + Math.random() * 0.15,
+    hue: (Math.random() * 360) | 0,
+    life: 15 + Math.random() * 20,
+    born: time
+  });
+}
+
+function renderWorm() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!wormGrid || wormGrid.length !== W * H) initWorm();
+
+  // Decay trail glow
+  for (var i = 0; i < wormTrail.length; i++) wormTrail[i] *= 0.97;
+
+  // Update worms
+  var i = worms.length;
+  while (i--) {
+    var w = worms[i];
+    var age = time - w.born;
+    if (age > w.life) { worms.splice(i, 1); continue; }
+
+    // Steer — random wandering with bias toward uneaten areas
+    w.angle += (Math.random() - 0.5) * w.turnRate * 2;
+
+    // Look ahead and prefer uneaten cells
+    var bestAngle = w.angle;
+    var bestFood = 0;
+    for (var a = -3; a <= 3; a++) {
+      var testAngle = w.angle + a * 0.3;
+      var lookX = (w.segments[0].x + Math.cos(testAngle) * 3) | 0;
+      var lookY = (w.segments[0].y + Math.sin(testAngle) * 3) | 0;
+      if (lookX >= 0 && lookX < W && lookY >= 0 && lookY < H) {
+        var food = wormGrid[lookY * W + lookX];
+        if (food > bestFood) { bestFood = food; bestAngle = testAngle; }
+      }
+    }
+    w.angle = w.angle * 0.7 + bestAngle * 0.3;
+
+    // Move head
+    var head = w.segments[0];
+    var newX = head.x + Math.cos(w.angle) * w.speed;
+    var newY = head.y + Math.sin(w.angle) * w.speed;
+
+    // Wrap
+    if (newX < 0) newX += W; if (newX >= W) newX -= W;
+    if (newY < 0) newY += H; if (newY >= H) newY -= H;
+
+    // Shift segments
+    for (var s = w.segments.length - 1; s > 0; s--) {
+      w.segments[s].x = w.segments[s - 1].x;
+      w.segments[s].y = w.segments[s - 1].y;
+    }
+    w.segments[0] = { x: newX, y: newY };
+
+    // Eat grid and leave trail
+    var gx = newX | 0, gy = newY | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      wormGrid[gy * W + gx] = 0;
+      wormTrail[gy * W + gx] = 1;
+    }
+
+    // Draw worm body
+    for (var s = 0; s < w.segments.length; s++) {
+      var seg = w.segments[s];
+      var sgx = seg.x | 0, sgy = seg.y | 0;
+      if (sgx >= 0 && sgx < W && sgy >= 0 && sgy < H) {
+        var brightness = 1 - s / w.segments.length;
+        var ch = s === 0 ? '@' : (s < 3 ? '#' : '*');
+        var fade = Math.max(0, 1 - age / w.life);
+        drawCharHSL(ch, sgx, sgy, w.hue, 70 + brightness * 30, 30 + brightness * 50 * fade);
+      }
+    }
+  }
+
+  // Render grid (uneaten chars)
+  var gridChars = '.:;=+*#';
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      if (wormGrid[idx] === 0) {
+        // Show trail glow
+        var tv = wormTrail[idx];
+        if (tv > 0.05) {
+          var ri = Math.min(RAMP_SOFT.length - 1, (tv * RAMP_SOFT.length) | 0);
+          drawCharHSL(RAMP_SOFT[ri], x, y, 100, 50, 10 + tv * 20);
+        }
+        continue;
+      }
+      var n = simplex2(x * 0.06 + time * 0.05, y * 0.08) * 0.5 + 0.5;
+      if (n < 0.15) continue;
+      var ci = Math.min(gridChars.length - 1, (n * gridChars.length) | 0);
+      drawCharHSL(gridChars[ci], x, y, (120 + n * 40) % 360, 40 + n * 30, 10 + n * 25);
+    }
+  }
+
+  // Slowly regrow eaten cells
+  if (worms.length === 0) {
+    for (var r = 0; r < 10; r++) {
+      var rx = Math.floor(Math.random() * W);
+      var ry = Math.floor(Math.random() * H);
+      wormGrid[ry * W + rx] = 1;
+    }
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -1459,7 +2607,10 @@ var renderers = {
   rift: renderRift, voronoi: renderVoronoi, bolt: renderBolt,
   moire: renderMoire, fold: renderFold, copper: renderCopper,
   glitch: renderGlitch, flock: renderFlock, roto: renderRoto,
-  erosion: renderErosion
+  erosion: renderErosion, gravity: renderGravity, paint: renderPaint,
+  ripple: renderRipple, sand: renderSand, orbit: renderOrbit,
+  grow: renderGrow, magnet: renderMagnet, shatter: renderShatter,
+  pulse: renderPulse, worm: renderWorm
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -1513,6 +2664,16 @@ function switchMode(mode) {
   if (mode === 'glitch') initGlitch();
   if (mode === 'flock') initFlock();
   if (mode === 'erosion') initErosion();
+  if (mode === 'gravity') initGravity();
+  if (mode === 'paint') initPaint();
+  if (mode === 'ripple') initRipple();
+  if (mode === 'sand') initSand();
+  if (mode === 'orbit') initOrbit();
+  if (mode === 'grow') initGrow();
+  if (mode === 'magnet') initMagnet();
+  if (mode === 'shatter') initShatter();
+  if (mode === 'pulse') initPulse();
+  if (mode === 'worm') initWorm();
 }
 
 buttons.forEach(function(b) {
