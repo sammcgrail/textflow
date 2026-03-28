@@ -104,7 +104,7 @@
     flex-shrink: 0;
     touch-action: manipulation;
     opacity: 0;
-    animation: btnAppear 0.3s ease-out forwards;
+    animation: btnAppear 0.15s ease-out forwards;
   }
 
   @media (hover: hover) {
@@ -7798,14 +7798,21 @@ function renderCircuit() {
 // ============================================================
 // MODE: rain3d — Isometric 3D rain on a surface
 // ============================================================
-var r3dDrops, r3dCount, r3dW, r3dH, r3dSplash;
+var r3dDrops, r3dCount, r3dW, r3dH, r3dSplash, r3dRipples;
 function initRain3d() {
   r3dW = COLS; r3dH = ROWS;
-  r3dCount = isMobile ? 100 : 200;
+  r3dCount = isMobile ? 150 : 350;
   r3dDrops = [];
   r3dSplash = new Float32Array(r3dW * r3dH);
+  r3dRipples = [];
   for (var i = 0; i < r3dCount; i++) {
-    r3dDrops.push({ x: Math.random() * 40 - 20, y: Math.random() * 20, z: 10 + Math.random() * 20 });
+    r3dDrops.push({
+      x: Math.random() * r3dW,
+      y: Math.random() * r3dH * 0.6,
+      z: Math.random() * 30,
+      speed: 8 + Math.random() * 16,
+      windX: -0.3 - Math.random() * 0.4
+    });
   }
 }
 initRain3d();
@@ -7814,43 +7821,106 @@ function renderRain3d() {
   clearCanvas();
   var W = COLS, H = ROWS;
   if (r3dW !== W || r3dH !== H) initRain3d();
-  var cx = W * 0.5, cy = H * 0.3;
+  // Ground plane at bottom 40% of screen
+  var groundY = (H * 0.6) | 0;
   // Decay splashes
-  for (var i = 0; i < r3dSplash.length; i++) r3dSplash[i] *= 0.92;
-  // Draw ground plane (isometric grid)
-  for (var gx = -20; gx < 20; gx++) {
-    for (var gz = 0; gz < 20; gz++) {
-      var sx = cx + (gx - gz) * 2;
-      var sy = cy + (gx + gz) * 0.8;
-      var ix = sx | 0, iy = sy | 0;
-      if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
-      var checker = ((gx + gz) & 1) === 0;
-      var splash = r3dSplash[iy * W + ix];
-      var ch = splash > 0.3 ? 'o' : (checker ? '.' : ',');
-      var b = (20 + splash * 60) | 0;
-      drawChar(ch, ix, iy, b, b, (40 + splash * 100) | 0, 0.3 + splash * 0.5);
+  for (var i = 0; i < r3dSplash.length; i++) r3dSplash[i] *= 0.9;
+  // Draw puddle/ground with perspective
+  for (var gy = groundY; gy < H; gy++) {
+    var depth = (gy - groundY) / (H - groundY); // 0 at horizon, 1 at bottom
+    for (var gx = 0; gx < W; gx++) {
+      var splash = r3dSplash[gy * W + gx];
+      var checker = ((gx + gy) & 1) === 0;
+      var ch = splash > 0.5 ? 'O' : splash > 0.2 ? 'o' : (checker ? '·' : '.');
+      var base = (15 + depth * 25) | 0;
+      var blue = (30 + depth * 40 + splash * 120) | 0;
+      drawChar(ch, gx, gy, base, base, blue, 0.15 + depth * 0.2 + splash * 0.6);
     }
   }
-  // Update and draw rain drops
+  // Update and draw ripples
+  for (var i = r3dRipples.length - 1; i >= 0; i--) {
+    var rp = r3dRipples[i];
+    rp.age += 0.016;
+    if (rp.age > 0.8) { r3dRipples.splice(i, 1); continue; }
+    var rad = rp.age * 6;
+    var alpha = 1 - rp.age / 0.8;
+    var rpChars = '~-=~';
+    for (var a = 0; a < 8; a++) {
+      var ang = a * Math.PI * 0.25;
+      var rx = (rp.x + Math.cos(ang) * rad) | 0;
+      var ry = (rp.y + Math.sin(ang) * rad * 0.4) | 0;
+      if (rx >= 0 && rx < W && ry >= groundY && ry < H) {
+        drawChar(rpChars[a & 3], rx, ry, 100, 140, 255, alpha * 0.6);
+      }
+    }
+  }
+  // Pointer interaction — click/touch creates splash burst
+  if (pointer.down && currentMode === 'rain3d') {
+    var px = pointer.gx | 0, py = pointer.gy | 0;
+    if (py >= groundY && py < H && px >= 0 && px < W) {
+      r3dSplash[py * W + px] = 1;
+      for (var dd = -2; dd <= 2; dd++) {
+        var nx = px + dd;
+        if (nx >= 0 && nx < W) r3dSplash[py * W + nx] = Math.max(r3dSplash[py * W + nx], 0.7 - Math.abs(dd) * 0.2);
+      }
+      if (r3dRipples.length < 40) r3dRipples.push({ x: px, y: py, age: 0 });
+    }
+    // Pointer repels nearby drops
+    for (var ri = 0; ri < r3dCount; ri++) {
+      var rd = r3dDrops[ri];
+      var rdx = (rd.x | 0) - pointer.gx, rdy = ((groundY + (H - groundY) * 0.5) | 0) - pointer.gy;
+      if (Math.abs(rdx) < 6 && Math.abs(rdy) < 6) rd.x += rdx * 0.3;
+    }
+  }
+  if (pointer.clicked && currentMode === 'rain3d') {
+    // Big splash burst — spawn extra drops converging on click point
+    for (var bi = 0; bi < 15; bi++) {
+      r3dDrops.push({
+        x: pointer.gx + (Math.random() - 0.5) * 10,
+        y: 0,
+        z: 20 + Math.random() * 10,
+        speed: 15 + Math.random() * 10,
+        windX: (pointer.gx - (pointer.gx + (Math.random() - 0.5) * 10)) * 0.02
+      });
+    }
+    // Trim back to limit
+    while (r3dDrops.length > r3dCount + 50) r3dDrops.shift();
+  }
+  // Update and draw rain drops — perspective: bigger/brighter near bottom
   for (var i = 0; i < r3dCount; i++) {
     var d = r3dDrops[i];
-    d.z -= 15 * 0.016;
-    if (d.z <= 0) {
-      // Splash
-      var sx = cx + (d.x - 0) * 2;
-      var sy = cy + (d.x + 0) * 0.8;
-      var six = sx | 0, siy = sy | 0;
-      if (six >= 0 && six < W && siy >= 0 && siy < H) r3dSplash[siy * W + six] = 1;
-      d.x = Math.random() * 40 - 20;
-      d.y = Math.random() * 20;
-      d.z = 15 + Math.random() * 15;
+    d.z -= d.speed * 0.016;
+    d.x += d.windX;
+    if (d.z <= 0 || d.x < -2) {
+      // Hit ground — create splash and ripple
+      var hitX = d.x | 0;
+      var hitY = (groundY + Math.random() * (H - groundY)) | 0;
+      if (hitX >= 0 && hitX < W && hitY >= 0 && hitY < H) {
+        r3dSplash[hitY * W + hitX] = 1;
+        if (hitX > 0) r3dSplash[hitY * W + hitX - 1] = 0.5;
+        if (hitX < W - 1) r3dSplash[hitY * W + hitX + 1] = 0.5;
+        if (r3dRipples.length < 40) r3dRipples.push({ x: hitX, y: hitY, age: 0 });
+      }
+      d.x = Math.random() * W;
+      d.y = Math.random() * H * 0.6;
+      d.z = 25 + Math.random() * 15;
+      d.speed = 8 + Math.random() * 16;
     }
-    var px = cx + (d.x - d.z * 0.3) * 2;
-    var py = cy + (d.x + d.z * 0.3) * 0.8 - d.z * 1.2;
-    var ix = px | 0, iy = py | 0;
-    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
-    var depth = 1 - d.z / 30;
-    drawChar('|', ix, iy, (100 + depth * 100) | 0, (100 + depth * 100) | 0, 255, 0.3 + depth * 0.5);
+    // Project: rain falls from top, perspective depth = z maps to screen position
+    var depthFactor = 1 - d.z / 40;
+    var screenX = d.x | 0;
+    var screenY = (d.y + (groundY - d.y) * depthFactor) | 0;
+    if (screenX < 0 || screenX >= W || screenY < 0 || screenY >= H) continue;
+    // Draw rain streak (2-3 chars tall for depth effect)
+    var streakLen = depthFactor > 0.5 ? 3 : 2;
+    var bright = (120 + depthFactor * 135) | 0;
+    for (var s = 0; s < streakLen; s++) {
+      var sy = screenY - s;
+      if (sy >= 0 && sy < H) {
+        var ch = s === 0 ? '|' : (s === 1 ? '|' : ':');
+        drawChar(ch, screenX, sy, bright, bright, 255, (0.2 + depthFactor * 0.6) * (1 - s * 0.3));
+      }
+    }
   }
 }
 
@@ -8178,58 +8248,102 @@ function initTypewriter() {
   twW = COLS; twH = ROWS;
   twIdx = 0; twCharIdx = 0; twTimer = 0;
   twChars = [];
-  twDelay = 0.05;
+  twDelay = 0.02; // Fast typing — 50 chars/sec
+  twLineH = 3; // Vertical spacing between quotes
+  twHistory = []; // Previously completed quotes stay on screen
 }
 initTypewriter();
+
+function twCalcPos(text, charIdx, startY, maxPerLine) {
+  var col = 0, line = 0;
+  for (var c = 0; c < charIdx; c++) {
+    if (text[c] === '\n' || col >= maxPerLine) { col = 0; line++; }
+    else col++;
+  }
+  return { x: 2 + col, y: startY + line, lines: line + 1 };
+}
 
 function renderTypewriter() {
   clearCanvas();
   var W = COLS, H = ROWS;
-  if (twW !== W || twH !== H) initTypewriter();
+  if (twW !== W || twH !== H) { twW = W; twH = H; }
+  var maxPerLine = W - 4;
   twTimer += 0.016;
   // Skip to next on click
   if (pointer.clicked && currentMode === 'typewriter') {
+    // Complete current quote instantly
+    var text = TW_QUOTES[twIdx];
+    var startY = 2;
+    for (var h = 0; h < twHistory.length; h++) startY += twHistory[h].lines + twLineH;
+    while (twCharIdx < text.length) {
+      var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
+      if (text[twCharIdx] !== '\n') twChars.push({ ch: text[twCharIdx], x: pos.x, y: pos.y, t: time });
+      twCharIdx++;
+    }
+    // Move to next
+    var info = twCalcPos(text, text.length, startY, maxPerLine);
+    twHistory.push({ chars: twChars.slice(), lines: info.lines });
     twIdx = (twIdx + 1) % TW_QUOTES.length;
     twCharIdx = 0;
     twChars = [];
+    twTimer = 0;
   }
   var text = TW_QUOTES[twIdx];
-  if (twTimer > twDelay && twCharIdx < text.length) {
-    twTimer = 0;
-    var maxPerLine = W - 4;
-    var line = 0, col = 0;
-    // Calculate position of current char
-    for (var c = 0; c < twCharIdx; c++) {
-      col++;
-      if (col >= maxPerLine || text[c] === '\n') { col = 0; line++; }
-    }
-    twChars.push({ ch: text[twCharIdx], x: 2 + col, y: 2 + line, t: time });
-    twCharIdx++;
+  var startY = 2;
+  for (var h = 0; h < twHistory.length; h++) startY += twHistory[h].lines + twLineH;
+  // Scroll if we're running off screen
+  var scrollOff = 0;
+  if (startY > H - 8) {
+    scrollOff = startY - (H - 8);
+    startY -= scrollOff;
   }
-  // Auto advance
-  if (twCharIdx >= text.length && twTimer > 3) {
+  // Type multiple chars per frame for snappy feel
+  var charsPerFrame = 3;
+  for (var cp = 0; cp < charsPerFrame; cp++) {
+    if (twTimer > twDelay && twCharIdx < text.length) {
+      twTimer = 0;
+      var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
+      if (text[twCharIdx] !== '\n') twChars.push({ ch: text[twCharIdx], x: pos.x, y: pos.y, t: time });
+      twCharIdx++;
+    }
+  }
+  // Auto advance after finishing
+  if (twCharIdx >= text.length && twTimer > 1.5) {
+    var info = twCalcPos(text, text.length, startY, maxPerLine);
+    twHistory.push({ chars: twChars.slice(), lines: info.lines });
     twIdx = (twIdx + 1) % TW_QUOTES.length;
     twCharIdx = 0;
     twChars = [];
     twTimer = 0;
+    // Keep only last 5 quotes on screen
+    if (twHistory.length > 5) twHistory.shift();
   }
-  // Draw all placed chars
+  // Draw history (completed quotes, faded)
+  for (var h = 0; h < twHistory.length; h++) {
+    var hChars = twHistory[h].chars;
+    for (var i = 0; i < hChars.length; i++) {
+      var c = hChars[i];
+      var drawY = c.y - scrollOff;
+      if (drawY < 0 || drawY >= H) continue;
+      var fade = 0.3 + (h / twHistory.length) * 0.3;
+      drawChar(c.ch, c.x, drawY, 120, 100, 80, fade);
+    }
+  }
+  // Draw current typing chars
   for (var i = 0; i < twChars.length; i++) {
     var c = twChars[i];
+    var drawY = c.y;
+    if (drawY < 0 || drawY >= H) continue;
     var age = time - c.t;
-    var flash = age < 0.05 ? 1 : 0;
-    var bright = flash ? 255 : (180 + Math.sin(age * 2) * 20) | 0;
-    drawChar(c.ch, c.x, c.y, bright, (150 + flash * 105) | 0, flash ? 255 : 100, 0.8 + flash * 0.2);
+    var flash = age < 0.08 ? 1 : 0;
+    var bright = flash ? 255 : (200 + Math.sin(age * 2) * 20) | 0;
+    drawChar(c.ch, c.x, drawY, bright, (180 + flash * 75) | 0, flash ? 255 : 120, 0.9 + flash * 0.1);
   }
-  // Draw cursor
+  // Draw blinking cursor
   if (twCharIdx < text.length) {
-    var curCol = 0, curLine = 0;
-    for (var c = 0; c < twCharIdx; c++) {
-      curCol++;
-      if (curCol >= W - 4 || text[c] === '\n') { curCol = 0; curLine++; }
-    }
+    var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
     var blink = Math.sin(time * 8) > 0 ? 1 : 0;
-    if (blink) drawChar('_', 2 + curCol, 2 + curLine, 255, 200, 100, 1);
+    if (blink) drawChar('█', pos.x, pos.y, 255, 220, 100, 1);
   }
 }
 
@@ -8336,6 +8450,41 @@ function renderWfc() {
   var W = COLS, H = ROWS;
   if (wfcW !== W || wfcH !== H) initWfc();
   wfcTimer += 0.016;
+  // Click to seed collapse at pointer — creates a new collapse origin
+  if (pointer.clicked && currentMode === 'wfc') {
+    var ox2 = ((W - wfcGW) * 0.5) | 0;
+    var oy2 = ((H - wfcGH) * 0.5) | 0;
+    var cx = (pointer.gx - ox2) | 0, cy = (pointer.gy - oy2) | 0;
+    if (cx >= 0 && cx < wfcGW && cy >= 0 && cy < wfcGH) {
+      // Collapse a 5x5 area around click with a random tile
+      var seedTile = (Math.random() * WFC_TILES.length) | 0;
+      for (var dy = -2; dy <= 2; dy++) {
+        for (var dx = -2; dx <= 2; dx++) {
+          var nx = cx + dx, ny = cy + dy;
+          if (nx >= 0 && nx < wfcGW && ny >= 0 && ny < wfcGH) {
+            wfcGrid[ny * wfcGW + nx] = seedTile;
+            wfcAddNeighbors(nx, ny);
+          }
+        }
+      }
+    }
+  }
+  // Hold to disrupt — erase cells around pointer
+  if (pointer.down && currentMode === 'wfc') {
+    var ox2 = ((W - wfcGW) * 0.5) | 0;
+    var oy2 = ((H - wfcGH) * 0.5) | 0;
+    var cx = (pointer.gx - ox2) | 0, cy = (pointer.gy - oy2) | 0;
+    for (var dy = -1; dy <= 1; dy++) {
+      for (var dx = -1; dx <= 1; dx++) {
+        var nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < wfcGW && ny >= 0 && ny < wfcGH && wfcGrid[ny * wfcGW + nx] >= 0) {
+          wfcGrid[ny * wfcGW + nx] = -1;
+          wfcDone = false;
+          wfcAddNeighbors(nx, ny);
+        }
+      }
+    }
+  }
   // Collapse a few cells per frame
   var steps = Math.min(wfcQueue.length, 5);
   for (var s = 0; s < steps; s++) {
@@ -8646,9 +8795,9 @@ document.fonts.ready.then(function() {
   var nav = document.querySelector('nav');
   nav.style.visibility = 'visible';
   nav.style.opacity = '0';
-  nav.style.animation = 'navFadeIn 0.6s ease-out forwards';
+  nav.style.animation = 'navFadeIn 0.3s ease-out forwards';
   buttons.forEach(function(b, i) {
-    b.style.animationDelay = (0.05 + i * 0.02) + 's';
+    b.style.animationDelay = (0.02 + i * 0.004) + 's';
   });
   loop();
 });
