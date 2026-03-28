@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="38 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:description" content="43 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="38 interactive ASCII art experiments">
+<meta name="twitter:description" content="43 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -149,6 +149,11 @@
   <button data-mode="diffuse">diffuse</button>
   <button data-mode="crystal">crystal</button>
   <button data-mode="tvstatic">tvstatic</button>
+  <button data-mode="crt">crt</button>
+  <button data-mode="vhs">vhs</button>
+  <button data-mode="terminal">terminal</button>
+  <button data-mode="oscilloscope">scope</button>
+  <button data-mode="dial">dial</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -206,7 +211,8 @@ window.addEventListener('resize', function() {
     orbit: initOrbit, grow: initGrow, magnet: initMagnet, shatter: initShatter,
     pulse: initPulse, worm: initWorm, snake: initSnake, bloom: initBloom,
     fluid: initFluid, spiral: initSpiral, cipher: initCipher, aurora: initAurora,
-    pendulum: initPendulum, diffuse: initDiffuse, crystal: initCrystal, tvstatic: initStatic
+    pendulum: initPendulum, diffuse: initDiffuse, crystal: initCrystal, tvstatic: initStatic,
+    crt: initCRT, vhs: initVHS, terminal: initTerminal, oscilloscope: initScope, dial: initDial
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -250,7 +256,12 @@ var glows = {
   pendulum:{ color: 'rgba(255,180,80,0.3)', blur: 12 },
   diffuse:{ color: 'rgba(200,100,255,0.3)', blur: 14 },
   crystal:{ color: 'rgba(180,220,255,0.3)', blur: 10 },
-  tvstatic: { color: 'rgba(200,200,200,0.2)', blur: 6 }
+  tvstatic: { color: 'rgba(200,200,200,0.2)', blur: 6 },
+  crt:    { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  vhs:    { color: 'rgba(255,100,100,0.25)', blur: 8 },
+  terminal:{ color: 'rgba(0,255,0,0.35)', blur: 12 },
+  oscilloscope:{ color: 'rgba(100,255,200,0.4)', blur: 14 },
+  dial:   { color: 'rgba(255,200,100,0.3)', blur: 10 }
 };
 
 function clearCanvas() {
@@ -3668,6 +3679,569 @@ function renderStatic() {
 }
 
 // ============================================================
+// CRT — Retro phosphor monitor, click to change display
+// ============================================================
+
+var crtProgram = 0;
+var crtBurnIn;
+var CRT_PROGRAMS = 5;
+
+function initCRT() {
+  crtProgram = 0;
+  crtBurnIn = new Float32Array(COLS * ROWS);
+}
+initCRT();
+
+function renderCRT() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!crtBurnIn || crtBurnIn.length !== W * H) initCRT();
+
+  if (pointer.clicked && currentMode === 'crt') {
+    pointer.clicked = false;
+    crtProgram = (crtProgram + 1) % CRT_PROGRAMS;
+  }
+
+  // Burn-in decay
+  for (var i = 0; i < crtBurnIn.length; i++) crtBurnIn[i] *= 0.992;
+
+  for (var y = 0; y < H; y++) {
+    // CRT barrel distortion
+    var ny = (y / H - 0.5) * 2;
+    var distortY = ny * (1 + ny * ny * 0.08);
+    var srcY = (distortY * 0.5 + 0.5) * H;
+
+    // Scanline darkening
+    var scanline = (y % 2 === 0) ? 1.0 : 0.7;
+    // Vignette
+    var vy = 1 - Math.abs(ny) * 0.3;
+
+    for (var x = 0; x < W; x++) {
+      var nx = (x / W - 0.5) * 2;
+      var distortX = nx * (1 + nx * nx * 0.05);
+      var srcX = (distortX * 0.5 + 0.5) * W;
+
+      var vx = 1 - Math.abs(nx) * 0.2;
+      var vignette = vx * vy;
+      if (vignette < 0.1) continue;
+
+      var sx = srcX | 0, sy = srcY | 0;
+      if (sx < 0 || sx >= W || sy < 0 || sy >= H) continue;
+
+      var v = 0;
+      // Different "programs"
+      if (crtProgram === 0) {
+        // Bouncing logo
+        var lx = W / 2 + Math.sin(time * 0.7) * W * 0.3;
+        var ly = H / 2 + Math.cos(time * 0.5) * H * 0.3;
+        var msg = 'TEXTFLOW';
+        var dx = sx - lx, dy = sy - ly;
+        if (Math.abs(dy) < 2 && Math.abs(dx) < msg.length * 0.6) {
+          var ci = ((dx / 0.6 + msg.length / 2) | 0);
+          if (ci >= 0 && ci < msg.length) {
+            var ch = msg[ci];
+            v = 1;
+            drawChar(ch, x, y, 0, (255 * vignette * scanline) | 0, 0, v * vignette);
+            crtBurnIn[y * W + x] = Math.min(1, crtBurnIn[y * W + x] + 0.05);
+            continue;
+          }
+        }
+      } else if (crtProgram === 1) {
+        // Color bars
+        var barIdx = (sx / (W / 7)) | 0;
+        var barColors = [[255,255,255],[255,255,0],[0,255,255],[0,255,0],[255,0,255],[255,0,0],[0,0,255]];
+        var c = barColors[Math.min(6, barIdx)];
+        v = 0.8;
+        drawChar('#', x, y, (c[0]*vignette*scanline)|0, (c[1]*vignette*scanline)|0, (c[2]*vignette*scanline)|0, v * vignette);
+        continue;
+      } else if (crtProgram === 2) {
+        // Sine test pattern
+        v = Math.sin(sx * 0.3 + time) * 0.5 + 0.5;
+        v *= Math.sin(sy * 0.2 - time * 0.7) * 0.5 + 0.5;
+      } else if (crtProgram === 3) {
+        // Grid pattern
+        v = ((sx % 10 < 1) || (sy % 8 < 1)) ? 0.8 : 0.05;
+      } else {
+        // Noise channel
+        v = ((sx * 31 + sy * 17 + (time * 10 | 0)) % 97) / 97;
+        if (v < 0.5) v = 0;
+      }
+
+      v *= scanline * vignette;
+      if (v < 0.05) {
+        // Show burn-in
+        var bi = crtBurnIn[y * W + x];
+        if (bi > 0.02) drawChar('.', x, y, 0, (bi * 40) | 0, 0, bi * 0.3);
+        continue;
+      }
+
+      crtBurnIn[y * W + x] = Math.min(1, crtBurnIn[y * W + x] + v * 0.01);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      // Green phosphor
+      drawChar(RAMP_DENSE[ri], x, y, 0, (v * 255) | 0, (v * 60) | 0, 0.3 + v * 0.7);
+    }
+  }
+}
+
+// ============================================================
+// VHS — Tape effect with tracking, click to glitch
+// ============================================================
+
+var vhsTrackOffset = 0;
+var vhsGlitchTimer = 0;
+var vhsMessage = '  PLAY >  00:' + ('0' + Math.floor(Math.random() * 60)).slice(-2) + ':' + ('0' + Math.floor(Math.random() * 60)).slice(-2) + '  REC ';
+
+function initVHS() {
+  vhsTrackOffset = 0;
+  vhsGlitchTimer = 0;
+}
+initVHS();
+
+function renderVHS() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Click triggers tracking glitch
+  if (pointer.clicked && currentMode === 'vhs') {
+    pointer.clicked = false;
+    vhsGlitchTimer = 20 + Math.floor(Math.random() * 20);
+  }
+  // Hold to continuously glitch
+  if (pointer.down && currentMode === 'vhs') {
+    vhsGlitchTimer = Math.max(vhsGlitchTimer, 5);
+  }
+
+  var glitching = vhsGlitchTimer > 0;
+  if (glitching) vhsGlitchTimer--;
+
+  // Update VHS timestamp
+  var secs = (time * 1) | 0;
+  var mins = (secs / 60) | 0;
+  var hrs = (mins / 60) | 0;
+  vhsMessage = '  PLAY >  ' + ('0' + (hrs % 24)).slice(-2) + ':' + ('0' + (mins % 60)).slice(-2) + ':' + ('0' + (secs % 60)).slice(-2) + '  ';
+
+  // Base content — a "recorded" scene
+  for (var y = 0; y < H; y++) {
+    var rowOffset = 0;
+
+    // Tracking distortion
+    if (glitching) {
+      var trackZone = Math.sin(y * 0.3 + time * 5) * 0.5 + 0.5;
+      if (trackZone > 0.7) rowOffset = (Math.random() * 10 - 5) | 0;
+      // Horizontal tear
+      if (Math.random() < 0.05) rowOffset = (Math.random() * W * 0.5 - W * 0.25) | 0;
+    }
+
+    // Subtle ongoing tracking wobble
+    rowOffset += Math.sin(y * 0.05 + time * 2) * 0.5 | 0;
+
+    for (var x = 0; x < W; x++) {
+      var sx = (x + rowOffset + W) % W;
+
+      // VHS "recorded" content — a landscape scene
+      var scene = simplex2(sx * 0.04 + time * 0.05, y * 0.06) * 0.5 + 0.5;
+      scene += simplex2(sx * 0.08 - time * 0.03, y * 0.1 + 5) * 0.3;
+      scene = Math.max(0, Math.min(1, scene));
+
+      // Color bleed — shift R channel
+      var bleedX = (sx + 2 + W) % W;
+      var rScene = simplex2(bleedX * 0.04 + time * 0.05, y * 0.06) * 0.5 + 0.5;
+
+      if (scene < 0.15) continue;
+
+      var ri = Math.min(RAMP_DENSE.length - 1, (scene * RAMP_DENSE.length) | 0);
+      var r = (rScene * 200 + 55) | 0;
+      var g = (scene * 180 + 40) | 0;
+      var b = (scene * 160 + 30) | 0;
+
+      // VHS noise overlay
+      if (Math.random() < 0.02) { r = 255; g = 255; b = 255; }
+
+      // Scanline
+      var scan = (y % 2 === 0) ? 1 : 0.75;
+      drawChar(RAMP_DENSE[ri], x, y, (r * scan) | 0, (g * scan) | 0, (b * scan) | 0, 0.3 + scene * 0.6);
+    }
+  }
+
+  // VHS OSD overlay (timestamp, PLAY indicator)
+  var osdY = 2;
+  for (var oi = 0; oi < vhsMessage.length && oi < W; oi++) {
+    var ch = vhsMessage[oi];
+    if (ch !== ' ') drawChar(ch, oi + 2, osdY, 255, 255, 255, 0.9);
+  }
+
+  // REC dot blink
+  if ((time * 2 | 0) % 2 === 0) {
+    drawChar('●', W - 5, 2, 255, 30, 30, 0.9);
+    drawChar('R', W - 4, 2, 255, 255, 255, 0.8);
+    drawChar('E', W - 3, 2, 255, 255, 255, 0.8);
+    drawChar('C', W - 2, 2, 255, 255, 255, 0.8);
+  }
+
+  // Bottom tracking bar
+  if (glitching) {
+    var barY = (H * 0.7 + Math.sin(time * 3) * H * 0.2) | 0;
+    for (var bx = 0; bx < W; bx++) {
+      drawChar('=', bx, barY, 200, 200, 200, 0.4 + Math.random() * 0.3);
+    }
+  }
+}
+
+// ============================================================
+// TERMINAL — Retro green terminal, click to type
+// ============================================================
+
+var termBuffer = [];
+var termCursorX = 0, termCursorY = 0;
+var termTyping = '';
+var termTypeIdx = 0;
+var termTypeTimer = 0;
+var termMessages = [
+  '> SYSTEM BOOT SEQUENCE INITIATED...',
+  '> LOADING KERNEL MODULES........... OK',
+  '> MOUNTING FILESYSTEM.............. OK',
+  '> INITIALIZING NETWORK............. OK',
+  '> TEXTFLOW ENGINE v3.8.0',
+  '> 38 MODES LOADED. ALL INTERACTIVE.',
+  '> TYPE TO CONTINUE OR CLICK ANYWHERE',
+  '> _'
+];
+var termAutoLine = 0;
+var termAutoTimer = 0;
+
+function initTerminal() {
+  termBuffer = [];
+  termCursorX = 0;
+  termCursorY = 0;
+  termAutoLine = 0;
+  termAutoTimer = 0;
+  termTyping = '';
+  termTypeIdx = 0;
+}
+initTerminal();
+
+function termAddChar(ch) {
+  if (ch === '\n' || termCursorX >= COLS - 1) {
+    termCursorX = 0;
+    termCursorY++;
+    if (termCursorY >= ROWS) {
+      termBuffer.shift();
+      termCursorY = ROWS - 1;
+    }
+    while (termBuffer.length <= termCursorY) termBuffer.push([]);
+    if (ch === '\n') return;
+  }
+  while (termBuffer.length <= termCursorY) termBuffer.push([]);
+  termBuffer[termCursorY][termCursorX] = ch;
+  termCursorX++;
+}
+
+function renderTerminal() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Click adds a random system message
+  if (pointer.clicked && currentMode === 'terminal') {
+    pointer.clicked = false;
+    var msgs = [
+      '> ACCESS GRANTED',
+      '> SCANNING PORT ' + ((Math.random() * 65535) | 0) + '...',
+      '> DECRYPTING SECTOR ' + ((Math.random() * 999) | 0) + '...',
+      '> BUFFER OVERFLOW DETECTED AT 0x' + ((Math.random() * 0xFFFFFF) | 0).toString(16).toUpperCase(),
+      '> SIGNAL ACQUIRED: ' + ((Math.random() * 900 + 100) | 0) + ' MHz',
+      '> INJECTING PAYLOAD................ OK',
+      '> WARNING: UNAUTHORIZED ACCESS ATTEMPT',
+      '> TRACE ROUTE: ' + ((Math.random()*255)|0) + '.' + ((Math.random()*255)|0) + '.' + ((Math.random()*255)|0) + '.' + ((Math.random()*255)|0),
+    ];
+    termTyping = msgs[Math.floor(Math.random() * msgs.length)];
+    termTypeIdx = 0;
+    termAddChar('\n');
+  }
+
+  // Auto-type boot sequence
+  termAutoTimer++;
+  if (termAutoLine < termMessages.length && termAutoTimer % 2 === 0) {
+    if (termTyping === '') {
+      termTyping = termMessages[termAutoLine];
+      termTypeIdx = 0;
+      termAutoLine++;
+      termAddChar('\n');
+    }
+  }
+
+  // Type current message character by character
+  if (termTyping !== '' && termTypeIdx < termTyping.length) {
+    termTypeTimer++;
+    if (termTypeTimer % 2 === 0) {
+      termAddChar(termTyping[termTypeIdx]);
+      termTypeIdx++;
+      if (termTypeIdx >= termTyping.length) termTyping = '';
+    }
+  }
+
+  // Render buffer
+  for (var y = 0; y < termBuffer.length && y < H; y++) {
+    var row = termBuffer[y];
+    if (!row) continue;
+    for (var x = 0; x < row.length && x < W; x++) {
+      var ch = row[x];
+      if (!ch || ch === ' ') continue;
+      // Green phosphor with slight flicker
+      var flicker = 0.9 + Math.random() * 0.1;
+      var bright = ch === '>' ? 0.5 : 0.85;
+      drawChar(ch, x, y, 0, (bright * 255 * flicker) | 0, (bright * 80 * flicker) | 0, bright);
+    }
+  }
+
+  // Blinking cursor
+  if ((time * 3 | 0) % 2 === 0) {
+    drawChar('_', termCursorX, termCursorY, 0, 255, 80, 0.9);
+  }
+
+  // Scanlines
+  for (var y = 0; y < H; y += 2) {
+    for (var x = 0; x < W; x += 4) {
+      drawChar(' ', x, y, 0, 0, 0, 0);
+    }
+  }
+}
+
+// ============================================================
+// OSCILLOSCOPE — Click to add waveforms / Lissajous curves
+// ============================================================
+
+var scopeWaves = [];
+var scopeTrail;
+
+function initScope() {
+  scopeWaves = [{ freqX: 3, freqY: 2, phaseX: 0, phaseY: Math.PI / 2, hue: 120 }];
+  scopeTrail = new Float32Array(COLS * ROWS);
+}
+initScope();
+
+function renderScope() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!scopeTrail || scopeTrail.length !== W * H) initScope();
+
+  // Click to add a new waveform
+  if (pointer.clicked && currentMode === 'oscilloscope') {
+    pointer.clicked = false;
+    scopeWaves.push({
+      freqX: 1 + Math.floor(Math.random() * 6),
+      freqY: 1 + Math.floor(Math.random() * 6),
+      phaseX: Math.random() * Math.PI * 2,
+      phaseY: Math.random() * Math.PI * 2,
+      hue: (Math.random() * 360) | 0
+    });
+    if (scopeWaves.length > 8) scopeWaves.shift();
+  }
+
+  // Decay trail
+  for (var i = 0; i < scopeTrail.length; i++) scopeTrail[i] *= 0.96;
+
+  // Draw grid
+  var gridChars = '·';
+  for (var y = 0; y < H; y += 4) {
+    for (var x = 0; x < W; x += 6) {
+      drawChar(gridChars, x, y, 0, 40, 20, 0.3);
+    }
+  }
+  // Axes
+  var midY = H / 2 | 0;
+  var midX = W / 2 | 0;
+  for (var x = 0; x < W; x++) drawChar('-', x, midY, 0, 60, 30, 0.3);
+  for (var y = 0; y < H; y++) drawChar('|', midX, y, 0, 60, 30, 0.3);
+
+  // Draw Lissajous curves
+  for (var wi = 0; wi < scopeWaves.length; wi++) {
+    var w = scopeWaves[wi];
+    var steps = 500;
+    for (var s = 0; s < steps; s++) {
+      var t = (s / steps) * Math.PI * 2;
+      var px = Math.sin(t * w.freqX + w.phaseX + time * 0.5) * (W * 0.4) + W / 2;
+      var py = Math.sin(t * w.freqY + w.phaseY + time * 0.3) * (H * 0.4) + H / 2;
+      var gx = px | 0, gy = py | 0;
+      if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+        scopeTrail[gy * W + gx] = Math.min(1, scopeTrail[gy * W + gx] + 0.15);
+      }
+    }
+    // Slowly drift phase
+    w.phaseX += 0.002;
+    w.phaseY += 0.003;
+  }
+
+  // Render trails
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = scopeTrail[y * W + x];
+      if (v < 0.03) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      // Phosphor green with brightness
+      drawChar(RAMP_DENSE[ri], x, y, 0, (v * 255) | 0, (v * 120) | 0, 0.3 + v * 0.7);
+    }
+  }
+}
+
+// ============================================================
+// DIAL — Radio dial tuning, drag to tune between stations
+// ============================================================
+
+var dialFreq = 88.0;
+var dialTarget = 88.0;
+var dialStations = [
+  { freq: 91.1, name: 'TEXTFLOW FM', type: 'music' },
+  { freq: 95.5, name: 'ASCII RADIO', type: 'talk' },
+  { freq: 99.9, name: 'NOISE CORP', type: 'noise' },
+  { freq: 103.7, name: 'WAVE STATION', type: 'wave' },
+  { freq: 107.3, name: 'SEBLAND FM', type: 'music' },
+];
+
+function initDial() {
+  dialFreq = 88.0;
+  dialTarget = 88.0;
+}
+initDial();
+
+function renderDial() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Drag left/right to tune
+  if (pointer.down && currentMode === 'dial') {
+    dialTarget = 88.0 + (pointer.gx / W) * 20; // 88-108 MHz range
+  }
+  // Smooth tuning
+  dialFreq += (dialTarget - dialFreq) * 0.1;
+
+  // Find closest station
+  var closestStation = null;
+  var closestDist = 999;
+  for (var si = 0; si < dialStations.length; si++) {
+    var d = Math.abs(dialFreq - dialStations[si].freq);
+    if (d < closestDist) { closestDist = d; closestStation = dialStations[si]; }
+  }
+
+  var tuned = closestDist < 0.5;
+  var signalStrength = tuned ? Math.max(0, 1 - closestDist / 0.5) : 0;
+
+  // Draw dial background
+  var dialY = 4;
+  var freqStr = dialFreq.toFixed(1) + ' MHz';
+  for (var fi = 0; fi < freqStr.length; fi++) {
+    drawChar(freqStr[fi], (W / 2 - freqStr.length / 2 + fi) | 0, dialY, 255, 200, 100, 0.9);
+  }
+
+  // Frequency markers
+  var markerY = dialY + 2;
+  for (var f = 88; f <= 108; f += 1) {
+    var mx = ((f - 88) / 20 * (W - 4) + 2) | 0;
+    var isMajor = f % 2 === 0;
+    drawChar(isMajor ? '|' : '.', mx, markerY, 150, 150, 100, isMajor ? 0.6 : 0.3);
+    // Station markers
+    for (var ss = 0; ss < dialStations.length; ss++) {
+      if (Math.abs(f - dialStations[ss].freq) < 0.5) {
+        drawChar('▼', mx, markerY - 1, 255, 100, 100, 0.7);
+      }
+    }
+  }
+
+  // Tuning needle
+  var needleX = ((dialFreq - 88) / 20 * (W - 4) + 2) | 0;
+  drawChar('▲', needleX, markerY + 1, 255, 255, 100, 0.9);
+
+  // Station name
+  if (tuned && closestStation) {
+    var nameStr = '[ ' + closestStation.name + ' ]';
+    for (var ni = 0; ni < nameStr.length; ni++) {
+      var nx = (W / 2 - nameStr.length / 2 + ni) | 0;
+      drawChar(nameStr[ni], nx, markerY + 3, 100, 255, 100, signalStrength * 0.9);
+    }
+  }
+
+  // Audio visualization area
+  var vizStart = markerY + 6;
+  var vizH = H - vizStart - 2;
+
+  if (tuned && closestStation) {
+    // Different visualizations per station type
+    if (closestStation.type === 'music') {
+      // Frequency bars
+      var numBars = 32;
+      for (var b = 0; b < numBars; b++) {
+        var barX = ((b / numBars) * W) | 0;
+        var barW = Math.max(1, (W / numBars - 1) | 0);
+        var barH = (Math.sin(b * 0.5 + time * 3) * 0.5 + 0.5) * vizH * signalStrength;
+        barH *= (Math.sin(b * 1.3 + time * 5) * 0.3 + 0.7);
+        for (var by = 0; by < barH; by++) {
+          var bpy = vizStart + vizH - by;
+          if (bpy >= vizStart && bpy < H) {
+            var bv = by / vizH;
+            for (var bx = 0; bx < barW && barX + bx < W; bx++) {
+              drawCharHSL('#', barX + bx, bpy, (120 - bv * 120 + 360) % 360, 70, 20 + bv * 40);
+            }
+          }
+        }
+      }
+    } else if (closestStation.type === 'wave') {
+      // Sine wave
+      for (var x = 0; x < W; x++) {
+        var wy = Math.sin(x * 0.1 + time * 3) * vizH * 0.3 * signalStrength;
+        wy += Math.sin(x * 0.05 - time * 1.5) * vizH * 0.15;
+        var py = (vizStart + vizH / 2 + wy) | 0;
+        if (py >= vizStart && py < H) {
+          drawCharHSL('~', x, py, (200 + x * 2) % 360, 70, 40 * signalStrength);
+        }
+      }
+    } else if (closestStation.type === 'talk') {
+      // Waveform bars
+      for (var x = 0; x < W; x++) {
+        var amp = Math.abs(Math.sin(x * 0.2 + time * 8) * Math.sin(x * 0.07 + time * 2)) * vizH * 0.4 * signalStrength;
+        var midRow = vizStart + vizH / 2;
+        for (var dy = -(amp | 0); dy <= (amp | 0); dy++) {
+          var py = (midRow + dy) | 0;
+          if (py >= vizStart && py < H) {
+            drawChar('|', x, py, 100, (200 * signalStrength) | 0, 100, 0.3 + Math.abs(dy / amp) * 0.5);
+          }
+        }
+      }
+    } else {
+      // Noise
+      for (var y = vizStart; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          if (Math.random() < 0.85) continue;
+          var nv = Math.random() * signalStrength;
+          drawChar('@#$%'[Math.floor(Math.random() * 4)], x, y, (nv * 200) | 0, (nv * 150) | 0, (nv * 100) | 0, nv * 0.6);
+        }
+      }
+    }
+  } else {
+    // Static noise between stations
+    for (var y = vizStart; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        if (Math.random() < 0.7) continue;
+        var nv = Math.random() * 0.3;
+        var grey = (nv * 200) | 0;
+        drawChar('.', x, y, grey, grey, grey, nv);
+      }
+    }
+  }
+
+  // Signal strength meter
+  var meterY = vizStart - 2;
+  var meterStr = 'SIGNAL: ';
+  var bars = (signalStrength * 10) | 0;
+  for (var mi = 0; mi < meterStr.length; mi++) {
+    drawChar(meterStr[mi], mi + 2, meterY, 150, 150, 150, 0.6);
+  }
+  for (var mi = 0; mi < 10; mi++) {
+    var ch = mi < bars ? '█' : '░';
+    var hue = mi < 3 ? 0 : (mi < 7 ? 60 : 120);
+    drawCharHSL(ch, meterStr.length + 2 + mi, meterY, hue, 70, mi < bars ? 40 : 10);
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -3684,7 +4258,9 @@ var renderers = {
   pulse: renderPulse, worm: renderWorm, snake: renderSnake,
   bloom: renderBloom, fluid: renderFluid, spiral: renderSpiral,
   cipher: renderCipher, aurora: renderAurora, pendulum: renderPendulum,
-  diffuse: renderDiffuse, crystal: renderCrystal, tvstatic: renderStatic
+  diffuse: renderDiffuse, crystal: renderCrystal, tvstatic: renderStatic,
+  crt: renderCRT, vhs: renderVHS, terminal: renderTerminal,
+  oscilloscope: renderScope, dial: renderDial
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -3758,6 +4334,11 @@ function switchMode(mode) {
   if (mode === 'diffuse') initDiffuse();
   if (mode === 'crystal') initCrystal();
   if (mode === 'tvstatic') initStatic();
+  if (mode === 'crt') initCRT();
+  if (mode === 'vhs') initVHS();
+  if (mode === 'terminal') initTerminal();
+  if (mode === 'oscilloscope') initScope();
+  if (mode === 'dial') initDial();
 }
 
 buttons.forEach(function(b) {
