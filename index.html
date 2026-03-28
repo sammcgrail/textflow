@@ -5311,23 +5311,34 @@ var renderers = {
   vidneon: renderVidneon
 };
 
-// Single-pass glow: draw canvas onto itself with blur via offscreen canvas
+// Glow pass — downscaled for performance on mobile
 var glowCanvas = document.createElement('canvas');
 var glowCtx = glowCanvas.getContext('2d');
+var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
+var GLOW_SCALE = isMobile ? 0.2 : 0.35;
+var glowFrame = 0;
 
 function applyGlow() {
-  var g = glows[currentMode];
-  if (glowCanvas.width !== canvas.width || glowCanvas.height !== canvas.height) {
-    glowCanvas.width = canvas.width;
-    glowCanvas.height = canvas.height;
+  // On mobile, only apply glow every other frame
+  if (isMobile) {
+    glowFrame++;
+    if (glowFrame % 2 !== 0) return;
   }
-  glowCtx.clearRect(0, 0, glowCanvas.width, glowCanvas.height);
-  glowCtx.filter = 'blur(' + g.blur + 'px)';
-  glowCtx.drawImage(canvas, 0, 0);
+  var g = glows[currentMode];
+  var gw = (canvas.width * GLOW_SCALE) | 0;
+  var gh = (canvas.height * GLOW_SCALE) | 0;
+  if (glowCanvas.width !== gw || glowCanvas.height !== gh) {
+    glowCanvas.width = gw;
+    glowCanvas.height = gh;
+  }
+  var blurAmt = isMobile ? Math.max(3, g.blur * 0.4) : g.blur * 0.6;
+  glowCtx.clearRect(0, 0, gw, gh);
+  glowCtx.filter = 'blur(' + blurAmt + 'px)';
+  glowCtx.drawImage(canvas, 0, 0, gw, gh);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 0.5;
   ctx.globalCompositeOperation = 'lighter';
-  ctx.drawImage(glowCanvas, 0, 0);
+  ctx.drawImage(glowCanvas, 0, 0, canvas.width, canvas.height);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 }
