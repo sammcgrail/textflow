@@ -8807,11 +8807,17 @@ function updateURL(mode) {
 function scrollNavToMode(mode, instant) {
   var container = document.querySelector('.nav-buttons');
   var btn = container.querySelector('button[data-mode="' + mode + '"]');
-  if (btn) {
-    var containerRect = container.getBoundingClientRect();
-    var btnRect = btn.getBoundingClientRect();
-    var scrollLeft = btn.offsetLeft - containerRect.width / 2 + btnRect.width / 2;
-    container.scrollTo({ left: Math.max(0, scrollLeft), behavior: instant ? 'instant' : 'smooth' });
+  if (!btn) return;
+  // Only scroll if button is not already visible in the container
+  var cRect = container.getBoundingClientRect();
+  var bRect = btn.getBoundingClientRect();
+  if (bRect.left >= cRect.left && bRect.right <= cRect.right) return; // already visible
+  // Scroll just enough to bring button into view with some padding
+  var pad = 40;
+  if (bRect.left < cRect.left) {
+    container.scrollTo({ left: btn.offsetLeft - pad, behavior: instant ? 'instant' : 'smooth' });
+  } else {
+    container.scrollTo({ left: btn.offsetLeft + btn.offsetWidth - container.clientWidth + pad, behavior: instant ? 'instant' : 'smooth' });
   }
 }
 
