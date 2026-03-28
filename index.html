@@ -5315,15 +5315,9 @@ var renderers = {
 var glowCanvas = document.createElement('canvas');
 var glowCtx = glowCanvas.getContext('2d');
 var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
-var GLOW_SCALE = isMobile ? 0.2 : 0.35;
-var glowFrame = 0;
+var GLOW_SCALE = isMobile ? 0.15 : 0.35;
 
 function applyGlow() {
-  // On mobile, only apply glow every other frame
-  if (isMobile) {
-    glowFrame++;
-    if (glowFrame % 2 !== 0) return;
-  }
   var g = glows[currentMode];
   var gw = (canvas.width * GLOW_SCALE) | 0;
   var gh = (canvas.height * GLOW_SCALE) | 0;
