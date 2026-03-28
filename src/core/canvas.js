@@ -17,20 +17,4 @@ export function resize() {
   state.COLS = Math.floor(w / state.CHAR_W);
   state.ROWS = Math.floor((h - state.NAV_H) / state.CHAR_H);
 
-  // Reset glow overlay canvas dimensions on resize
-  currentGlowBlur = -1;
-}
-
-var currentGlowBlur = -1;
-
-export function resetGlowBlur() {
-  currentGlowBlur = -1;
-}
-
-export function getCurrentGlowBlur() {
-  return currentGlowBlur;
-}
-
-export function setCurrentGlowBlur(v) {
-  currentGlowBlur = v;
 }
