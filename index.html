@@ -91,9 +91,11 @@
     animation: btnAppear 0.3s ease-out forwards;
   }
 
-  nav button:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: rgba(255, 255, 255, 0.8);
+  @media (hover: hover) {
+    nav button:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.8);
+    }
   }
 
   nav button.active {
