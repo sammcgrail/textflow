@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
 <meta property="og:description" content="52 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
-<meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
+<meta property="og:image" content="https://sebland.com/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
@@ -16,9 +16,9 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
 <meta name="twitter:description" content="52 interactive ASCII art experiments">
-<meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
-<link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
-<link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
+<meta name="twitter:image" content="https://sebland.com/static/og-roto.png">
+<link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -5037,7 +5037,7 @@ vidCowEl.onloadeddata = function() { vidCowReady = true; };
 function initVidcow() {
   vidCowPaused = false;
   if (!vidCowReady && !vidCowEl.getAttribute('src')) {
-    vidCowEl.src = '/textflow/static/strawberry-cow.mp4';
+    vidCowEl.src = '/static/strawberry-cow.mp4';
     vidCowEl.load();
   }
   vidCowEl.currentTime = 0;
@@ -5120,7 +5120,7 @@ vidScenesEl.onloadeddata = function() { vidScenesReady = true; };
 function initVidscenes() {
   vidScenesPaused = false;
   if (!vidScenesReady && !vidScenesEl.getAttribute('src')) {
-    vidScenesEl.src = '/textflow/static/scenes.mp4';
+    vidScenesEl.src = '/static/scenes.mp4';
     vidScenesEl.load();
   }
   vidScenesEl.currentTime = 0;
@@ -5202,7 +5202,7 @@ vidFootballEl.onloadeddata = function() { vidFootballReady = true; };
 function initVidfootball() {
   vidFootballPaused = false;
   if (!vidFootballReady && !vidFootballEl.getAttribute('src')) {
-    vidFootballEl.src = '/textflow/static/football.mp4';
+    vidFootballEl.src = '/static/football.mp4';
     vidFootballEl.load();
   }
   vidFootballEl.currentTime = 0;
@@ -5284,7 +5284,7 @@ vidClownsEl.onloadeddata = function() { vidClownsReady = true; };
 function initVidclowns() {
   vidClownsPaused = false;
   if (!vidClownsReady && !vidClownsEl.getAttribute('src')) {
-    vidClownsEl.src = '/textflow/static/clowns.mp4';
+    vidClownsEl.src = '/static/clowns.mp4';
     vidClownsEl.load();
   }
   vidClownsEl.currentTime = 0;
@@ -5366,7 +5366,7 @@ vidNeonEl.onloadeddata = function() { vidNeonReady = true; };
 function initVidneon() {
   vidNeonPaused = false;
   if (!vidNeonReady && !vidNeonEl.getAttribute('src')) {
-    vidNeonEl.src = '/textflow/static/neon.mp4';
+    vidNeonEl.src = '/static/neon.mp4';
     vidNeonEl.load();
   }
   vidNeonEl.currentTime = 0;
@@ -5843,7 +5843,33 @@ function initLangton() {
   langW = COLS; langH = ROWS;
   langGrid = new Uint8Array(langW * langH);
   langRule = [1, 0, 1, 1]; // RLLR
-  langAnts = [{x: Math.floor(langW / 2), y: Math.floor(langH / 2), dir: 0}];
+  // Start with 3 ants for faster visual development
+  langAnts = [
+    {x: Math.floor(langW / 2), y: Math.floor(langH / 2), dir: 0},
+    {x: Math.floor(langW * 0.3), y: Math.floor(langH * 0.4), dir: 1},
+    {x: Math.floor(langW * 0.7), y: Math.floor(langH * 0.6), dir: 2}
+  ];
+  // Pre-simulate 5000 steps so it's not blank on load
+  var numStates = langRule.length;
+  for (var s = 0; s < 5000; s++) {
+    for (var a = 0; a < langAnts.length; a++) {
+      var ant = langAnts[a];
+      if (ant.x < 0 || ant.x >= langW || ant.y < 0 || ant.y >= langH) continue;
+      var idx = ant.y * langW + ant.x;
+      var state = langGrid[idx];
+      if (langRule[state]) ant.dir = (ant.dir + 1) & 3;
+      else ant.dir = (ant.dir + 3) & 3;
+      langGrid[idx] = (state + 1) % numStates;
+      if (ant.dir === 0) ant.y--;
+      else if (ant.dir === 1) ant.x++;
+      else if (ant.dir === 2) ant.y++;
+      else ant.x--;
+      if (ant.x < 0) ant.x = langW - 1;
+      if (ant.x >= langW) ant.x = 0;
+      if (ant.y < 0) ant.y = langH - 1;
+      if (ant.y >= langH) ant.y = 0;
+    }
+  }
 }
 initLangton();
 
