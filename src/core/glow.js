@@ -1,0 +1,130 @@
+import { state } from './state.js';
+
+// Glow configs per mode
+export var glows = {
+  lava:   { color: 'rgba(255,80,30,0.35)', blur: 12 },
+  rain:   { color: 'rgba(0,220,100,0.35)', blur: 10 },
+  wave:   { color: 'rgba(80,140,255,0.3)', blur: 12 },
+  fire:   { color: 'rgba(255,150,30,0.35)', blur: 10 },
+  plasma: { color: 'rgba(180,60,255,0.3)', blur: 12 },
+  life:   { color: 'rgba(0,255,180,0.3)', blur: 10 },
+  warp:   { color: 'rgba(200,200,255,0.3)', blur: 14 },
+  swirl:  { color: 'rgba(255,100,200,0.3)', blur: 12 },
+  rift:   { color: 'rgba(0,180,255,0.3)', blur: 10 },
+  voronoi:{ color: 'rgba(255,255,200,0.25)', blur: 8 },
+  bolt:   { color: 'rgba(150,200,255,0.4)', blur: 16 },
+  moire:  { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  fold:   { color: 'rgba(255,140,0,0.35)', blur: 12 },
+  copper: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  glitch: { color: 'rgba(255,0,255,0.3)', blur: 8 },
+  flock:  { color: 'rgba(255,200,50,0.3)', blur: 10 },
+  roto:   { color: 'rgba(200,100,255,0.3)', blur: 12 },
+  erosion:{ color: 'rgba(200,180,140,0.25)', blur: 8 },
+  gravity:{ color: 'rgba(100,200,255,0.35)', blur: 14 },
+  paint:  { color: 'rgba(255,100,200,0.3)', blur: 10 },
+  ripple: { color: 'rgba(0,180,255,0.35)', blur: 12 },
+  sand:   { color: 'rgba(220,180,100,0.3)', blur: 8 },
+  orbit:  { color: 'rgba(180,120,255,0.3)', blur: 12 },
+  grow:   { color: 'rgba(50,255,100,0.3)', blur: 10 },
+  magnet: { color: 'rgba(255,80,80,0.3)', blur: 12 },
+  shatter:{ color: 'rgba(200,200,255,0.35)', blur: 14 },
+  pulse:  { color: 'rgba(0,255,200,0.35)', blur: 12 },
+  worm:   { color: 'rgba(180,255,50,0.3)', blur: 10 },
+  snake:  { color: 'rgba(0,255,150,0.35)', blur: 12 },
+  bloom:  { color: 'rgba(255,150,50,0.4)', blur: 16 },
+  fluid:  { color: 'rgba(100,150,255,0.3)', blur: 12 },
+  spiral: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  cipher: { color: 'rgba(0,255,0,0.3)', blur: 8 },
+  aurora: { color: 'rgba(100,255,200,0.35)', blur: 16 },
+  pendulum:{ color: 'rgba(255,180,80,0.3)', blur: 12 },
+  diffuse:{ color: 'rgba(200,100,255,0.3)', blur: 14 },
+  crystal:{ color: 'rgba(180,220,255,0.3)', blur: 10 },
+  tvstatic: { color: 'rgba(200,200,200,0.2)', blur: 6 },
+  crt:    { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  vhs:    { color: 'rgba(255,100,100,0.25)', blur: 8 },
+  terminal:{ color: 'rgba(0,255,0,0.35)', blur: 12 },
+  oscilloscope:{ color: 'rgba(100,255,200,0.4)', blur: 14 },
+  dial:   { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  propfont: { color: 'rgba(150,100,255,0.35)', blur: 14 },
+  brightmatch: { color: 'rgba(255,180,80,0.35)', blur: 12 },
+  smoothfluid: { color: 'rgba(100,180,255,0.4)', blur: 16 },
+  vidascii: { color: 'rgba(200,200,200,0.2)', blur: 8 },
+  vidcow: { color: 'rgba(255,150,180,0.3)', blur: 10 },
+  vidscenes: { color: 'rgba(100,150,255,0.35)', blur: 12 },
+  vidfootball: { color: 'rgba(100,200,50,0.3)', blur: 10 },
+  vidclowns: { color: 'rgba(255,50,50,0.35)', blur: 12 },
+  vidneon: { color: 'rgba(180,100,255,0.4)', blur: 18 },
+  terrain: { color: 'rgba(100,200,100,0.3)', blur: 10 },
+  tunnel: { color: 'rgba(200,100,255,0.35)', blur: 14 },
+  noise: { color: 'rgba(150,200,255,0.3)', blur: 12 },
+  interference: { color: 'rgba(0,200,255,0.35)', blur: 14 },
+  automata: { color: 'rgba(255,150,0,0.3)', blur: 8 },
+  maze: { color: 'rgba(0,255,150,0.3)', blur: 10 },
+  langton: { color: 'rgba(255,100,100,0.3)', blur: 10 },
+  wave2d: { color: 'rgba(80,150,255,0.35)', blur: 14 },
+  heat: { color: 'rgba(255,100,50,0.35)', blur: 12 },
+  lorenz: { color: 'rgba(200,150,255,0.35)', blur: 14 },
+  galaxy: { color: 'rgba(200,180,255,0.3)', blur: 16 },
+  cloth: { color: 'rgba(200,200,255,0.3)', blur: 10 },
+  dla: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  slime: { color: 'rgba(180,255,50,0.35)', blur: 12 },
+  reaction: { color: 'rgba(100,200,255,0.35)', blur: 14 },
+  nbody: { color: 'rgba(255,200,80,0.35)', blur: 14 },
+  ants: { color: 'rgba(200,150,50,0.3)', blur: 10 },
+  strange: { color: 'rgba(255,100,200,0.35)', blur: 16 },
+  mandel: { color: 'rgba(100,150,255,0.35)', blur: 14 },
+  storm: { color: 'rgba(180,200,255,0.4)', blur: 18 },
+  starfield: { color: 'rgba(200,200,255,0.3)', blur: 10 },
+  matrix: { color: 'rgba(0,255,70,0.35)', blur: 12 },
+  snowfall: { color: 'rgba(200,220,255,0.3)', blur: 10 },
+  firework: { color: 'rgba(255,150,50,0.4)', blur: 16 },
+  kaleidoscope: { color: 'rgba(255,100,200,0.35)', blur: 14 },
+  radar: { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  fountain: { color: 'rgba(100,180,255,0.35)', blur: 12 },
+  coral: { color: 'rgba(255,120,80,0.3)', blur: 10 },
+  smoke: { color: 'rgba(180,180,180,0.25)', blur: 14 },
+  tornado: { color: 'rgba(150,130,100,0.3)', blur: 12 },
+  dna: { color: 'rgba(100,200,255,0.3)', blur: 10 },
+  circuit: { color: 'rgba(0,255,150,0.3)', blur: 8 },
+  rain3d: { color: 'rgba(80,140,255,0.3)', blur: 12 },
+  boids: { color: 'rgba(255,200,50,0.3)', blur: 10 },
+  waves3d: { color: 'rgba(80,160,255,0.35)', blur: 14 },
+  tree: { color: 'rgba(80,200,80,0.3)', blur: 10 },
+  chem: { color: 'rgba(200,100,255,0.3)', blur: 12 },
+  typewriter: { color: 'rgba(255,200,100,0.25)', blur: 8 },
+  conway3: { color: 'rgba(255,150,0,0.3)', blur: 10 },
+  wfc: { color: 'rgba(100,200,255,0.3)', blur: 12 }
+};
+
+var glowCanvas = null;
+var glowCtx = null;
+var GLOW_SCALE = 0.4;
+var currentGlowBlur = -1;
+
+export function initGlow() {
+  glowCanvas = document.getElementById('glow');
+  glowCtx = glowCanvas.getContext('2d');
+  GLOW_SCALE = state.isMobile ? 0.2 : 0.4;
+}
+
+function updateGlowCSS(blur) {
+  var blurAmt = state.isMobile ? Math.max(4, blur * 0.5) : blur * 0.7;
+  if (blurAmt !== currentGlowBlur) {
+    currentGlowBlur = blurAmt;
+    glowCanvas.style.filter = 'blur(' + blurAmt + 'px)';
+  }
+}
+
+export function applyGlow() {
+  var g = glows[state.currentMode];
+  updateGlowCSS(g.blur);
+  var gw = (state.canvas.width * GLOW_SCALE) | 0;
+  var gh = (state.canvas.height * GLOW_SCALE) | 0;
+  if (glowCanvas.width !== gw || glowCanvas.height !== gh) {
+    glowCanvas.width = gw;
+    glowCanvas.height = gh;
+    currentGlowBlur = -1;
+    updateGlowCSS(g.blur);
+  }
+  glowCtx.drawImage(state.canvas, 0, 0, gw, gh);
+}
