@@ -29,10 +29,10 @@ function renderConway3() {
   // Brian's Brain rules
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var state = c3Grid[y * W + x];
-      if (state === 2) {
+      var cellState = c3Grid[y * W + x];
+      if (cellState === 2) {
         c3Next[y * W + x] = 1; // alive -> dying
-      } else if (state === 1) {
+      } else if (cellState === 1) {
         c3Next[y * W + x] = 0; // dying -> dead
       } else {
         // dead -> alive if exactly 2 alive neighbors
