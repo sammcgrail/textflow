@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="50 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:description" content="51 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="50 interactive ASCII art experiments">
+<meta name="twitter:description" content="51 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -172,6 +172,7 @@
   <button data-mode="vidcow">vidcow</button>
   <button data-mode="vidscenes">vidscenes</button>
   <button data-mode="vidfootball">vidfootball</button>
+  <button data-mode="vidclowns">vidclowns</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -233,7 +234,7 @@ window.addEventListener('resize', function() {
     crt: initCRT, vhs: initVHS, terminal: initTerminal, oscilloscope: initScope, dial: initDial,
     propfont: initPropfont, brightmatch: initBrightmatch, smoothfluid: initSmoothfluid,
     vidascii: initVidascii, vidcow: initVidcow, vidscenes: initVidscenes,
-    vidfootball: initVidfootball
+    vidfootball: initVidfootball, vidclowns: initVidclowns
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -289,7 +290,8 @@ var glows = {
   vidascii: { color: 'rgba(200,200,200,0.2)', blur: 8 },
   vidcow: { color: 'rgba(255,150,180,0.3)', blur: 10 },
   vidscenes: { color: 'rgba(100,150,255,0.35)', blur: 12 },
-  vidfootball: { color: 'rgba(100,200,50,0.3)', blur: 10 }
+  vidfootball: { color: 'rgba(100,200,50,0.3)', blur: 10 },
+  vidclowns: { color: 'rgba(255,50,50,0.35)', blur: 12 }
 };
 
 function clearCanvas() {
@@ -312,6 +314,44 @@ function drawCharHSL(ch, x, y, h, s, l) {
   if (ch === ' ') return;
   ctx.fillStyle = 'hsl(' + (h|0) + ',' + (s|0) + '%,' + (l|0) + '%)';
   ctx.fillText(ch, x * CHAR_W, NAV_H + y * CHAR_H);
+}
+
+function drawFancyLoading(label) {
+  var W = COLS, H = ROWS;
+  var cx = W / 2, cy = H / 2;
+  var t = time;
+  // Swirling character vortex
+  var loadChars = '▓▒░█▄▀■□●○◆◇★☆';
+  for (var i = 0; i < 40; i++) {
+    var angle = t * 1.5 + i * 0.157;
+    var radius = 4 + Math.sin(t * 0.8 + i * 0.3) * 3;
+    var px = cx + Math.cos(angle) * radius;
+    var py = cy + Math.sin(angle) * radius * 0.5;
+    var ix = Math.round(px), iy = Math.round(py);
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      var ch = loadChars[i % loadChars.length];
+      var hue = (t * 60 + i * 25) % 360;
+      var bright = 30 + Math.sin(t * 3 + i) * 15;
+      drawCharHSL(ch, ix, iy, hue, 50, bright);
+    }
+  }
+  // Pulsing dots
+  var dots = '';
+  for (var d = 0; d < 3; d++) dots += Math.sin(t * 4 + d * 1.2) > 0 ? '.' : ' ';
+  var msg = '[ ' + label + dots + ' ]';
+  ctx.fillStyle = 'rgba(255,255,255,' + (0.3 + Math.sin(t * 2) * 0.15).toFixed(2) + ')';
+  ctx.textAlign = 'center';
+  ctx.fillText(msg, cx * CHAR_W, NAV_H + (cy + 6) * CHAR_H);
+  ctx.textAlign = 'left';
+  // Scanning line
+  var scanY = Math.round((Math.sin(t * 1.5) * 0.5 + 0.5) * H);
+  for (var sx = 0; sx < W; sx++) {
+    var b = Math.sin(sx * 0.2 + t * 5) * 0.5 + 0.5;
+    if (b > 0.6) {
+      var sci = Math.min(RAMP_DENSE.length - 1, (b * RAMP_DENSE.length) | 0);
+      drawChar(RAMP_DENSE[sci], sx, scanY, 100, 100, 100, b * 0.3);
+    }
+  }
 }
 
 // ============================================================
@@ -4765,36 +4805,7 @@ function renderVidascii() {
   var W = COLS, H = ROWS;
 
   if (!vidLoaded) {
-    // Show drop prompt
-    ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
-    ctx.textBaseline = 'top';
-    var msg1 = 'drag & drop a video file';
-    var msg2 = 'mp4 / webm / mov';
-    var msg3 = 'click to pause/play';
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    var cx = (W * CHAR_W) / 2;
-    var cy = NAV_H + (H * CHAR_H) / 2;
-    ctx.textAlign = 'center';
-    ctx.fillText(msg1, cx, cy - CHAR_H * 1.5);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillText(msg2, cx, cy);
-    ctx.fillText(msg3, cx, cy + CHAR_H * 1.5);
-    ctx.textAlign = 'left';
-
-    // Animated border hint
-    var t = time;
-    for (var x = 0; x < W; x++) {
-      var b = (Math.sin(x * 0.3 + t * 2) * 0.5 + 0.5) * 0.3;
-      var ri = Math.min(VA_RAMP.length - 1, (b * VA_RAMP.length) | 0);
-      drawChar(VA_RAMP[ri], x, 0, 100, 100, 100, b);
-      drawChar(VA_RAMP[ri], x, H - 1, 100, 100, 100, b);
-    }
-    for (var y = 0; y < H; y++) {
-      var b = (Math.sin(y * 0.4 + t * 2.5) * 0.5 + 0.5) * 0.3;
-      var ri = Math.min(VA_RAMP.length - 1, (b * VA_RAMP.length) | 0);
-      drawChar(VA_RAMP[ri], 0, y, 100, 100, 100, b);
-      drawChar(VA_RAMP[ri], W - 1, y, 100, 100, 100, b);
-    }
+    drawFancyLoading('drop video here');
     return;
   }
 
@@ -4884,10 +4895,7 @@ function renderVidcow() {
   var W = COLS, H = ROWS;
 
   if (!vidCowReady) {
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.textAlign = 'center';
-    ctx.fillText('loading strawberry cow...', (W * CHAR_W) / 2, NAV_H + (H * CHAR_H) / 2);
-    ctx.textAlign = 'left';
+    drawFancyLoading('loading strawberry cow');
     return;
   }
 
@@ -4968,10 +4976,7 @@ function renderVidscenes() {
   var W = COLS, H = ROWS;
 
   if (!vidScenesReady) {
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.textAlign = 'center';
-    ctx.fillText('loading scenes...', (W * CHAR_W) / 2, NAV_H + (H * CHAR_H) / 2);
-    ctx.textAlign = 'left';
+    drawFancyLoading('loading scenes');
     return;
   }
 
@@ -5052,10 +5057,7 @@ function renderVidfootball() {
   var W = COLS, H = ROWS;
 
   if (!vidFootballReady) {
-    ctx.fillStyle = 'rgba(255,255,255,0.3)';
-    ctx.textAlign = 'center';
-    ctx.fillText('loading football...', (W * CHAR_W) / 2, NAV_H + (H * CHAR_H) / 2);
-    ctx.textAlign = 'left';
+    drawFancyLoading('loading football');
     return;
   }
 
@@ -5093,6 +5095,87 @@ function renderVidfootball() {
 }
 
 // ============================================================
+// VIDCLOWNS — Circus clowns ASCII video
+// ============================================================
+
+var vidClownsEl = document.createElement('video');
+vidClownsEl.muted = true;
+vidClownsEl.loop = true;
+vidClownsEl.playsInline = true;
+vidClownsEl.crossOrigin = 'anonymous';
+vidClownsEl.style.display = 'none';
+vidClownsEl.src = '/textflow/static/clowns.mp4';
+document.body.appendChild(vidClownsEl);
+
+var vidClownsCanvas = document.createElement('canvas');
+var vidClownsCtx = vidClownsCanvas.getContext('2d', { willReadFrequently: true });
+var vidClownsReady = false;
+
+vidClownsEl.onloadeddata = function() { vidClownsReady = true; };
+vidClownsEl.load();
+
+var vidClownsPaused = false;
+
+function initVidclowns() {
+  vidClownsPaused = false;
+  vidClownsEl.currentTime = 0;
+  vidClownsEl.play().catch(function(){});
+}
+
+canvas.addEventListener('click', function() {
+  if (currentMode !== 'vidclowns') return;
+  if (vidClownsEl.paused) {
+    vidClownsEl.play().catch(function(){});
+    vidClownsPaused = false;
+  } else {
+    vidClownsEl.pause();
+    vidClownsPaused = true;
+  }
+});
+
+function renderVidclowns() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  if (!vidClownsReady) {
+    drawFancyLoading('loading clowns');
+    return;
+  }
+
+  if (vidClownsCanvas.width !== W || vidClownsCanvas.height !== H) {
+    vidClownsCanvas.width = W;
+    vidClownsCanvas.height = H;
+  }
+
+  vidClownsCtx.drawImage(vidClownsEl, 0, 0, W, H);
+  var imgData = vidClownsCtx.getImageData(0, 0, W, H).data;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var pi = (y * W + x) * 4;
+      var r = imgData[pi];
+      var g = imgData[pi + 1];
+      var b = imgData[pi + 2];
+      var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (lum < 0.02) continue;
+      var ri = Math.min(VA_RAMP.length - 1, (lum * VA_RAMP.length) | 0);
+      var ch = VA_RAMP[ri];
+      var alpha = Math.max(0.2, Math.min(1, lum * 1.3));
+      drawChar(ch, x, y, r, g, b, alpha);
+    }
+  }
+
+  if (vidClownsPaused) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('PAUSED', window.innerWidth - 10, NAV_H + 10);
+    ctx.textAlign = 'left';
+    ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -5114,7 +5197,7 @@ var renderers = {
   oscilloscope: renderScope, dial: renderDial,
   propfont: renderPropfont, brightmatch: renderBrightmatch, smoothfluid: renderSmoothfluid,
   vidascii: renderVidascii, vidcow: renderVidcow, vidscenes: renderVidscenes,
-  vidfootball: renderVidfootball
+  vidfootball: renderVidfootball, vidclowns: renderVidclowns
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -5218,6 +5301,7 @@ function switchMode(mode) {
   if (mode === 'vidcow') initVidcow();
   if (mode === 'vidscenes') initVidscenes();
   if (mode === 'vidfootball') initVidfootball();
+  if (mode === 'vidclowns') initVidclowns();
 }
 
 buttons.forEach(function(b) {
