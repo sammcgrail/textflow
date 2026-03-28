@@ -70,6 +70,7 @@
     scrollbar-width: none;
     flex: 1;
     min-width: 0;
+    touch-action: pan-x;
   }
   .nav-buttons::-webkit-scrollbar { display: none; }
 
@@ -101,6 +102,7 @@
     letter-spacing: 0.05em;
     white-space: nowrap;
     flex-shrink: 0;
+    touch-action: manipulation;
     opacity: 0;
     animation: btnAppear 0.3s ease-out forwards;
   }
@@ -236,6 +238,26 @@
   <button data-mode="strange">strange</button>
   <button data-mode="mandel">mandel</button>
   <button data-mode="storm">storm</button>
+  <button data-mode="starfield">starfield</button>
+  <button data-mode="matrix">matrix</button>
+  <button data-mode="snowfall">snowfall</button>
+  <button data-mode="firework">firework</button>
+  <button data-mode="kaleidoscope">kaleidoscope</button>
+  <button data-mode="radar">radar</button>
+  <button data-mode="fountain">fountain</button>
+  <button data-mode="coral">coral</button>
+  <button data-mode="smoke">smoke</button>
+  <button data-mode="tornado">tornado</button>
+  <button data-mode="dna">dna</button>
+  <button data-mode="circuit">circuit</button>
+  <button data-mode="rain3d">rain3d</button>
+  <button data-mode="boids">boids</button>
+  <button data-mode="waves3d">waves3d</button>
+  <button data-mode="tree">tree</button>
+  <button data-mode="chem">chem</button>
+  <button data-mode="typewriter">typewriter</button>
+  <button data-mode="conway3">conway3</button>
+  <button data-mode="wfc">wfc</button>
   </div>
 </nav>
 
@@ -310,7 +332,13 @@ window.addEventListener('resize', function() {
     lorenz: initLorenz, galaxy: initGalaxy, cloth: initCloth,
     dla: initDla, slime: initSlime, reaction: initReaction,
     nbody: initNbody, ants: initAnts, strange: initStrange,
-    mandel: initMandel, storm: initStorm
+    mandel: initMandel, storm: initStorm,
+    starfield: initStarfield, matrix: initMatrix, snowfall: initSnowfall,
+    firework: initFirework, kaleidoscope: initKaleidoscope, radar: initRadar,
+    fountain: initFountain, coral: initCoral, smoke: initSmoke, tornado: initTornado,
+    dna: initDna, circuit: initCircuit, rain3d: initRain3d, boids: initBoids,
+    waves3d: initWaves3d, tree: initTree, chem: initChem, typewriter: initTypewriter,
+    conway3: initConway3, wfc: initWfc
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -388,7 +416,27 @@ var glows = {
   ants: { color: 'rgba(200,150,50,0.3)', blur: 10 },
   strange: { color: 'rgba(255,100,200,0.35)', blur: 16 },
   mandel: { color: 'rgba(100,150,255,0.35)', blur: 14 },
-  storm: { color: 'rgba(180,200,255,0.4)', blur: 18 }
+  storm: { color: 'rgba(180,200,255,0.4)', blur: 18 },
+  starfield: { color: 'rgba(200,200,255,0.3)', blur: 10 },
+  matrix: { color: 'rgba(0,255,70,0.35)', blur: 12 },
+  snowfall: { color: 'rgba(200,220,255,0.3)', blur: 10 },
+  firework: { color: 'rgba(255,150,50,0.4)', blur: 16 },
+  kaleidoscope: { color: 'rgba(255,100,200,0.35)', blur: 14 },
+  radar: { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  fountain: { color: 'rgba(100,180,255,0.35)', blur: 12 },
+  coral: { color: 'rgba(255,120,80,0.3)', blur: 10 },
+  smoke: { color: 'rgba(180,180,180,0.25)', blur: 14 },
+  tornado: { color: 'rgba(150,130,100,0.3)', blur: 12 },
+  dna: { color: 'rgba(100,200,255,0.3)', blur: 10 },
+  circuit: { color: 'rgba(0,255,150,0.3)', blur: 8 },
+  rain3d: { color: 'rgba(80,140,255,0.3)', blur: 12 },
+  boids: { color: 'rgba(255,200,50,0.3)', blur: 10 },
+  waves3d: { color: 'rgba(80,160,255,0.35)', blur: 14 },
+  tree: { color: 'rgba(80,200,80,0.3)', blur: 10 },
+  chem: { color: 'rgba(200,100,255,0.3)', blur: 12 },
+  typewriter: { color: 'rgba(255,200,100,0.25)', blur: 8 },
+  conway3: { color: 'rgba(255,150,0,0.3)', blur: 10 },
+  wfc: { color: 'rgba(100,200,255,0.3)', blur: 12 }
 };
 
 function clearCanvas() {
@@ -7030,6 +7078,1318 @@ function renderStorm() {
 }
 
 // ============================================================
+// MODE: starfield — 3D starfield flying through space
+// ============================================================
+var sfStars, sfCount, sfW, sfH;
+function initStarfield() {
+  sfW = COLS; sfH = ROWS;
+  sfCount = isMobile ? 300 : 500;
+  sfStars = [];
+  for (var i = 0; i < sfCount; i++) {
+    sfStars.push({
+      x: (Math.random() - 0.5) * sfW * 4,
+      y: (Math.random() - 0.5) * sfH * 4,
+      z: Math.random() * 100 + 1
+    });
+  }
+}
+initStarfield();
+
+function renderStarfield() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (sfW !== W || sfH !== H) initStarfield();
+  var cx = W * 0.5, cy = H * 0.5;
+  var ox = 0, oy = 0;
+  if (pointer.down && currentMode === 'starfield') {
+    ox = (pointer.gx - cx) * 0.5;
+    oy = (pointer.gy - cy) * 0.5;
+  }
+  for (var i = 0; i < sfCount; i++) {
+    var s = sfStars[i];
+    s.z -= 0.8;
+    if (s.z < 1) {
+      s.x = (Math.random() - 0.5) * W * 4;
+      s.y = (Math.random() - 0.5) * H * 4;
+      s.z = 100;
+    }
+    var px = (s.x + ox) / s.z * 10 + cx;
+    var py = (s.y + oy) / s.z * 10 + cy;
+    var ix = px | 0, iy = py | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var bright = 1 - s.z / 100;
+    var ri = Math.min(RAMP_DENSE.length - 1, (bright * RAMP_DENSE.length) | 0);
+    var ch = RAMP_DENSE[ri];
+    var b8 = (55 + bright * 200) | 0;
+    drawChar(ch, ix, iy, b8, b8, (b8 + 30 > 255 ? 255 : b8 + 30), bright);
+  }
+}
+
+// ============================================================
+// MODE: matrix — Matrix digital rain
+// ============================================================
+var mtxStreams, mtxW, mtxH;
+var MTX_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*+=';
+function initMatrix() {
+  mtxW = COLS; mtxH = ROWS;
+  mtxStreams = [];
+  // Dense initial coverage — ~85% of columns get a stream, spread across full height
+  for (var x = 0; x < mtxW; x++) {
+    if (Math.random() < 0.85) {
+      mtxStreams.push({
+        x: x,
+        y: Math.random() * mtxH * 1.5 - mtxH * 0.5,
+        speed: 4 + Math.random() * 14,
+        len: 6 + (Math.random() * 25) | 0,
+        chars: []
+      });
+      var st = mtxStreams[mtxStreams.length - 1];
+      for (var j = 0; j < st.len; j++) st.chars.push(MTX_CHARS[(Math.random() * MTX_CHARS.length) | 0]);
+    }
+  }
+}
+initMatrix();
+
+function renderMatrix() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (mtxW !== W || mtxH !== H) initMatrix();
+  var px = pointer.down && currentMode === 'matrix' ? pointer.gx : -100;
+  var py = pointer.down && currentMode === 'matrix' ? pointer.gy : -100;
+  for (var i = 0; i < mtxStreams.length; i++) {
+    var s = mtxStreams[i];
+    s.y += s.speed * 0.016;
+    if (s.y - s.len > H) {
+      s.y = -s.len;
+      s.x = (Math.random() * W) | 0;
+      s.speed = 4 + Math.random() * 14;
+      s.len = 6 + (Math.random() * 25) | 0;
+      s.chars = [];
+      for (var ci = 0; ci < s.len; ci++) s.chars.push(MTX_CHARS[(Math.random() * MTX_CHARS.length) | 0]);
+    }
+    // Spawn new streams to keep density high
+    if (mtxStreams.length < W * 0.8 && Math.random() < 0.02) {
+      mtxStreams.push({ x: (Math.random() * W) | 0, y: -5, speed: 4 + Math.random() * 14, len: 6 + (Math.random() * 25) | 0, chars: [] });
+      var ns = mtxStreams[mtxStreams.length - 1];
+      for (var ci = 0; ci < ns.len; ci++) ns.chars.push(MTX_CHARS[(Math.random() * MTX_CHARS.length) | 0]);
+    }
+    // Pointer repel
+    var dx = s.x - px, dy = (s.y - s.len * 0.5) - py;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 8) {
+      s.x += (dx / (dist + 0.1)) * 0.5;
+    }
+    // Randomize one char per frame
+    var ri = (Math.random() * s.len) | 0;
+    s.chars[ri] = MTX_CHARS[(Math.random() * MTX_CHARS.length) | 0];
+    for (var j = 0; j < s.len; j++) {
+      var cy = (s.y - j) | 0;
+      if (cy < 0 || cy >= H) continue;
+      var sx = s.x | 0;
+      if (sx < 0 || sx >= W) continue;
+      if (j === 0) {
+        drawChar(s.chars[j], sx, cy, 220, 255, 220, 1);
+      } else {
+        var fade = 1 - j / s.len;
+        drawChar(s.chars[j], sx, cy, 0, (100 + fade * 155) | 0, 0, fade);
+      }
+    }
+  }
+}
+
+// ============================================================
+// MODE: snowfall — Snowflakes with wind
+// ============================================================
+var snowFlakes, snowCount, snowW, snowH, snowGround;
+function initSnowfall() {
+  snowW = COLS; snowH = ROWS;
+  snowCount = isMobile ? 150 : 300;
+  snowFlakes = [];
+  snowGround = new Uint8Array(snowW);
+  for (var i = 0; i < snowCount; i++) {
+    snowFlakes.push({
+      x: Math.random() * snowW,
+      y: Math.random() * snowH,
+      speed: 1 + Math.random() * 3,
+      size: Math.random()
+    });
+  }
+}
+initSnowfall();
+
+function renderSnowfall() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (snowW !== W || snowH !== H) initSnowfall();
+  var wind = Math.sin(time * 0.3) * 2;
+  if (pointer.down && currentMode === 'snowfall') {
+    wind += (pointer.gx - W * 0.5) * 0.1;
+  }
+  for (var i = 0; i < snowCount; i++) {
+    var f = snowFlakes[i];
+    f.y += f.speed * 0.016 * 30;
+    f.x += (wind + Math.sin(time * 2 + i) * 0.5) * 0.016 * 15;
+    if (f.x < 0) f.x += W;
+    if (f.x >= W) f.x -= W;
+    var gx = f.x | 0;
+    if (gx >= 0 && gx < W && f.y >= H - 1 - snowGround[gx]) {
+      if (snowGround[gx] < H * 0.3) snowGround[gx]++;
+      f.y = -1;
+      f.x = Math.random() * W;
+      continue;
+    }
+    if (f.y >= H) { f.y = -1; f.x = Math.random() * W; continue; }
+    var ix = f.x | 0, iy = f.y | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var ch = f.size < 0.3 ? '.' : (f.size < 0.6 ? '*' : '#');
+    var b = (180 + f.size * 75) | 0;
+    drawChar(ch, ix, iy, b, b, 255, 0.7 + f.size * 0.3);
+  }
+  // Draw ground
+  for (var x = 0; x < W; x++) {
+    for (var g = 0; g < snowGround[x]; g++) {
+      var gy = H - 1 - g;
+      if (gy < 0) break;
+      var v = 1 - g / (H * 0.3);
+      drawChar('#', x, gy, 200, 210, 230, v);
+    }
+  }
+}
+
+// ============================================================
+// MODE: firework — Particle fireworks
+// ============================================================
+var fwRockets, fwParticles, fwW, fwH, fwTimer;
+function initFirework() {
+  fwW = COLS; fwH = ROWS;
+  fwRockets = [];
+  fwParticles = [];
+  fwTimer = 0;
+  // Initial burst — 3 rockets already mid-flight so it's not blank on load
+  for (var i = 0; i < 3; i++) {
+    var x = fwW * 0.2 + Math.random() * fwW * 0.6;
+    fwRockets.push({ x: x, y: fwH * 0.3 + Math.random() * fwH * 0.3, vx: (Math.random() - 0.5) * 2, vy: -(3 + Math.random() * 4), hue: (Math.random() * 360) | 0 });
+  }
+  // Plus 2 already-exploded bursts
+  for (var i = 0; i < 2; i++) {
+    var fakeR = { x: fwW * 0.25 + Math.random() * fwW * 0.5, y: fwH * 0.2 + Math.random() * fwH * 0.25, hue: (Math.random() * 360) | 0 };
+    fwExplode(fakeR);
+  }
+}
+initFirework();
+
+function fwLaunch(x) {
+  fwRockets.push({ x: x, y: fwH - 1, vx: (Math.random() - 0.5) * 2, vy: -(12 + Math.random() * 8), hue: (Math.random() * 360) | 0 });
+}
+
+function fwExplode(r) {
+  var count = isMobile ? 40 : 70;
+  for (var i = 0; i < count; i++) {
+    var angle = Math.random() * Math.PI * 2;
+    var speed = 2 + Math.random() * 8;
+    fwParticles.push({
+      x: r.x, y: r.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: 0.01 + Math.random() * 0.02,
+      hue: r.hue + (Math.random() - 0.5) * 30
+    });
+  }
+}
+
+function renderFirework() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (fwW !== W || fwH !== H) initFirework();
+  fwTimer += 0.016;
+  if (fwTimer > 0.8 + Math.random() * 1.2) {
+    fwLaunch(W * 0.2 + Math.random() * W * 0.6);
+    fwTimer = 0;
+  }
+  if (pointer.clicked && currentMode === 'firework') {
+    fwLaunch(pointer.gx);
+  }
+  // Update rockets
+  for (var i = fwRockets.length - 1; i >= 0; i--) {
+    var r = fwRockets[i];
+    r.x += r.vx * 0.016 * 15;
+    r.y += r.vy * 0.016 * 15;
+    r.vy += 5 * 0.016;
+    if (r.vy > -2) { fwExplode(r); fwRockets.splice(i, 1); continue; }
+    var ix = r.x | 0, iy = r.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) drawChar('|', ix, iy, 255, 255, 200, 1);
+  }
+  // Update particles
+  for (var i = fwParticles.length - 1; i >= 0; i--) {
+    var p = fwParticles[i];
+    p.x += p.vx * 0.016 * 10;
+    p.y += p.vy * 0.016 * 10;
+    p.vy += 6 * 0.016;
+    p.vx *= 0.99;
+    p.life -= p.decay;
+    if (p.life <= 0) { fwParticles.splice(i, 1); continue; }
+    var ix = p.x | 0, iy = p.y | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var ri = Math.min(RAMP_FIRE.length - 1, (p.life * RAMP_FIRE.length) | 0);
+    drawCharHSL(RAMP_FIRE[ri], ix, iy, ((p.hue + 360) % 360) | 0, 90, (20 + p.life * 50) | 0);
+  }
+}
+
+// ============================================================
+// MODE: kaleidoscope — Symmetric kaleidoscope patterns
+// ============================================================
+var kalW, kalH;
+function initKaleidoscope() { kalW = COLS; kalH = ROWS; }
+initKaleidoscope();
+
+function renderKaleidoscope() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (kalW !== W || kalH !== H) initKaleidoscope();
+  var cx = W * 0.5, cy = H * 0.5;
+  var mx = pointer.down && currentMode === 'kaleidoscope' ? pointer.gx / W : 0.5;
+  var my = pointer.down && currentMode === 'kaleidoscope' ? pointer.gy / H : 0.5;
+  var segments = 8;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var dx = (x - cx) / (W * 0.5);
+      var dy = (y - cy) / (H * 0.5);
+      var angle = Math.atan2(dy, dx);
+      var r = Math.sqrt(dx * dx + dy * dy);
+      // Fold into one segment
+      var segAngle = (Math.PI * 2) / segments;
+      angle = ((angle % segAngle) + segAngle) % segAngle;
+      if (angle > segAngle * 0.5) angle = segAngle - angle;
+      // Generate pattern
+      var v = Math.sin(r * 8 + time * 2 + mx * 10) * 0.5 +
+              Math.sin(angle * 6 + time * 1.5 + my * 8) * 0.3 +
+              Math.sin(r * 4 - time + angle * 3) * 0.2;
+      v = (v + 1) * 0.5;
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (v * 360 + time * 30 + r * 100) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue | 0, 80, (10 + v * 50) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: radar — Rotating radar sweep with blips
+// ============================================================
+var radarBlips, radarAngle, radarW, radarH, radarTargets;
+function initRadar() {
+  radarW = COLS; radarH = ROWS;
+  radarAngle = 0;
+  radarBlips = new Float32Array(radarW * radarH);
+  radarTargets = [];
+  for (var i = 0; i < 8; i++) {
+    radarTargets.push({ a: Math.random() * Math.PI * 2, r: 0.2 + Math.random() * 0.7 });
+  }
+}
+initRadar();
+
+function renderRadar() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (radarW !== W || radarH !== H) initRadar();
+  var cx = W * 0.5, cy = H * 0.5;
+  var maxR = Math.min(cx, cy) - 1;
+  radarAngle += 0.016 * 2;
+  // Decay blips
+  for (var i = 0; i < radarBlips.length; i++) radarBlips[i] *= 0.97;
+  // Add target on click
+  if (pointer.clicked && currentMode === 'radar') {
+    var ta = Math.atan2(pointer.gy - cy, pointer.gx - cx);
+    var tr = Math.sqrt(Math.pow(pointer.gx - cx, 2) + Math.pow(pointer.gy - cy, 2)) / maxR;
+    radarTargets.push({ a: ta, r: Math.min(tr, 0.95) });
+  }
+  // Sweep line + detect targets
+  var sweepA = radarAngle % (Math.PI * 2);
+  for (var d = 0; d < maxR; d++) {
+    var sx = (cx + Math.cos(sweepA) * d) | 0;
+    var sy = (cy + Math.sin(sweepA) * d * 0.6) | 0;
+    if (sx >= 0 && sx < W && sy >= 0 && sy < H) radarBlips[sy * W + sx] = 1;
+  }
+  // Light up targets near sweep
+  for (var t = 0; t < radarTargets.length; t++) {
+    var tg = radarTargets[t];
+    var diff = Math.abs(sweepA - ((tg.a + Math.PI * 2) % (Math.PI * 2)));
+    if (diff > Math.PI) diff = Math.PI * 2 - diff;
+    if (diff < 0.15) {
+      var tx = (cx + Math.cos(tg.a) * tg.r * maxR) | 0;
+      var ty = (cy + Math.sin(tg.a) * tg.r * maxR * 0.6) | 0;
+      if (tx >= 0 && tx < W && ty >= 0 && ty < H) {
+        radarBlips[ty * W + tx] = 1;
+        if (tx + 1 < W) radarBlips[ty * W + tx + 1] = 0.8;
+        if (ty + 1 < H) radarBlips[(ty + 1) * W + tx] = 0.8;
+      }
+    }
+  }
+  // Draw circle border
+  for (var a = 0; a < Math.PI * 2; a += 0.03) {
+    var bx = (cx + Math.cos(a) * maxR) | 0;
+    var by = (cy + Math.sin(a) * maxR * 0.6) | 0;
+    if (bx >= 0 && bx < W && by >= 0 && by < H) drawChar('.', bx, by, 0, 120, 0, 0.5);
+  }
+  // Draw crosshair
+  for (var d = -maxR; d <= maxR; d++) {
+    var hx = (cx + d) | 0, hy = cy | 0;
+    if (hx >= 0 && hx < W && hy >= 0 && hy < H) drawChar('-', hx, hy, 0, 60, 0, 0.2);
+    var vx = cx | 0, vy = (cy + d * 0.6) | 0;
+    if (vx >= 0 && vx < W && vy >= 0 && vy < H) drawChar('|', vx, vy, 0, 60, 0, 0.2);
+  }
+  // Draw blips
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = radarBlips[y * W + x];
+      if (v < 0.05) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      drawChar(RAMP_SOFT[ri], x, y, 0, (80 + v * 175) | 0, 0, v);
+    }
+  }
+}
+
+// ============================================================
+// MODE: fountain — Particle fountain
+// ============================================================
+var ftnParts, ftnCount, ftnW, ftnH, ftnBaseX;
+function initFountain() {
+  ftnW = COLS; ftnH = ROWS;
+  ftnCount = isMobile ? 200 : 400;
+  ftnBaseX = ftnW * 0.5;
+  ftnParts = [];
+  for (var i = 0; i < ftnCount; i++) ftnParts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0 });
+}
+initFountain();
+
+function renderFountain() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (ftnW !== W || ftnH !== H) initFountain();
+  if (pointer.down && currentMode === 'fountain') ftnBaseX = pointer.gx;
+  var wind = Math.sin(time * 0.5) * 1.5;
+  for (var i = 0; i < ftnCount; i++) {
+    var p = ftnParts[i];
+    if (p.life <= 0) {
+      p.x = ftnBaseX + (Math.random() - 0.5) * 2;
+      p.y = H - 1;
+      p.vx = (Math.random() - 0.5) * 6 + wind;
+      p.vy = -(10 + Math.random() * 10);
+      p.life = 0.5 + Math.random() * 1.5;
+    }
+    p.x += p.vx * 0.016 * 8;
+    p.y += p.vy * 0.016 * 8;
+    p.vy += 8 * 0.016;
+    p.vx += wind * 0.016;
+    p.life -= 0.016;
+    var ix = p.x | 0, iy = p.y | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    var v = Math.min(1, speed / 15);
+    var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+    var b = (100 + v * 155) | 0;
+    drawChar(RAMP_DENSE[ri], ix, iy, b, b, 255, Math.min(1, p.life));
+  }
+}
+
+// ============================================================
+// MODE: coral — Coral/crystal growth simulation
+// ============================================================
+var coralGrid, coralW, coralH, coralHues, coralActive;
+function initCoral() {
+  coralW = COLS; coralH = ROWS;
+  coralGrid = new Uint8Array(coralW * coralH);
+  coralHues = new Float32Array(coralW * coralH);
+  coralActive = [];
+  // Seed points along bottom
+  var seeds = 5 + (Math.random() * 5) | 0;
+  for (var s = 0; s < seeds; s++) {
+    var sx = (coralW * (s + 0.5) / seeds) | 0;
+    var sy = coralH - 1;
+    var hue = (s * 360 / seeds) | 0;
+    coralGrid[sy * coralW + sx] = 1;
+    coralHues[sy * coralW + sx] = hue;
+    coralActive.push({ x: sx, y: sy, hue: hue });
+  }
+}
+initCoral();
+
+function renderCoral() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (coralW !== W || coralH !== H) initCoral();
+  // Add seed on click
+  if (pointer.clicked && currentMode === 'coral') {
+    var cx = pointer.gx | 0, cy = pointer.gy | 0;
+    if (cx >= 0 && cx < W && cy >= 0 && cy < H && !coralGrid[cy * W + cx]) {
+      var hue = (Math.random() * 360) | 0;
+      coralGrid[cy * W + cx] = 1;
+      coralHues[cy * W + cx] = hue;
+      coralActive.push({ x: cx, y: cy, hue: hue });
+    }
+  }
+  // Grow a few cells per frame
+  var steps = Math.min(coralActive.length, 8);
+  for (var s = 0; s < steps; s++) {
+    if (coralActive.length === 0) break;
+    var idx = (Math.random() * coralActive.length) | 0;
+    var a = coralActive[idx];
+    // Biased upward growth
+    var dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[0,-1],[0,-1]];
+    var d = dirs[(Math.random() * dirs.length) | 0];
+    var nx = a.x + d[0], ny = a.y + d[1];
+    if (nx >= 0 && nx < W && ny >= 0 && ny < H && !coralGrid[ny * W + nx]) {
+      coralGrid[ny * W + nx] = 1;
+      coralHues[ny * W + nx] = a.hue + (Math.random() - 0.5) * 10;
+      coralActive.push({ x: nx, y: ny, hue: coralHues[ny * W + nx] });
+    }
+    // Remove inactive (surrounded)
+    var surrounded = true;
+    for (var dy = -1; dy <= 1 && surrounded; dy++) {
+      for (var dx = -1; dx <= 1 && surrounded; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        var tx = a.x + dx, ty = a.y + dy;
+        if (tx >= 0 && tx < W && ty >= 0 && ty < H && !coralGrid[ty * W + tx]) surrounded = false;
+      }
+    }
+    if (surrounded) coralActive.splice(idx, 1);
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (!coralGrid[y * W + x]) continue;
+      var hue = coralHues[y * W + x];
+      var ri = Math.min(RAMP_DENSE.length - 1, 5 + ((y / H) * (RAMP_DENSE.length - 5)) | 0);
+      drawCharHSL(RAMP_DENSE[ri], x, y, ((hue + 360) % 360) | 0, 70, (25 + (1 - y / H) * 35) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: smoke — Rising smoke plume
+// ============================================================
+var smokeParts, smokeCount, smokeW, smokeH, smokeGrid;
+function initSmoke() {
+  smokeW = COLS; smokeH = ROWS;
+  smokeCount = isMobile ? 300 : 600;
+  smokeParts = [];
+  smokeGrid = new Float32Array(smokeW * smokeH);
+  for (var i = 0; i < smokeCount; i++) {
+    smokeParts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0 });
+  }
+}
+initSmoke();
+
+function renderSmoke() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (smokeW !== W || smokeH !== H) initSmoke();
+  // Clear grid
+  for (var i = 0; i < smokeGrid.length; i++) smokeGrid[i] *= 0.85;
+  var baseX = W * 0.5;
+  var pushX = 0, pushY = 0;
+  if (pointer.down && currentMode === 'smoke') {
+    pushX = (pointer.gx - W * 0.5) * 0.3;
+    pushY = (pointer.gy - H * 0.5) * 0.3;
+  }
+  for (var i = 0; i < smokeCount; i++) {
+    var p = smokeParts[i];
+    if (p.life <= 0) {
+      p.x = baseX + (Math.random() - 0.5) * 4;
+      p.y = H - 1;
+      p.vx = (Math.random() - 0.5) * 2;
+      p.vy = -(3 + Math.random() * 4);
+      p.life = 1;
+    }
+    var turb = Math.sin(p.y * 0.3 + time * 2) * 2 + Math.sin(p.x * 0.2 + time * 1.3) * 1.5;
+    p.vx += (turb + pushX) * 0.016;
+    p.vy += (-2 + pushY) * 0.016;
+    p.vx *= 0.98;
+    p.x += p.vx * 0.016 * 15;
+    p.y += p.vy * 0.016 * 15;
+    p.life -= 0.008;
+    var ix = p.x | 0, iy = p.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      smokeGrid[iy * W + ix] = Math.min(1, smokeGrid[iy * W + ix] + p.life * 0.3);
+    }
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = smokeGrid[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      var b = (80 + v * 150) | 0;
+      drawChar(RAMP_SOFT[ri], x, y, b, b, b, v * 0.8);
+    }
+  }
+}
+
+// ============================================================
+// MODE: tornado — Rotating vortex
+// ============================================================
+var torParts, torCount, torW, torH;
+function initTornado() {
+  torW = COLS; torH = ROWS;
+  torCount = isMobile ? 300 : 500;
+  torParts = [];
+  for (var i = 0; i < torCount; i++) {
+    torParts.push({
+      angle: Math.random() * Math.PI * 2,
+      r: 2 + Math.random() * 15,
+      y: Math.random() * torH,
+      speed: 1 + Math.random() * 3,
+      rise: 1 + Math.random() * 4
+    });
+  }
+}
+initTornado();
+
+function renderTornado() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (torW !== W || torH !== H) initTornado();
+  var cx = W * 0.5, cy = H;
+  if (pointer.down && currentMode === 'tornado') {
+    cx = pointer.gx;
+  }
+  var debris = '~-=+*:;,.';
+  for (var i = 0; i < torCount; i++) {
+    var p = torParts[i];
+    p.angle += p.speed * 0.05;
+    p.y -= p.rise * 0.016 * 8;
+    if (p.y < 0) { p.y = H; p.r = 2 + Math.random() * 15; }
+    // Radius shrinks as height increases
+    var heightPct = 1 - p.y / H;
+    var radius = p.r * (0.3 + heightPct * 0.7);
+    var px = cx + Math.cos(p.angle) * radius;
+    var py = p.y;
+    var ix = px | 0, iy = py | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var ch = debris[(i % debris.length)];
+    var bright = (40 + heightPct * 60) | 0;
+    drawCharHSL(ch, ix, iy, 30, 30, bright);
+  }
+}
+
+// ============================================================
+// MODE: dna — Rotating DNA double helix
+// ============================================================
+var dnaW, dnaH, dnaRotSpeed;
+function initDna() { dnaW = COLS; dnaH = ROWS; dnaRotSpeed = 2; }
+initDna();
+
+function renderDna() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (dnaW !== W || dnaH !== H) initDna();
+  var cx = W * 0.5;
+  var amplitude = Math.min(W * 0.3, 20);
+  if (pointer.down && currentMode === 'dna') {
+    dnaRotSpeed = 0.5 + (pointer.gx / W) * 5;
+  }
+  var bases = 'ATGC';
+  var colors = [[255,80,80],[80,80,255],[80,255,80],[255,200,80]];
+  for (var y = 0; y < H; y++) {
+    var phase = y * 0.3 + time * dnaRotSpeed;
+    var x1 = cx + Math.sin(phase) * amplitude;
+    var x2 = cx + Math.sin(phase + Math.PI) * amplitude;
+    var depth1 = Math.cos(phase);
+    var depth2 = Math.cos(phase + Math.PI);
+    // Base pair connection
+    var lx = Math.min(x1, x2) | 0;
+    var rx = Math.max(x1, x2) | 0;
+    if (Math.abs(depth1) < 0.7) {
+      for (var x = lx + 1; x < rx; x++) {
+        if (x >= 0 && x < W) drawChar('-', x, y, 60, 60, 80, 0.3);
+      }
+    }
+    // Strand 1
+    var bi = (y * 7 + 1) % 4;
+    var ix1 = x1 | 0;
+    if (ix1 >= 0 && ix1 < W) {
+      var a1 = 0.4 + (depth1 + 1) * 0.3;
+      drawChar(bases[bi], ix1, y, colors[bi][0], colors[bi][1], colors[bi][2], a1);
+    }
+    // Strand 2
+    var bi2 = (3 - bi);
+    var ix2 = x2 | 0;
+    if (ix2 >= 0 && ix2 < W) {
+      var a2 = 0.4 + (depth2 + 1) * 0.3;
+      drawChar(bases[bi2], ix2, y, colors[bi2][0], colors[bi2][1], colors[bi2][2], a2);
+    }
+  }
+}
+
+// ============================================================
+// MODE: circuit — Circuit board traces
+// ============================================================
+var circGrid, circW, circH, circTraces, circNodes;
+function initCircuit() {
+  circW = COLS; circH = ROWS;
+  circGrid = new Uint8Array(circW * circH);
+  circNodes = new Float32Array(circW * circH);
+  circTraces = [];
+  // Spawn initial traces
+  for (var i = 0; i < 8; i++) {
+    circTraces.push({
+      x: (Math.random() * circW) | 0,
+      y: (Math.random() * circH) | 0,
+      dx: Math.random() < 0.5 ? 1 : 0,
+      dy: Math.random() < 0.5 ? 1 : 0,
+      life: 20 + (Math.random() * 40) | 0,
+      hue: (Math.random() * 360) | 0
+    });
+    if (circTraces[circTraces.length - 1].dx === 0 && circTraces[circTraces.length - 1].dy === 0) circTraces[circTraces.length - 1].dx = 1;
+  }
+}
+initCircuit();
+
+function renderCircuit() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (circW !== W || circH !== H) initCircuit();
+  // Add trace on click
+  if (pointer.clicked && currentMode === 'circuit') {
+    circTraces.push({
+      x: pointer.gx | 0, y: pointer.gy | 0,
+      dx: Math.random() < 0.5 ? 1 : -1, dy: 0,
+      life: 20 + (Math.random() * 40) | 0,
+      hue: (Math.random() * 360) | 0
+    });
+  }
+  // Decay node blinks
+  for (var i = 0; i < circNodes.length; i++) circNodes[i] *= 0.98;
+  // Grow traces
+  var steps = Math.min(circTraces.length, 6);
+  for (var s = 0; s < steps; s++) {
+    if (circTraces.length === 0) break;
+    var idx = (Math.random() * circTraces.length) | 0;
+    var t = circTraces[idx];
+    t.x += t.dx; t.y += t.dy; t.life--;
+    if (t.x < 0 || t.x >= W || t.y < 0 || t.y >= H || t.life <= 0) {
+      circTraces.splice(idx, 1); continue;
+    }
+    circGrid[t.y * W + t.x] = 1;
+    // Turn 90 degrees randomly
+    if (Math.random() < 0.15) {
+      circNodes[t.y * W + t.x] = 1;
+      if (t.dx !== 0) { t.dy = Math.random() < 0.5 ? 1 : -1; t.dx = 0; }
+      else { t.dx = Math.random() < 0.5 ? 1 : -1; t.dy = 0; }
+      // Fork
+      if (Math.random() < 0.3) {
+        circTraces.push({ x: t.x, y: t.y, dx: -t.dx || (Math.random() < 0.5 ? 1 : -1), dy: -t.dy || (Math.random() < 0.5 ? 1 : -1), life: 10 + (Math.random() * 20) | 0, hue: t.hue });
+      }
+    }
+  }
+  // Draw grid
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (!circGrid[y * W + x]) continue;
+      var node = circNodes[y * W + x];
+      var ch = node > 0.5 ? 'O' : (node > 0.1 ? '+' : '-');
+      var blink = node > 0.5 ? Math.sin(time * 10 + x + y) * 0.5 + 0.5 : 0;
+      drawChar(ch, x, y, 0, (120 + blink * 135) | 0, (80 + blink * 80) | 0, 0.6 + node * 0.4);
+    }
+  }
+}
+
+// ============================================================
+// MODE: rain3d — Isometric 3D rain on a surface
+// ============================================================
+var r3dDrops, r3dCount, r3dW, r3dH, r3dSplash;
+function initRain3d() {
+  r3dW = COLS; r3dH = ROWS;
+  r3dCount = isMobile ? 100 : 200;
+  r3dDrops = [];
+  r3dSplash = new Float32Array(r3dW * r3dH);
+  for (var i = 0; i < r3dCount; i++) {
+    r3dDrops.push({ x: Math.random() * 40 - 20, y: Math.random() * 20, z: 10 + Math.random() * 20 });
+  }
+}
+initRain3d();
+
+function renderRain3d() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (r3dW !== W || r3dH !== H) initRain3d();
+  var cx = W * 0.5, cy = H * 0.3;
+  // Decay splashes
+  for (var i = 0; i < r3dSplash.length; i++) r3dSplash[i] *= 0.92;
+  // Draw ground plane (isometric grid)
+  for (var gx = -20; gx < 20; gx++) {
+    for (var gz = 0; gz < 20; gz++) {
+      var sx = cx + (gx - gz) * 2;
+      var sy = cy + (gx + gz) * 0.8;
+      var ix = sx | 0, iy = sy | 0;
+      if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+      var checker = ((gx + gz) & 1) === 0;
+      var splash = r3dSplash[iy * W + ix];
+      var ch = splash > 0.3 ? 'o' : (checker ? '.' : ',');
+      var b = (20 + splash * 60) | 0;
+      drawChar(ch, ix, iy, b, b, (40 + splash * 100) | 0, 0.3 + splash * 0.5);
+    }
+  }
+  // Update and draw rain drops
+  for (var i = 0; i < r3dCount; i++) {
+    var d = r3dDrops[i];
+    d.z -= 15 * 0.016;
+    if (d.z <= 0) {
+      // Splash
+      var sx = cx + (d.x - 0) * 2;
+      var sy = cy + (d.x + 0) * 0.8;
+      var six = sx | 0, siy = sy | 0;
+      if (six >= 0 && six < W && siy >= 0 && siy < H) r3dSplash[siy * W + six] = 1;
+      d.x = Math.random() * 40 - 20;
+      d.y = Math.random() * 20;
+      d.z = 15 + Math.random() * 15;
+    }
+    var px = cx + (d.x - d.z * 0.3) * 2;
+    var py = cy + (d.x + d.z * 0.3) * 0.8 - d.z * 1.2;
+    var ix = px | 0, iy = py | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var depth = 1 - d.z / 30;
+    drawChar('|', ix, iy, (100 + depth * 100) | 0, (100 + depth * 100) | 0, 255, 0.3 + depth * 0.5);
+  }
+}
+
+// ============================================================
+// MODE: boids — Flocking simulation with predator
+// ============================================================
+var boidList, boidPred, boidCount, boidW, boidH;
+function initBoids() {
+  boidW = COLS; boidH = ROWS;
+  boidCount = isMobile ? 100 : 200;
+  boidList = [];
+  for (var i = 0; i < boidCount; i++) {
+    boidList.push({
+      x: Math.random() * boidW,
+      y: Math.random() * boidH,
+      vx: (Math.random() - 0.5) * 4,
+      vy: (Math.random() - 0.5) * 4
+    });
+  }
+  boidPred = { x: boidW * 0.5, y: boidH * 0.5, vx: 1, vy: 1 };
+}
+initBoids();
+
+function renderBoids() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (boidW !== W || boidH !== H) initBoids();
+  var sep = 3, ali = 5, coh = 5, predR = 10, maxSpd = 8;
+  // Update predator — chase nearest boid
+  var nearest = null, nearDist = 999;
+  for (var i = 0; i < boidCount; i++) {
+    var dx = boidList[i].x - boidPred.x, dy = boidList[i].y - boidPred.y;
+    var d = dx * dx + dy * dy;
+    if (d < nearDist) { nearDist = d; nearest = boidList[i]; }
+  }
+  if (nearest) {
+    boidPred.vx += (nearest.x - boidPred.x) * 0.02;
+    boidPred.vy += (nearest.y - boidPred.y) * 0.02;
+  }
+  var ps = Math.sqrt(boidPred.vx * boidPred.vx + boidPred.vy * boidPred.vy);
+  if (ps > 6) { boidPred.vx *= 6 / ps; boidPred.vy *= 6 / ps; }
+  boidPred.x += boidPred.vx; boidPred.y += boidPred.vy;
+  if (boidPred.x < 0) boidPred.x = W; if (boidPred.x > W) boidPred.x = 0;
+  if (boidPred.y < 0) boidPred.y = H; if (boidPred.y > H) boidPred.y = 0;
+  // Pointer as second predator
+  var px2 = -999, py2 = -999;
+  if (pointer.down && currentMode === 'boids') { px2 = pointer.gx; py2 = pointer.gy; }
+  // Update boids
+  for (var i = 0; i < boidCount; i++) {
+    var b = boidList[i];
+    var sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0, sc = 0, ac = 0, cc = 0;
+    for (var j = 0; j < boidCount; j++) {
+      if (i === j) continue;
+      var dx = boidList[j].x - b.x, dy = boidList[j].y - b.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < sep) { sx -= dx / (d + 0.1); sy -= dy / (d + 0.1); sc++; }
+      if (d < ali) { ax += boidList[j].vx; ay += boidList[j].vy; ac++; }
+      if (d < coh) { cx += boidList[j].x; cy += boidList[j].y; cc++; }
+    }
+    if (sc > 0) { b.vx += sx * 0.15; b.vy += sy * 0.15; }
+    if (ac > 0) { b.vx += (ax / ac - b.vx) * 0.05; b.vy += (ay / ac - b.vy) * 0.05; }
+    if (cc > 0) { b.vx += (cx / cc - b.x) * 0.005; b.vy += (cy / cc - b.y) * 0.005; }
+    // Flee predator
+    var dpx = b.x - boidPred.x, dpy = b.y - boidPred.y;
+    var dp = Math.sqrt(dpx * dpx + dpy * dpy);
+    if (dp < predR) { b.vx += dpx / (dp + 0.1) * 2; b.vy += dpy / (dp + 0.1) * 2; }
+    // Flee pointer
+    var dpx2 = b.x - px2, dpy2 = b.y - py2;
+    var dp2 = Math.sqrt(dpx2 * dpx2 + dpy2 * dpy2);
+    if (dp2 < predR) { b.vx += dpx2 / (dp2 + 0.1) * 2; b.vy += dpy2 / (dp2 + 0.1) * 2; }
+    var spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > maxSpd) { b.vx *= maxSpd / spd; b.vy *= maxSpd / spd; }
+    b.x += b.vx * 0.5; b.y += b.vy * 0.5;
+    if (b.x < 0) b.x += W; if (b.x >= W) b.x -= W;
+    if (b.y < 0) b.y += H; if (b.y >= H) b.y -= H;
+    var ix = b.x | 0, iy = b.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      drawCharHSL('>', ix, iy, 200, 80, 55);
+    }
+  }
+  // Draw predator
+  var pix = boidPred.x | 0, piy = boidPred.y | 0;
+  if (pix >= 0 && pix < W && piy >= 0 && piy < H) drawChar('@', pix, piy, 255, 50, 50, 1);
+}
+
+// ============================================================
+// MODE: waves3d — 3D wireframe ocean waves
+// ============================================================
+var w3dW, w3dH, w3dGX, w3dGZ;
+function initWaves3d() {
+  w3dW = COLS; w3dH = ROWS;
+  w3dGX = 40; w3dGZ = 25;
+}
+initWaves3d();
+
+function renderWaves3d() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (w3dW !== W || w3dH !== H) initWaves3d();
+  var cx = W * 0.5, cy = H * 0.4;
+  var clickWx = -999, clickWz = -999;
+  if (pointer.down && currentMode === 'waves3d') {
+    clickWx = (pointer.gx - cx) * 0.1;
+    clickWz = (pointer.gy - cy) * 0.2;
+  }
+  for (var gz = w3dGZ - 1; gz >= 0; gz--) {
+    for (var gx = -w3dGX / 2; gx < w3dGX / 2; gx++) {
+      var wx = gx, wz = gz;
+      var h = Math.sin(wx * 0.5 + time * 2) * 1.5 +
+              Math.sin(wz * 0.4 + time * 1.5) * 1.2 +
+              Math.sin(wx * 0.3 + wz * 0.3 + time * 1.8) * 0.8;
+      // Pointer wave
+      if (clickWx > -100) {
+        var dd = (wx - clickWx) * (wx - clickWx) + (wz - clickWz) * (wz - clickWz);
+        h += Math.sin(Math.sqrt(dd) * 2 - time * 5) * 3 / (1 + dd * 0.1);
+      }
+      // Project to screen
+      var sx = cx + (gx - gz * 0.3) * 2.5;
+      var sy = cy + gz * 1.2 - h * 2;
+      var ix = sx | 0, iy = sy | 0;
+      if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+      var depth = 1 - gz / w3dGZ;
+      var v = (h + 3) / 6;
+      var ch = v > 0.6 ? '~' : (v > 0.4 ? '-' : '.');
+      drawCharHSL(ch, ix, iy, (200 + h * 10) | 0, 70, (15 + depth * 40 + v * 15) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: tree — Fractal tree with wind
+// ============================================================
+var treeTrunks, treeW, treeH, treeBuf;
+function initTree() {
+  treeW = COLS; treeH = ROWS;
+  treeTrunks = [];
+  treeBuf = new Float32Array(treeW * treeH * 3); // r,g,b packed
+  // Plant initial trees
+  var count = Math.max(1, Math.min(3, (treeW / 30) | 0));
+  for (var i = 0; i < count; i++) {
+    treeTrunks.push({ x: treeW * (i + 0.5) / count, y: treeH - 1 });
+  }
+}
+initTree();
+
+function treeDrawBranch(x, y, angle, len, depth, hue) {
+  if (depth <= 0 || len < 1) return;
+  var wind = Math.sin(time * 1.5 + x * 0.1) * 0.1 * depth;
+  if (pointer.down && currentMode === 'tree') {
+    wind += (pointer.gx - treeW * 0.5) / treeW * 0.3 * depth;
+  }
+  var ex = x + Math.cos(angle + wind) * len;
+  var ey = y + Math.sin(angle + wind) * len;
+  // Draw line (Bresenham-lite)
+  var steps = (len * 1.5) | 0;
+  for (var s = 0; s <= steps; s++) {
+    var t = s / steps;
+    var px = (x + (ex - x) * t) | 0;
+    var py = (y + (ey - y) * t) | 0;
+    if (px >= 0 && px < treeW && py >= 0 && py < treeH) {
+      var idx = (py * treeW + px) * 3;
+      if (depth > 3) {
+        treeBuf[idx] = 0.4; treeBuf[idx + 1] = 0.25; treeBuf[idx + 2] = 0.1;
+      } else {
+        treeBuf[idx] = 0.2; treeBuf[idx + 1] = 0.6 + Math.sin(hue) * 0.2; treeBuf[idx + 2] = 0.15;
+      }
+    }
+  }
+  // Leaves at tips
+  if (depth <= 2) {
+    var lx = ex | 0, ly = ey | 0;
+    if (lx >= 0 && lx < treeW && ly >= 0 && ly < treeH) {
+      var idx = (ly * treeW + lx) * 3;
+      treeBuf[idx] = 0.1; treeBuf[idx + 1] = 0.8; treeBuf[idx + 2] = 0.2;
+    }
+  }
+  var spread = 0.4 + Math.sin(time * 0.3) * 0.05;
+  treeDrawBranch(ex, ey, angle - spread, len * 0.72, depth - 1, hue + 0.3);
+  treeDrawBranch(ex, ey, angle + spread, len * 0.72, depth - 1, hue - 0.3);
+  if (depth > 4 && Math.random() < 0.3) {
+    treeDrawBranch(ex, ey, angle + (Math.random() - 0.5) * 0.8, len * 0.5, depth - 2, hue);
+  }
+}
+
+function renderTree() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (treeW !== W || treeH !== H) initTree();
+  // Add tree on click
+  if (pointer.clicked && currentMode === 'tree') {
+    treeTrunks.push({ x: pointer.gx, y: H - 1 });
+  }
+  // Clear buffer
+  for (var i = 0; i < treeBuf.length; i++) treeBuf[i] = 0;
+  // Draw all trees
+  for (var t = 0; t < treeTrunks.length; t++) {
+    var tr = treeTrunks[t];
+    treeDrawBranch(tr.x, tr.y, -Math.PI * 0.5, Math.min(H * 0.2, 12), 7, t * 2);
+  }
+  // Render buffer
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = (y * W + x) * 3;
+      var r = treeBuf[idx], g = treeBuf[idx + 1], b = treeBuf[idx + 2];
+      if (r < 0.02 && g < 0.02 && b < 0.02) continue;
+      var v = Math.max(r, g, b);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      drawChar(RAMP_DENSE[ri], x, y, (r * 255) | 0, (g * 255) | 0, (b * 255) | 0, v);
+    }
+  }
+}
+
+// ============================================================
+// MODE: chem — Chemistry molecular simulation
+// ============================================================
+var chemMols, chemCount, chemW, chemH;
+function initChem() {
+  chemW = COLS; chemH = ROWS;
+  chemCount = isMobile ? 15 : 25;
+  chemMols = [];
+  for (var i = 0; i < chemCount; i++) {
+    chemMols.push({
+      x: Math.random() * chemW,
+      y: Math.random() * chemH,
+      vx: (Math.random() - 0.5) * 4,
+      vy: (Math.random() - 0.5) * 4,
+      r: 1 + Math.random() * 0.5,
+      elem: ['H','O','N','C','S'][(Math.random() * 5) | 0]
+    });
+  }
+}
+initChem();
+
+function renderChem() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (chemW !== W || chemH !== H) initChem();
+  // Add energy on pointer
+  if (pointer.down && currentMode === 'chem') {
+    for (var i = 0; i < chemCount; i++) {
+      var dx = chemMols[i].x - pointer.gx, dy = chemMols[i].y - pointer.gy;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 10) {
+        chemMols[i].vx += dx / (d + 0.1) * 0.5;
+        chemMols[i].vy += dy / (d + 0.1) * 0.5;
+      }
+    }
+  }
+  // Lennard-Jones forces
+  for (var i = 0; i < chemCount; i++) {
+    var a = chemMols[i];
+    for (var j = i + 1; j < chemCount; j++) {
+      var b = chemMols[j];
+      var dx = b.x - a.x, dy = b.y - a.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 0.5) d = 0.5;
+      var sigma = 3;
+      var r6 = Math.pow(sigma / d, 6);
+      var f = 24 * (2 * r6 * r6 - r6) / d;
+      f = Math.max(-2, Math.min(2, f));
+      var fx = f * dx / d, fy = f * dy / d;
+      a.vx -= fx * 0.1; a.vy -= fy * 0.1;
+      b.vx += fx * 0.1; b.vy += fy * 0.1;
+    }
+  }
+  // Update positions
+  for (var i = 0; i < chemCount; i++) {
+    var m = chemMols[i];
+    m.vx *= 0.99; m.vy *= 0.99;
+    var spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+    if (spd > 10) { m.vx *= 10 / spd; m.vy *= 10 / spd; }
+    m.x += m.vx * 0.3; m.y += m.vy * 0.3;
+    if (m.x < 1) { m.x = 1; m.vx *= -0.8; }
+    if (m.x > W - 2) { m.x = W - 2; m.vx *= -0.8; }
+    if (m.y < 1) { m.y = 1; m.vy *= -0.8; }
+    if (m.y > H - 2) { m.y = H - 2; m.vy *= -0.8; }
+  }
+  // Draw bonds
+  for (var i = 0; i < chemCount; i++) {
+    for (var j = i + 1; j < chemCount; j++) {
+      var dx = chemMols[j].x - chemMols[i].x, dy = chemMols[j].y - chemMols[i].y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 5) {
+        var steps = (d * 1.5) | 0;
+        for (var s = 1; s < steps; s++) {
+          var t = s / steps;
+          var bx = (chemMols[i].x + dx * t) | 0;
+          var by = (chemMols[i].y + dy * t) | 0;
+          if (bx >= 0 && bx < W && by >= 0 && by < H) {
+            drawChar('-', bx, by, 80, 80, 120, 0.3);
+          }
+        }
+      }
+    }
+  }
+  // Draw molecules
+  for (var i = 0; i < chemCount; i++) {
+    var m = chemMols[i];
+    var ix = m.x | 0, iy = m.y | 0;
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) continue;
+    var spd = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+    var temp = Math.min(1, spd / 8);
+    var hue = (240 - temp * 240) | 0;
+    drawCharHSL(m.elem, ix, iy, hue, 90, (40 + temp * 30) | 0);
+  }
+}
+
+// ============================================================
+// MODE: typewriter — Text appearing letter by letter
+// ============================================================
+var twTexts, twIdx, twCharIdx, twTimer, twW, twH, twChars, twDelay;
+var TW_QUOTES = [
+  "The only way to do great work is to love what you do. - Steve Jobs",
+  "In the middle of difficulty lies opportunity. - Albert Einstein",
+  "To be or not to be, that is the question. - Shakespeare",
+  "I think, therefore I am. - Descartes",
+  "The unexamined life is not worth living. - Socrates",
+  "Not all those who wander are lost. - J.R.R. Tolkien",
+  "That which does not kill us makes us stronger. - Nietzsche",
+  "The only thing we have to fear is fear itself. - FDR",
+  "Stay hungry, stay foolish. - Steve Jobs",
+  "Hello World. Every great program starts here."
+];
+function initTypewriter() {
+  twW = COLS; twH = ROWS;
+  twIdx = 0; twCharIdx = 0; twTimer = 0;
+  twChars = [];
+  twDelay = 0.05;
+}
+initTypewriter();
+
+function renderTypewriter() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (twW !== W || twH !== H) initTypewriter();
+  twTimer += 0.016;
+  // Skip to next on click
+  if (pointer.clicked && currentMode === 'typewriter') {
+    twIdx = (twIdx + 1) % TW_QUOTES.length;
+    twCharIdx = 0;
+    twChars = [];
+  }
+  var text = TW_QUOTES[twIdx];
+  if (twTimer > twDelay && twCharIdx < text.length) {
+    twTimer = 0;
+    var maxPerLine = W - 4;
+    var line = 0, col = 0;
+    // Calculate position of current char
+    for (var c = 0; c < twCharIdx; c++) {
+      col++;
+      if (col >= maxPerLine || text[c] === '\n') { col = 0; line++; }
+    }
+    twChars.push({ ch: text[twCharIdx], x: 2 + col, y: 2 + line, t: time });
+    twCharIdx++;
+  }
+  // Auto advance
+  if (twCharIdx >= text.length && twTimer > 3) {
+    twIdx = (twIdx + 1) % TW_QUOTES.length;
+    twCharIdx = 0;
+    twChars = [];
+    twTimer = 0;
+  }
+  // Draw all placed chars
+  for (var i = 0; i < twChars.length; i++) {
+    var c = twChars[i];
+    var age = time - c.t;
+    var flash = age < 0.05 ? 1 : 0;
+    var bright = flash ? 255 : (180 + Math.sin(age * 2) * 20) | 0;
+    drawChar(c.ch, c.x, c.y, bright, (150 + flash * 105) | 0, flash ? 255 : 100, 0.8 + flash * 0.2);
+  }
+  // Draw cursor
+  if (twCharIdx < text.length) {
+    var curCol = 0, curLine = 0;
+    for (var c = 0; c < twCharIdx; c++) {
+      curCol++;
+      if (curCol >= W - 4 || text[c] === '\n') { curCol = 0; curLine++; }
+    }
+    var blink = Math.sin(time * 8) > 0 ? 1 : 0;
+    if (blink) drawChar('_', 2 + curCol, 2 + curLine, 255, 200, 100, 1);
+  }
+}
+
+// ============================================================
+// MODE: conway3 — 3-state cellular automaton (Brian's Brain)
+// ============================================================
+var c3Grid, c3Next, c3W, c3H;
+function initConway3() {
+  c3W = COLS; c3H = ROWS;
+  c3Grid = new Uint8Array(c3W * c3H);
+  c3Next = new Uint8Array(c3W * c3H);
+  // Random initial state
+  for (var i = 0; i < c3Grid.length; i++) {
+    c3Grid[i] = Math.random() < 0.1 ? 2 : 0; // 0=dead, 1=dying, 2=alive
+  }
+}
+initConway3();
+
+function renderConway3() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (c3W !== W || c3H !== H) initConway3();
+  // Click to toggle
+  if (pointer.clicked && currentMode === 'conway3') {
+    var cx = pointer.gx | 0, cy = pointer.gy | 0;
+    if (cx >= 0 && cx < W && cy >= 0 && cy < H) {
+      c3Grid[cy * W + cx] = c3Grid[cy * W + cx] === 2 ? 0 : 2;
+    }
+  }
+  // Brian's Brain rules
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var state = c3Grid[y * W + x];
+      if (state === 2) {
+        c3Next[y * W + x] = 1; // alive -> dying
+      } else if (state === 1) {
+        c3Next[y * W + x] = 0; // dying -> dead
+      } else {
+        // dead -> alive if exactly 2 alive neighbors
+        var alive = 0;
+        for (var dy = -1; dy <= 1; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            var nx = (x + dx + W) % W, ny = (y + dy + H) % H;
+            if (c3Grid[ny * W + nx] === 2) alive++;
+          }
+        }
+        c3Next[y * W + x] = alive === 2 ? 2 : 0;
+      }
+    }
+  }
+  // Swap
+  var tmp = c3Grid; c3Grid = c3Next; c3Next = tmp;
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var s = c3Grid[y * W + x];
+      if (s === 0) continue;
+      if (s === 2) {
+        drawCharHSL('#', x, y, 40, 90, 55);
+      } else {
+        drawCharHSL('.', x, y, 200, 70, 35);
+      }
+    }
+  }
+}
+
+// ============================================================
+// MODE: wfc — Wave Function Collapse visualization
+// ============================================================
+var wfcGrid, wfcW, wfcH, wfcGW, wfcGH, wfcTiles, wfcQueue, wfcDone, wfcTimer;
+var WFC_TILES = [' ', '.', '-', '|', '+', '#', '=', '~', ':', '*'];
+function initWfc() {
+  wfcW = COLS; wfcH = ROWS;
+  wfcGW = Math.min(wfcW, 60); wfcGH = Math.min(wfcH, 40);
+  wfcGrid = new Int8Array(wfcGW * wfcGH);
+  for (var i = 0; i < wfcGrid.length; i++) wfcGrid[i] = -1; // -1 = uncollapsed
+  wfcQueue = [];
+  wfcDone = false;
+  wfcTimer = 0;
+  // Collapse first cell
+  var sx = (wfcGW * 0.5) | 0, sy = (wfcGH * 0.5) | 0;
+  wfcGrid[sy * wfcGW + sx] = (Math.random() * WFC_TILES.length) | 0;
+  wfcAddNeighbors(sx, sy);
+}
+initWfc();
+
+function wfcAddNeighbors(x, y) {
+  var dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+  for (var d = 0; d < 4; d++) {
+    var nx = x + dirs[d][0], ny = y + dirs[d][1];
+    if (nx >= 0 && nx < wfcGW && ny >= 0 && ny < wfcGH && wfcGrid[ny * wfcGW + nx] === -1) {
+      var already = false;
+      for (var q = 0; q < wfcQueue.length; q++) {
+        if (wfcQueue[q].x === nx && wfcQueue[q].y === ny) { already = true; break; }
+      }
+      if (!already) wfcQueue.push({ x: nx, y: ny });
+    }
+  }
+}
+
+function renderWfc() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (wfcW !== W || wfcH !== H) initWfc();
+  wfcTimer += 0.016;
+  // Collapse a few cells per frame
+  var steps = Math.min(wfcQueue.length, 5);
+  for (var s = 0; s < steps; s++) {
+    if (wfcQueue.length === 0) { wfcDone = true; break; }
+    // Pick lowest entropy (random for simplicity)
+    var idx = (Math.random() * wfcQueue.length) | 0;
+    var cell = wfcQueue[idx];
+    wfcQueue.splice(idx, 1);
+    if (wfcGrid[cell.y * wfcGW + cell.x] !== -1) continue;
+    // Look at neighbors to constrain
+    var neighborTiles = [];
+    var dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+    for (var d = 0; d < 4; d++) {
+      var nx = cell.x + dirs[d][0], ny = cell.y + dirs[d][1];
+      if (nx >= 0 && nx < wfcGW && ny >= 0 && ny < wfcGH && wfcGrid[ny * wfcGW + nx] >= 0) {
+        neighborTiles.push(wfcGrid[ny * wfcGW + nx]);
+      }
+    }
+    // Weighted selection: prefer similar tiles to neighbors
+    var chosen;
+    if (neighborTiles.length > 0 && Math.random() < 0.6) {
+      chosen = neighborTiles[(Math.random() * neighborTiles.length) | 0];
+      if (Math.random() < 0.3) chosen = (chosen + ((Math.random() < 0.5) ? 1 : -1) + WFC_TILES.length) % WFC_TILES.length;
+    } else {
+      chosen = (Math.random() * WFC_TILES.length) | 0;
+    }
+    wfcGrid[cell.y * wfcGW + cell.x] = chosen;
+    wfcAddNeighbors(cell.x, cell.y);
+  }
+  // Reset when done
+  if (wfcDone && wfcTimer > 3) initWfc();
+  // Draw
+  var ox = ((W - wfcGW) * 0.5) | 0;
+  var oy = ((H - wfcGH) * 0.5) | 0;
+  for (var y = 0; y < wfcGH; y++) {
+    for (var x = 0; x < wfcGW; x++) {
+      var val = wfcGrid[y * wfcGW + x];
+      var px = ox + x, py = oy + y;
+      if (px < 0 || px >= W || py < 0 || py >= H) continue;
+      if (val === -1) {
+        // Uncollapsed — show entropy shimmer
+        var v = Math.sin(x * 0.5 + y * 0.3 + time * 3) * 0.3 + 0.3;
+        if (v < 0.02) continue;
+        drawChar('.', px, py, 40, 40, 60, v);
+      } else {
+        var ch = WFC_TILES[val];
+        var hue = (val * 36 + time * 10) % 360;
+        drawCharHSL(ch, px, py, hue | 0, 60, 40);
+      }
+    }
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -7059,7 +8419,13 @@ var renderers = {
   lorenz: renderLorenz, galaxy: renderGalaxy, cloth: renderCloth,
   dla: renderDla, slime: renderSlime, reaction: renderReaction,
   nbody: renderNbody, ants: renderAnts, strange: renderStrange,
-  mandel: renderMandel, storm: renderStorm
+  mandel: renderMandel, storm: renderStorm,
+  starfield: renderStarfield, matrix: renderMatrix, snowfall: renderSnowfall,
+  firework: renderFirework, kaleidoscope: renderKaleidoscope, radar: renderRadar,
+  fountain: renderFountain, coral: renderCoral, smoke: renderSmoke, tornado: renderTornado,
+  dna: renderDna, circuit: renderCircuit, rain3d: renderRain3d, boids: renderBoids,
+  waves3d: renderWaves3d, tree: renderTree, chem: renderChem, typewriter: renderTypewriter,
+  conway3: renderConway3, wfc: renderWfc
 };
 
 // Glow pass — CSS-based for GPU acceleration
@@ -7194,6 +8560,26 @@ function switchMode(mode) {
   if (mode === 'strange') initStrange();
   if (mode === 'mandel') initMandel();
   if (mode === 'storm') initStorm();
+  if (mode === 'starfield') initStarfield();
+  if (mode === 'matrix') initMatrix();
+  if (mode === 'snowfall') initSnowfall();
+  if (mode === 'firework') initFirework();
+  if (mode === 'kaleidoscope') initKaleidoscope();
+  if (mode === 'radar') initRadar();
+  if (mode === 'fountain') initFountain();
+  if (mode === 'coral') initCoral();
+  if (mode === 'smoke') initSmoke();
+  if (mode === 'tornado') initTornado();
+  if (mode === 'dna') initDna();
+  if (mode === 'circuit') initCircuit();
+  if (mode === 'rain3d') initRain3d();
+  if (mode === 'boids') initBoids();
+  if (mode === 'waves3d') initWaves3d();
+  if (mode === 'tree') initTree();
+  if (mode === 'chem') initChem();
+  if (mode === 'typewriter') initTypewriter();
+  if (mode === 'conway3') initConway3();
+  if (mode === 'wfc') initWfc();
 }
 
 buttons.forEach(function(b) {
