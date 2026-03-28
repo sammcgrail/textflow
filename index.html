@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="51 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:description" content="52 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="51 interactive ASCII art experiments">
+<meta name="twitter:description" content="52 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -173,6 +173,7 @@
   <button data-mode="vidscenes">vidscenes</button>
   <button data-mode="vidfootball">vidfootball</button>
   <button data-mode="vidclowns">vidclowns</button>
+  <button data-mode="vidneon">vidneon</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -234,7 +235,8 @@ window.addEventListener('resize', function() {
     crt: initCRT, vhs: initVHS, terminal: initTerminal, oscilloscope: initScope, dial: initDial,
     propfont: initPropfont, brightmatch: initBrightmatch, smoothfluid: initSmoothfluid,
     vidascii: initVidascii, vidcow: initVidcow, vidscenes: initVidscenes,
-    vidfootball: initVidfootball, vidclowns: initVidclowns
+    vidfootball: initVidfootball, vidclowns: initVidclowns,
+    vidneon: initVidneon
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -291,7 +293,8 @@ var glows = {
   vidcow: { color: 'rgba(255,150,180,0.3)', blur: 10 },
   vidscenes: { color: 'rgba(100,150,255,0.35)', blur: 12 },
   vidfootball: { color: 'rgba(100,200,50,0.3)', blur: 10 },
-  vidclowns: { color: 'rgba(255,50,50,0.35)', blur: 12 }
+  vidclowns: { color: 'rgba(255,50,50,0.35)', blur: 12 },
+  vidneon: { color: 'rgba(180,100,255,0.4)', blur: 18 }
 };
 
 function clearCanvas() {
@@ -5176,6 +5179,93 @@ function renderVidclowns() {
 }
 
 // ============================================================
+// VIDNEON — Bright glowing scenes: fireworks, neon, lightning, bioluminescence
+// ============================================================
+
+var vidNeonEl = document.createElement('video');
+vidNeonEl.muted = true;
+vidNeonEl.loop = true;
+vidNeonEl.playsInline = true;
+vidNeonEl.crossOrigin = 'anonymous';
+vidNeonEl.style.display = 'none';
+vidNeonEl.src = '/textflow/static/neon.mp4';
+document.body.appendChild(vidNeonEl);
+
+var vidNeonCanvas = document.createElement('canvas');
+var vidNeonCtx = vidNeonCanvas.getContext('2d', { willReadFrequently: true });
+var vidNeonReady = false;
+
+vidNeonEl.onloadeddata = function() { vidNeonReady = true; };
+vidNeonEl.load();
+
+var vidNeonPaused = false;
+
+function initVidneon() {
+  vidNeonPaused = false;
+  vidNeonEl.currentTime = 0;
+  vidNeonEl.play().catch(function(){});
+}
+
+canvas.addEventListener('click', function() {
+  if (currentMode !== 'vidneon') return;
+  if (vidNeonEl.paused) {
+    vidNeonEl.play().catch(function(){});
+    vidNeonPaused = false;
+  } else {
+    vidNeonEl.pause();
+    vidNeonPaused = true;
+  }
+});
+
+function renderVidneon() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  if (!vidNeonReady) {
+    drawFancyLoading('loading neon');
+    return;
+  }
+
+  if (vidNeonCanvas.width !== W || vidNeonCanvas.height !== H) {
+    vidNeonCanvas.width = W;
+    vidNeonCanvas.height = H;
+  }
+
+  vidNeonCtx.drawImage(vidNeonEl, 0, 0, W, H);
+  var imgData = vidNeonCtx.getImageData(0, 0, W, H).data;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var pi = (y * W + x) * 4;
+      var r = imgData[pi];
+      var g = imgData[pi + 1];
+      var b = imgData[pi + 2];
+      var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (lum < 0.02) continue;
+      var ri = Math.min(VA_RAMP.length - 1, (lum * VA_RAMP.length) | 0);
+      var ch = VA_RAMP[ri];
+      // Boost saturation for neon pop
+      var maxC = Math.max(r, g, b);
+      var boost = maxC > 0 ? 255 / maxC : 1;
+      var br = Math.min(255, r * boost * 0.7 + r * 0.3);
+      var bg = Math.min(255, g * boost * 0.7 + g * 0.3);
+      var bb = Math.min(255, b * boost * 0.7 + b * 0.3);
+      var alpha = Math.max(0.25, Math.min(1, lum * 1.5));
+      drawChar(ch, x, y, br | 0, bg | 0, bb | 0, alpha);
+    }
+  }
+
+  if (vidNeonPaused) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('PAUSED', window.innerWidth - 10, NAV_H + 10);
+    ctx.textAlign = 'left';
+    ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -5197,7 +5287,8 @@ var renderers = {
   oscilloscope: renderScope, dial: renderDial,
   propfont: renderPropfont, brightmatch: renderBrightmatch, smoothfluid: renderSmoothfluid,
   vidascii: renderVidascii, vidcow: renderVidcow, vidscenes: renderVidscenes,
-  vidfootball: renderVidfootball, vidclowns: renderVidclowns
+  vidfootball: renderVidfootball, vidclowns: renderVidclowns,
+  vidneon: renderVidneon
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -5302,6 +5393,7 @@ function switchMode(mode) {
   if (mode === 'vidscenes') initVidscenes();
   if (mode === 'vidfootball') initVidfootball();
   if (mode === 'vidclowns') initVidclowns();
+  if (mode === 'vidneon') initVidneon();
 }
 
 buttons.forEach(function(b) {
