@@ -103,8 +103,7 @@
     white-space: nowrap;
     flex-shrink: 0;
     touch-action: manipulation;
-    opacity: 0;
-    animation: btnAppear 0.15s ease-out forwards;
+    opacity: 1;
   }
 
   @media (hover: hover) {
@@ -8799,11 +8798,7 @@ document.fonts.ready.then(function() {
   // Reveal nav after scroll is positioned — no flash
   var nav = document.querySelector('nav');
   nav.style.visibility = 'visible';
-  nav.style.opacity = '0';
-  nav.style.animation = 'navFadeIn 0.3s ease-out forwards';
-  buttons.forEach(function(b, i) {
-    b.style.animationDelay = (0.02 + i * 0.004) + 's';
-  });
+  nav.style.opacity = '1';
   loop();
 });
 </script>
