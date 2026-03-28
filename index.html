@@ -31,7 +31,7 @@
     user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
+    touch-action: none;
   }
 
   html, body {
@@ -60,6 +60,7 @@
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     visibility: hidden;
+    touch-action: pan-x;
   }
 
   nav::-webkit-scrollbar { display: none; }
@@ -110,14 +111,26 @@
     height: 100%;
     height: 100dvh;
   }
+  #glow {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.5;
+    filter: blur(8px);
+    z-index: 1;
+  }
   #fps {
     position: fixed;
     bottom: 2px;
     left: 6px;
     z-index: 200;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
-    color: rgba(180,180,180,0.4);
+    font-size: 8px;
+    color: rgba(255,255,255,0.6);
     pointer-events: none;
   }
 
@@ -136,7 +149,7 @@
 
 <div id="fps"></div>
 <nav>
-  <span class="logo">textflow</span>
+  <span class="logo" id="logo-btn" style="cursor:pointer">textflow</span>
   <button class="active" data-mode="lava">lava</button>
   <button data-mode="rain">rain</button>
   <button data-mode="wave">wave</button>
@@ -189,9 +202,30 @@
   <button data-mode="vidfootball">vidfootball</button>
   <button data-mode="vidclowns">vidclowns</button>
   <button data-mode="vidneon">vidneon</button>
+  <button data-mode="terrain">terrain</button>
+  <button data-mode="tunnel">tunnel</button>
+  <button data-mode="noise">noise</button>
+  <button data-mode="interference">interference</button>
+  <button data-mode="automata">automata</button>
+  <button data-mode="maze">maze</button>
+  <button data-mode="langton">langton</button>
+  <button data-mode="wave2d">wave2d</button>
+  <button data-mode="heat">heat</button>
+  <button data-mode="lorenz">lorenz</button>
+  <button data-mode="galaxy">galaxy</button>
+  <button data-mode="cloth">cloth</button>
+  <button data-mode="dla">dla</button>
+  <button data-mode="slime">slime</button>
+  <button data-mode="reaction">reaction</button>
+  <button data-mode="nbody">nbody</button>
+  <button data-mode="ants">ants</button>
+  <button data-mode="strange">strange</button>
+  <button data-mode="mandel">mandel</button>
+  <button data-mode="storm">storm</button>
 </nav>
 
 <canvas id="c"></canvas>
+<canvas id="glow"></canvas>
 
 <script>
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
@@ -232,6 +266,9 @@ function resize() {
 
   COLS = Math.floor(w / CHAR_W);
   ROWS = Math.floor((h - NAV_H) / CHAR_H);
+
+  // Reset glow overlay canvas dimensions on resize
+  currentGlowBlur = -1;
 }
 
 resize();
@@ -251,7 +288,14 @@ window.addEventListener('resize', function() {
     propfont: initPropfont, brightmatch: initBrightmatch, smoothfluid: initSmoothfluid,
     vidascii: initVidascii, vidcow: initVidcow, vidscenes: initVidscenes,
     vidfootball: initVidfootball, vidclowns: initVidclowns,
-    vidneon: initVidneon
+    vidneon: initVidneon,
+    terrain: initTerrain, tunnel: initTunnel, noise: initNoise,
+    interference: initInterference, automata: initAutomata, maze: initMaze,
+    langton: initLangton, wave2d: initWave2d, heat: initHeat,
+    lorenz: initLorenz, galaxy: initGalaxy, cloth: initCloth,
+    dla: initDla, slime: initSlime, reaction: initReaction,
+    nbody: initNbody, ants: initAnts, strange: initStrange,
+    mandel: initMandel, storm: initStorm
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -309,7 +353,27 @@ var glows = {
   vidscenes: { color: 'rgba(100,150,255,0.35)', blur: 12 },
   vidfootball: { color: 'rgba(100,200,50,0.3)', blur: 10 },
   vidclowns: { color: 'rgba(255,50,50,0.35)', blur: 12 },
-  vidneon: { color: 'rgba(180,100,255,0.4)', blur: 18 }
+  vidneon: { color: 'rgba(180,100,255,0.4)', blur: 18 },
+  terrain: { color: 'rgba(100,200,100,0.3)', blur: 10 },
+  tunnel: { color: 'rgba(200,100,255,0.35)', blur: 14 },
+  noise: { color: 'rgba(150,200,255,0.3)', blur: 12 },
+  interference: { color: 'rgba(0,200,255,0.35)', blur: 14 },
+  automata: { color: 'rgba(255,150,0,0.3)', blur: 8 },
+  maze: { color: 'rgba(0,255,150,0.3)', blur: 10 },
+  langton: { color: 'rgba(255,100,100,0.3)', blur: 10 },
+  wave2d: { color: 'rgba(80,150,255,0.35)', blur: 14 },
+  heat: { color: 'rgba(255,100,50,0.35)', blur: 12 },
+  lorenz: { color: 'rgba(200,150,255,0.35)', blur: 14 },
+  galaxy: { color: 'rgba(200,180,255,0.3)', blur: 16 },
+  cloth: { color: 'rgba(200,200,255,0.3)', blur: 10 },
+  dla: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  slime: { color: 'rgba(180,255,50,0.35)', blur: 12 },
+  reaction: { color: 'rgba(100,200,255,0.35)', blur: 14 },
+  nbody: { color: 'rgba(255,200,80,0.35)', blur: 14 },
+  ants: { color: 'rgba(200,150,50,0.3)', blur: 10 },
+  strange: { color: 'rgba(255,100,200,0.35)', blur: 16 },
+  mandel: { color: 'rgba(100,150,255,0.35)', blur: 14 },
+  storm: { color: 'rgba(180,200,255,0.4)', blur: 18 }
 };
 
 function clearCanvas() {
@@ -320,17 +384,36 @@ function clearCanvas() {
   ctx.textBaseline = 'top';
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
+  // Reset color cache
+  _lastR = -1; _lastG = -1; _lastB = -1; _lastA = -1;
+  _lastH = -1; _lastS = -1; _lastL = -1;
 }
+
+// Color cache to avoid string allocation per fillText call
+var _lastR = -1, _lastG = -1, _lastB = -1, _lastA = -1;
+var _lastColorStr = '';
+var _lastH = -1, _lastS = -1, _lastL = -1;
+var _lastHSLStr = '';
 
 function drawChar(ch, x, y, r, g, b, a) {
   if (ch === ' ') return;
-  ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + a.toFixed(2) + ')';
+  var ai = (a * 100 + 0.5) | 0; // quantize alpha to 2 decimal places
+  if (r !== _lastR || g !== _lastG || b !== _lastB || ai !== _lastA) {
+    _lastR = r; _lastG = g; _lastB = b; _lastA = ai;
+    _lastColorStr = 'rgba(' + r + ',' + g + ',' + b + ',' + (ai * 0.01).toFixed(2) + ')';
+  }
+  ctx.fillStyle = _lastColorStr;
   ctx.fillText(ch, x * CHAR_W, NAV_H + y * CHAR_H);
 }
 
 function drawCharHSL(ch, x, y, h, s, l) {
   if (ch === ' ') return;
-  ctx.fillStyle = 'hsl(' + (h|0) + ',' + (s|0) + '%,' + (l|0) + '%)';
+  var hi = h | 0, si = s | 0, li = l | 0;
+  if (hi !== _lastH || si !== _lastS || li !== _lastL) {
+    _lastH = hi; _lastS = si; _lastL = li;
+    _lastHSLStr = 'hsl(' + hi + ',' + si + '%,' + li + '%)';
+  }
+  ctx.fillStyle = _lastHSLStr;
   ctx.fillText(ch, x * CHAR_W, NAV_H + y * CHAR_H);
 }
 
@@ -5286,6 +5369,1667 @@ function renderVidneon() {
 }
 
 // ============================================================
+// MODE: terrain — Procedural terrain contour lines
+// ============================================================
+function initTerrain() {}
+initTerrain();
+
+function renderTerrain() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var px = pointer.down && currentMode === 'terrain' ? pointer.gx : -999;
+  var py = pointer.down && currentMode === 'terrain' ? pointer.gy : -999;
+  var t = time * 0.3;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var nx = x * 0.05 + t;
+      var ny = y * 0.08 + t * 0.5;
+      var h = 0;
+      h += Math.sin(nx * 1.0 + ny * 0.7) * 0.5;
+      h += Math.sin(nx * 2.1 - ny * 1.3 + t) * 0.25;
+      h += Math.sin(nx * 4.3 + ny * 3.7 - t * 0.7) * 0.125;
+      h += Math.sin(nx * 8.1 - ny * 7.2 + t * 1.1) * 0.0625;
+      // Pointer raises terrain
+      var dx = x - px, dy = y - py;
+      var pd = Math.sqrt(dx * dx + dy * dy);
+      if (pd < 10) h += (1 - pd / 10) * 0.5;
+      // Contour detection
+      var level = Math.floor(h * 8);
+      var frac = (h * 8) - level;
+      var contour = frac < 0.1 || frac > 0.9;
+      var v = (h + 1) * 0.5;
+      if (v < 0.02) continue;
+      var ch, r, g, b;
+      if (contour) {
+        ch = '-';
+        if (Math.abs(((h * 8) % 1) - 0.5) < 0.1) ch = '=';
+        var hue = v * 120 + 100;
+        r = (Math.cos(hue * 0.0174) * 0.5 + 0.5) * 200 + 55;
+        g = (Math.cos((hue - 120) * 0.0174) * 0.5 + 0.5) * 200 + 55;
+        b = (Math.cos((hue - 240) * 0.0174) * 0.5 + 0.5) * 200 + 55;
+        drawChar(ch, x, y, r | 0, g | 0, b | 0, 0.9);
+      } else {
+        var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+        ch = RAMP_SOFT[ri];
+        var green = 80 + v * 150;
+        drawChar(ch, x, y, 40, green | 0, 60, 0.3 + v * 0.4);
+      }
+    }
+  }
+}
+
+// ============================================================
+// MODE: tunnel — Demoscene tunnel effect
+// ============================================================
+function initTunnel() {}
+initTunnel();
+
+function renderTunnel() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var cx = W * 0.5, cy = H * 0.5;
+  if (pointer.down && currentMode === 'tunnel') {
+    cx = pointer.gx * 0.3 + cx * 0.7;
+    cy = pointer.gy * 0.3 + cy * 0.7;
+  }
+  var t = time;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var dx = x - cx, dy = (y - cy) * 1.8;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 0.5) dist = 0.5;
+      var angle = Math.atan2(dy, dx);
+      var u = angle / (Math.PI * 2) * 16 + t * 2;
+      var v = 16.0 / dist + t * 3;
+      var pattern = ((Math.floor(u) + Math.floor(v)) & 1);
+      var shade = 1.0 / (1 + dist * 0.15);
+      if (shade < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (shade * (pattern ? 1 : 0.5) * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      var hue = (angle * 57.3 + t * 60) % 360;
+      if (hue < 0) hue += 360;
+      drawCharHSL(ch, x, y, hue | 0, 70, (shade * 50) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: noise — Flowing value noise (fbm)
+// ============================================================
+var noiseP = [];
+function initNoise() {
+  noiseP = [];
+  for (var i = 0; i < 512; i++) noiseP[i] = (Math.random() * 256) | 0;
+}
+initNoise();
+
+function noiseLerp(a, b, t) { return a + (b - a) * t; }
+function noiseVal(px, py) {
+  var xi = Math.floor(px) & 255, yi = Math.floor(py) & 255;
+  var xf = px - Math.floor(px), yf = py - Math.floor(py);
+  var u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  var aa = noiseP[(noiseP[xi] + yi) & 255] / 255;
+  var ab = noiseP[(noiseP[xi] + yi + 1) & 255] / 255;
+  var ba = noiseP[(noiseP[(xi + 1) & 255] + yi) & 255] / 255;
+  var bb = noiseP[(noiseP[(xi + 1) & 255] + yi + 1) & 255] / 255;
+  return noiseLerp(noiseLerp(aa, ba, u), noiseLerp(ab, bb, u), v);
+}
+function noiseFbm(px, py) {
+  var val = 0, amp = 0.5, freq = 1;
+  for (var i = 0; i < 4; i++) {
+    val += noiseVal(px * freq, py * freq) * amp;
+    amp *= 0.5; freq *= 2;
+  }
+  return val;
+}
+
+function renderNoise() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var t = time * 0.4;
+  var lx = pointer.down && currentMode === 'noise' ? pointer.gx : -999;
+  var ly = pointer.down && currentMode === 'noise' ? pointer.gy : -999;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var nx = x * 0.06 + t, ny = y * 0.1 + t * 0.7;
+      // Pointer lens distortion
+      var ddx = x - lx, ddy = y - ly;
+      var dd = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dd < 8) {
+        var warp = (1 - dd / 8) * 3;
+        nx += Math.sin(dd + time * 5) * warp;
+        ny += Math.cos(dd + time * 5) * warp;
+      }
+      var v = noiseFbm(nx, ny);
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      var hue = (v * 360 + time * 30) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 60, (10 + v * 45) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: interference — Multi-source wave interference
+// ============================================================
+var interfereSources = [];
+function initInterference() {
+  interfereSources = [];
+  for (var i = 0; i < 5; i++) {
+    interfereSources.push({
+      x: Math.random() * COLS,
+      y: Math.random() * ROWS,
+      freq: 0.3 + Math.random() * 0.5,
+      speed: 1 + Math.random() * 2
+    });
+  }
+}
+initInterference();
+
+function renderInterference() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var t = time;
+  // Pointer controls source 0
+  if (pointer.down && currentMode === 'interference') {
+    interfereSources[0].x = pointer.gx;
+    interfereSources[0].y = pointer.gy;
+  }
+  // Move sources gently
+  for (var s = 0; s < interfereSources.length; s++) {
+    var src = interfereSources[s];
+    src.x += Math.sin(t * 0.3 + s * 2) * 0.05;
+    src.y += Math.cos(t * 0.4 + s * 1.5) * 0.05;
+  }
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var sum = 0;
+      for (var s = 0; s < interfereSources.length; s++) {
+        var src = interfereSources[s];
+        var dx = x - src.x, dy = y - src.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        sum += Math.sin(dist * src.freq - t * src.speed);
+      }
+      var v = (sum / interfereSources.length + 1) * 0.5;
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      var hue = (v * 240 + t * 20) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 80, (10 + v * 40) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: automata — Elementary cellular automata (1D Wolfram rules)
+// ============================================================
+var autoGrid, autoRule, autoW, autoH;
+function initAutomata() {
+  autoW = COLS;
+  autoH = ROWS;
+  autoGrid = new Uint8Array(autoW * autoH);
+  autoRule = 30;
+  // Seed top row with single center cell
+  autoGrid[Math.floor(autoW / 2)] = 1;
+  // Generate all rows
+  for (var y = 1; y < autoH; y++) {
+    for (var x = 0; x < autoW; x++) {
+      var l = x > 0 ? autoGrid[(y - 1) * autoW + x - 1] : 0;
+      var c = autoGrid[(y - 1) * autoW + x];
+      var r = x < autoW - 1 ? autoGrid[(y - 1) * autoW + x + 1] : 0;
+      var idx = (l << 2) | (c << 1) | r;
+      autoGrid[y * autoW + x] = (autoRule >> idx) & 1;
+    }
+  }
+}
+initAutomata();
+
+function renderAutomata() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (autoW !== W || autoH !== H) initAutomata();
+  // Click toggles cells
+  if (pointer.clicked && currentMode === 'automata') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      autoGrid[gy * W + gx] ^= 1;
+      // Regenerate rows below
+      for (var y = Math.max(1, gy + 1); y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var l = x > 0 ? autoGrid[(y - 1) * W + x - 1] : 0;
+          var c = autoGrid[(y - 1) * W + x];
+          var r = x < W - 1 ? autoGrid[(y - 1) * W + x + 1] : 0;
+          var idx2 = (l << 2) | (c << 1) | r;
+          autoGrid[y * W + x] = (autoRule >> idx2) & 1;
+        }
+      }
+    }
+  }
+  // Drag changes rule — horizontal position maps to rule 0-255
+  if (pointer.down && currentMode === 'automata') {
+    var newRule = Math.floor((pointer.gx / W) * 256);
+    if (newRule !== autoRule && newRule >= 0 && newRule < 256) {
+      autoRule = newRule;
+      // Regenerate
+      for (var y = 1; y < H; y++) {
+        for (var x = 0; x < W; x++) {
+          var l = x > 0 ? autoGrid[(y - 1) * W + x - 1] : 0;
+          var c = autoGrid[(y - 1) * W + x];
+          var r = x < W - 1 ? autoGrid[(y - 1) * W + x + 1] : 0;
+          var idx3 = (l << 2) | (c << 1) | r;
+          autoGrid[y * W + x] = (autoRule >> idx3) & 1;
+        }
+      }
+    }
+  }
+  // Scroll animation: shift rows up periodically
+  var scrollInterval = 0.1;
+  var scrollPhase = (time / scrollInterval) | 0;
+  var hue = (autoRule * 1.4) % 360;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var val = autoGrid[y * W + x];
+      if (val === 0) continue;
+      var bright = 0.5 + (y / H) * 0.5;
+      var ch = RAMP_DENSE[((bright * RAMP_DENSE.length) | 0) % RAMP_DENSE.length];
+      drawCharHSL(ch, x, y, (hue + y * 2) | 0, 80, (20 + bright * 35) | 0);
+    }
+  }
+  // Show current rule
+  var ruleStr = 'Rule ' + autoRule;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.fillText(ruleStr, 6, NAV_H + 12);
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+}
+
+// ============================================================
+// MODE: maze — Animated maze generation + solving
+// ============================================================
+var mazeGrid, mazeW, mazeH, mazeStack, mazeGenDone, mazeSolvePath, mazeSolveIdx;
+var mazeCurX, mazeCurY, mazeStart, mazeEnd, mazeFrameCount;
+function initMaze() {
+  mazeW = Math.floor(COLS / 2);
+  mazeH = Math.floor(ROWS / 2);
+  if (mazeW < 3) mazeW = 3;
+  if (mazeH < 3) mazeH = 3;
+  mazeGrid = new Uint8Array(mazeW * mazeH); // 0=wall, 1=passage, 2=visited-solve, 3=solution
+  mazeCurX = 1; mazeCurY = 1;
+  mazeGrid[mazeCurY * mazeW + mazeCurX] = 1;
+  mazeStack = [{x: mazeCurX, y: mazeCurY}];
+  mazeGenDone = false;
+  mazeSolvePath = [];
+  mazeSolveIdx = 0;
+  mazeStart = {x: 1, y: 1};
+  mazeEnd = {x: mazeW - 2, y: mazeH - 2};
+  mazeFrameCount = 0;
+}
+initMaze();
+
+function mazeNeighbors(x, y) {
+  var dirs = [{dx:0,dy:-2},{dx:2,dy:0},{dx:0,dy:2},{dx:-2,dy:0}];
+  var res = [];
+  for (var i = 0; i < dirs.length; i++) {
+    var nx = x + dirs[i].dx, ny = y + dirs[i].dy;
+    if (nx > 0 && nx < mazeW - 1 && ny > 0 && ny < mazeH - 1 && mazeGrid[ny * mazeW + nx] === 0) {
+      res.push({x: nx, y: ny, wx: x + dirs[i].dx / 2, wy: y + dirs[i].dy / 2});
+    }
+  }
+  return res;
+}
+
+function mazeStepGen() {
+  if (mazeStack.length === 0) { mazeGenDone = true; return; }
+  var cur = mazeStack[mazeStack.length - 1];
+  var nbrs = mazeNeighbors(cur.x, cur.y);
+  if (nbrs.length > 0) {
+    var pick = nbrs[(Math.random() * nbrs.length) | 0];
+    mazeGrid[pick.wy * mazeW + pick.wx] = 1;
+    mazeGrid[pick.y * mazeW + pick.x] = 1;
+    mazeStack.push({x: pick.x, y: pick.y});
+  } else {
+    mazeStack.pop();
+  }
+}
+
+function mazeSolve() {
+  // BFS from start to end
+  var visited = new Uint8Array(mazeW * mazeH);
+  var parent = new Int32Array(mazeW * mazeH).fill(-1);
+  var queue = [mazeStart.y * mazeW + mazeStart.x];
+  visited[mazeStart.y * mazeW + mazeStart.x] = 1;
+  var endIdx = mazeEnd.y * mazeW + mazeEnd.x;
+  while (queue.length > 0) {
+    var ci = queue.shift();
+    if (ci === endIdx) break;
+    var cx = ci % mazeW, cy = (ci / mazeW) | 0;
+    var dirs = [{dx:0,dy:-1},{dx:1,dy:0},{dx:0,dy:1},{dx:-1,dy:0}];
+    for (var d = 0; d < 4; d++) {
+      var nx = cx + dirs[d].dx, ny = cy + dirs[d].dy;
+      var ni = ny * mazeW + nx;
+      if (nx >= 0 && nx < mazeW && ny >= 0 && ny < mazeH && !visited[ni] && mazeGrid[ni] === 1) {
+        visited[ni] = 1;
+        parent[ni] = ci;
+        queue.push(ni);
+      }
+    }
+  }
+  mazeSolvePath = [];
+  var idx = endIdx;
+  while (idx !== -1) {
+    mazeSolvePath.push(idx);
+    idx = parent[idx];
+  }
+  mazeSolvePath.reverse();
+  mazeSolveIdx = 0;
+}
+
+function renderMaze() {
+  clearCanvas();
+  mazeFrameCount++;
+  var W = COLS, H = ROWS;
+  if (Math.floor(COLS / 2) !== mazeW || Math.floor(ROWS / 2) !== mazeH) initMaze();
+  // Click sets start/end
+  if (pointer.clicked && currentMode === 'maze') {
+    var mx = Math.floor(pointer.gx / 2), my = Math.floor(pointer.gy / 2);
+    if (mx >= 0 && mx < mazeW && my >= 0 && my < mazeH && mazeGrid[my * mazeW + mx] === 1) {
+      if (!mazeGenDone) { /* ignore during gen */ }
+      else { mazeEnd = {x: mx, y: my}; mazeSolve(); }
+    }
+  }
+  // Animate generation
+  if (!mazeGenDone) {
+    for (var s = 0; s < 3; s++) mazeStepGen();
+    if (mazeGenDone) mazeSolve();
+  }
+  // Animate solve path
+  if (mazeGenDone && mazeSolveIdx < mazeSolvePath.length) {
+    mazeSolveIdx = Math.min(mazeSolveIdx + 2, mazeSolvePath.length);
+  }
+  // Draw
+  for (var y = 0; y < mazeH && y * 2 < H; y++) {
+    for (var x = 0; x < mazeW && x * 2 < W; x++) {
+      var val = mazeGrid[y * mazeW + x];
+      var sx = x * 2, sy = y * 2;
+      if (val === 0) {
+        drawChar('#', sx, sy, 40, 50, 60, 0.5);
+        if (sx + 1 < W) drawChar('#', sx + 1, sy, 40, 50, 60, 0.5);
+      } else {
+        drawChar('.', sx, sy, 30, 40, 30, 0.2);
+      }
+    }
+  }
+  // Draw solution path
+  for (var i = 0; i < mazeSolveIdx && i < mazeSolvePath.length; i++) {
+    var pi = mazeSolvePath[i];
+    var px = (pi % mazeW) * 2, py = ((pi / mazeW) | 0) * 2;
+    var prog = i / mazeSolvePath.length;
+    drawCharHSL('*', px, py, (120 + prog * 240) | 0, 80, 45);
+  }
+  // Draw gen stack head
+  if (!mazeGenDone && mazeStack.length > 0) {
+    var head = mazeStack[mazeStack.length - 1];
+    drawChar('@', head.x * 2, head.y * 2, 255, 255, 100, 1);
+  }
+}
+
+// ============================================================
+// MODE: langton — Langton's Ant (multi-color variant)
+// ============================================================
+var langGrid, langAnts, langW, langH, langRule;
+function initLangton() {
+  langW = COLS; langH = ROWS;
+  langGrid = new Uint8Array(langW * langH);
+  langRule = [1, 0, 1, 1]; // RLLR
+  langAnts = [{x: Math.floor(langW / 2), y: Math.floor(langH / 2), dir: 0}];
+}
+initLangton();
+
+function renderLangton() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (langW !== W || langH !== H) initLangton();
+  // Click adds ants
+  if (pointer.clicked && currentMode === 'langton') {
+    var ax = Math.floor(pointer.gx), ay = Math.floor(pointer.gy);
+    if (ax >= 0 && ax < W && ay >= 0 && ay < H) {
+      langAnts.push({x: ax, y: ay, dir: (Math.random() * 4) | 0});
+    }
+  }
+  // Steps per frame — hold to speed up
+  var stepsPerFrame = pointer.down && currentMode === 'langton' ? 200 : 50;
+  var numStates = langRule.length;
+  for (var s = 0; s < stepsPerFrame; s++) {
+    for (var a = 0; a < langAnts.length; a++) {
+      var ant = langAnts[a];
+      if (ant.x < 0 || ant.x >= W || ant.y < 0 || ant.y >= H) continue;
+      var idx = ant.y * W + ant.x;
+      var state = langGrid[idx];
+      // Turn: 1 = right, 0 = left
+      if (langRule[state]) {
+        ant.dir = (ant.dir + 1) & 3;
+      } else {
+        ant.dir = (ant.dir + 3) & 3;
+      }
+      // Cycle state
+      langGrid[idx] = (state + 1) % numStates;
+      // Move
+      if (ant.dir === 0) ant.y--;
+      else if (ant.dir === 1) ant.x++;
+      else if (ant.dir === 2) ant.y++;
+      else ant.x--;
+      // Wrap
+      if (ant.x < 0) ant.x = W - 1;
+      if (ant.x >= W) ant.x = 0;
+      if (ant.y < 0) ant.y = H - 1;
+      if (ant.y >= H) ant.y = 0;
+    }
+  }
+  // Draw grid
+  var hues = [0, 200, 60, 300];
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var val = langGrid[y * W + x];
+      if (val === 0) continue;
+      var bright = 0.3 + val / numStates * 0.7;
+      var ri = Math.min(RAMP_DENSE.length - 1, (bright * RAMP_DENSE.length) | 0);
+      drawCharHSL(RAMP_DENSE[ri], x, y, hues[val % hues.length], 70, (15 + bright * 40) | 0);
+    }
+  }
+  // Draw ants
+  for (var a = 0; a < langAnts.length; a++) {
+    var ant = langAnts[a];
+    drawChar('@', ant.x, ant.y, 255, 255, 255, 1);
+  }
+}
+
+// ============================================================
+// MODE: wave2d — 2D wave equation
+// ============================================================
+var wave2dA, wave2dB, wave2dC, wave2dW, wave2dH;
+function initWave2d() {
+  wave2dW = COLS; wave2dH = ROWS;
+  var sz = wave2dW * wave2dH;
+  wave2dA = new Float32Array(sz);
+  wave2dB = new Float32Array(sz);
+  wave2dC = new Float32Array(sz);
+  // Drop initial stones for visual interest
+  for (var i = 0; i < 5; i++) {
+    var sx = (Math.random() * wave2dW * 0.6 + wave2dW * 0.2) | 0;
+    var sy = (Math.random() * wave2dH * 0.6 + wave2dH * 0.2) | 0;
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        var nx = sx + dx, ny = sy + dy;
+        if (nx >= 0 && nx < wave2dW && ny >= 0 && ny < wave2dH) {
+          wave2dA[ny * wave2dW + nx] = (1 - Math.sqrt(dx*dx+dy*dy)/3) * 0.8;
+        }
+      }
+    }
+  }
+}
+initWave2d();
+
+function renderWave2d() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (wave2dW !== W || wave2dH !== H) initWave2d();
+  // Click drops stones
+  if (pointer.down && currentMode === 'wave2d') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    if (gx > 0 && gx < W - 1 && gy > 0 && gy < H - 1) {
+      if (pointer.clicked) {
+        wave2dA[gy * W + gx] = 2.0;
+      } else {
+        // Oscillating source when held
+        wave2dA[gy * W + gx] = Math.sin(time * 10) * 1.5;
+      }
+    }
+  }
+  // Wave equation step
+  var damping = 0.995;
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      var lap = wave2dA[idx - 1] + wave2dA[idx + 1] + wave2dA[idx - W] + wave2dA[idx + W] - 4 * wave2dA[idx];
+      wave2dC[idx] = (2 * wave2dA[idx] - wave2dB[idx] + lap * 0.45) * damping;
+    }
+  }
+  // Rotate buffers
+  var tmp = wave2dB;
+  wave2dB = wave2dA;
+  wave2dA = wave2dC;
+  wave2dC = tmp;
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = wave2dA[y * W + x];
+      var av = Math.abs(v);
+      if (av < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (av * RAMP_DENSE.length * 0.5) | 0);
+      var ch = RAMP_DENSE[ri];
+      if (v > 0) {
+        drawChar(ch, x, y, 80, (100 + v * 150) | 0, 255, Math.min(1, av));
+      } else {
+        drawChar(ch, x, y, 80, 80, (100 - v * 150) | 0, Math.min(1, av));
+      }
+    }
+  }
+}
+
+// ============================================================
+// MODE: heat — Heat diffusion simulation
+// ============================================================
+var heatGrid, heatW, heatH;
+function initHeat() {
+  heatW = COLS; heatH = ROWS;
+  heatGrid = new Float32Array(heatW * heatH);
+  // Initial heat spots
+  for (var i = 0; i < 4; i++) {
+    var sx = (Math.random() * heatW * 0.6 + heatW * 0.2) | 0;
+    var sy = (Math.random() * heatH * 0.6 + heatH * 0.2) | 0;
+    for (var dy = -3; dy <= 3; dy++) {
+      for (var dx = -3; dx <= 3; dx++) {
+        var nx = sx + dx, ny = sy + dy;
+        if (nx >= 0 && nx < heatW && ny >= 0 && ny < heatH) {
+          heatGrid[ny * heatW + nx] = Math.max(0, 1 - Math.sqrt(dx*dx+dy*dy)/4);
+        }
+      }
+    }
+  }
+}
+initHeat();
+
+function renderHeat() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (heatW !== W || heatH !== H) initHeat();
+  // Click places heat sources
+  if (pointer.down && currentMode === 'heat') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        var nx = gx + dx, ny = gy + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          heatGrid[ny * W + nx] = Math.min(1, heatGrid[ny * W + nx] + 0.3);
+        }
+      }
+    }
+  }
+  // Permanent pulsing heat emitters
+  var emitters = [
+    {x: W * 0.25, y: H * 0.3}, {x: W * 0.75, y: H * 0.7},
+    {x: W * 0.5, y: H * 0.5}, {x: W * 0.2, y: H * 0.8}
+  ];
+  for (var ei = 0; ei < emitters.length; ei++) {
+    var ex = emitters[ei].x | 0, ey = emitters[ei].y | 0;
+    var pulse = 0.5 + Math.sin(time * 1.5 + ei * 1.7) * 0.3;
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        var nx = ex + dx, ny = ey + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          heatGrid[ny * W + nx] = Math.min(1, heatGrid[ny * W + nx] + pulse * 0.08);
+        }
+      }
+    }
+  }
+  // Diffuse
+  var next = new Float32Array(W * H);
+  var alpha = 0.15;
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      var lap = heatGrid[idx - 1] + heatGrid[idx + 1] + heatGrid[idx - W] + heatGrid[idx + W] - 4 * heatGrid[idx];
+      next[idx] = heatGrid[idx] + alpha * lap;
+      next[idx] *= 0.998; // slow decay
+    }
+  }
+  heatGrid = next;
+  // Draw with blue->red->yellow->white colormap
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = heatGrid[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_FIRE.length - 1, (v * RAMP_FIRE.length) | 0);
+      var ch = RAMP_FIRE[ri];
+      var r, g, b;
+      if (v < 0.25) { r = 0; g = 0; b = (v / 0.25) * 255; }
+      else if (v < 0.5) { var t2 = (v - 0.25) / 0.25; r = t2 * 255; g = 0; b = (1 - t2) * 255; }
+      else if (v < 0.75) { var t2 = (v - 0.5) / 0.25; r = 255; g = t2 * 255; b = 0; }
+      else { var t2 = (v - 0.75) / 0.25; r = 255; g = 255; b = t2 * 255; }
+      drawChar(ch, x, y, r | 0, g | 0, b | 0, Math.min(1, v * 2));
+    }
+  }
+}
+
+// ============================================================
+// MODE: lorenz — Lorenz strange attractor
+// ============================================================
+var lorenzParts, lorenzDensity, lorenzW, lorenzH;
+function initLorenz() {
+  lorenzW = COLS; lorenzH = ROWS;
+  lorenzDensity = new Float32Array(lorenzW * lorenzH);
+  lorenzParts = [];
+  for (var i = 0; i < 300; i++) {
+    lorenzParts.push({
+      x: (Math.random() - 0.5) * 2,
+      y: (Math.random() - 0.5) * 2,
+      z: Math.random() * 30 + 10
+    });
+  }
+}
+initLorenz();
+
+function renderLorenz() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (lorenzW !== W || lorenzH !== H) initLorenz();
+  var sigma = 10, rho = 28, beta = 8 / 3;
+  if (pointer.down && currentMode === 'lorenz') {
+    rho = 10 + (pointer.gx / W) * 40;
+    sigma = 5 + (pointer.gy / H) * 20;
+  }
+  // Decay density
+  for (var i = 0; i < lorenzDensity.length; i++) lorenzDensity[i] *= 0.92;
+  // Integrate particles
+  var dt = 0.005;
+  for (var i = 0; i < lorenzParts.length; i++) {
+    var p = lorenzParts[i];
+    for (var s = 0; s < 5; s++) {
+      var dx = sigma * (p.y - p.x) * dt;
+      var dy = (p.x * (rho - p.z) - p.y) * dt;
+      var dz = (p.x * p.y - beta * p.z) * dt;
+      p.x += dx; p.y += dy; p.z += dz;
+    }
+    // Project 3D -> 2D
+    var sx = ((p.x / 50 + 0.5) * W) | 0;
+    var sy = ((p.z / 60) * H) | 0;
+    if (sx >= 0 && sx < W && sy >= 0 && sy < H) {
+      lorenzDensity[sy * W + sx] = Math.min(1, lorenzDensity[sy * W + sx] + 0.15);
+    }
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = lorenzDensity[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      drawCharHSL(ch, x, y, (270 + v * 60) | 0, 80, (10 + v * 50) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: galaxy — Spiral galaxy simulation
+// ============================================================
+var galaxyStars, galaxyTrail, galaxyW, galaxyH;
+function initGalaxy() {
+  galaxyW = COLS; galaxyH = ROWS;
+  galaxyTrail = new Float32Array(galaxyW * galaxyH);
+  var numStars = isMobile ? 1200 : 2000;
+  galaxyStars = [];
+  for (var i = 0; i < numStars; i++) {
+    var arm = (Math.random() * 4) | 0;
+    var dist = Math.random() * Math.random() * 0.45 + 0.02;
+    var angle = arm * Math.PI * 0.5 + dist * 6 + (Math.random() - 0.5) * 0.5;
+    galaxyStars.push({
+      dist: dist,
+      angle: angle,
+      speed: 0.3 / (dist + 0.1),
+      bright: 0.3 + Math.random() * 0.7,
+      hue: (Math.random() - 0.5) * 40
+    });
+  }
+}
+initGalaxy();
+
+function renderGalaxy() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (galaxyW !== W || galaxyH !== H) initGalaxy();
+  var cx = W * 0.5, cy = H * 0.5;
+  // Decay trail
+  for (var i = 0; i < galaxyTrail.length; i++) galaxyTrail[i] *= 0.93;
+  // Pointer gravitational perturber
+  var px = pointer.down && currentMode === 'galaxy' ? pointer.gx : -999;
+  var py = pointer.down && currentMode === 'galaxy' ? pointer.gy : -999;
+  for (var i = 0; i < galaxyStars.length; i++) {
+    var s = galaxyStars[i];
+    s.angle += s.speed * 0.016;
+    var r = s.dist * Math.min(W, H) * 0.9;
+    var sx = (cx + Math.cos(s.angle) * r) | 0;
+    var sy = (cy + Math.sin(s.angle) * r * 0.5) | 0;
+    // Pointer perturbation
+    if (px > -900) {
+      var ddx = sx - px, ddy = sy - py;
+      var dd = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dd < 15 && dd > 0.5) {
+        s.angle += 0.02 / (dd * 0.3 + 0.1);
+      }
+    }
+    if (sx >= 0 && sx < W && sy >= 0 && sy < H) {
+      galaxyTrail[sy * W + sx] = Math.min(1, galaxyTrail[sy * W + sx] + s.bright * 0.2);
+    }
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = galaxyTrail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      var dx = x - cx, dy = y - cy;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var hue = (240 + dist * 3 + time * 10) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 50 + (v * 30) | 0, (10 + v * 50) | 0);
+    }
+  }
+  // Center glow
+  drawChar('*', cx | 0, cy | 0, 255, 255, 200, 1);
+}
+
+// ============================================================
+// MODE: cloth — ASCII cloth simulation
+// ============================================================
+var clothPts, clothW, clothH, clothCols, clothRows;
+function initCloth() {
+  var spacing = 2.5;
+  clothCols = Math.min(30, ((COLS - 4) / spacing) | 0);
+  clothRows = Math.min(18, ((ROWS - 4) / spacing) | 0);
+  if (clothCols < 4) clothCols = 4;
+  if (clothRows < 4) clothRows = 4;
+  clothW = COLS; clothH = ROWS;
+  clothPts = [];
+  clothSpacing = spacing;
+  var offX = (COLS - clothCols * spacing) * 0.5;
+  var offY = 3;
+  for (var r = 0; r < clothRows; r++) {
+    for (var c = 0; c < clothCols; c++) {
+      clothPts.push({
+        x: offX + c * spacing, y: offY + r * spacing,
+        ox: offX + c * spacing, oy: offY + r * spacing,
+        px: offX + c * spacing, py: offY + r * spacing,
+        pinned: r === 0 && c % 3 === 0
+      });
+    }
+  }
+}
+initCloth();
+
+function renderCloth() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (clothW !== W || clothH !== H) initCloth();
+  // Gravity + pointer wind
+  var grav = 0.08;
+  var windX = 0, windY = 0;
+  if (pointer.down && currentMode === 'cloth') {
+    windX = (pointer.gx - W * 0.5) * 0.003;
+    windY = (pointer.gy - H * 0.5) * 0.003;
+  }
+  // Verlet integration
+  for (var i = 0; i < clothPts.length; i++) {
+    var p = clothPts[i];
+    if (p.pinned) continue;
+    var vx = (p.x - p.px) * 0.99 + windX;
+    var vy = (p.y - p.py) * 0.99 + grav + windY;
+    p.px = p.x; p.py = p.y;
+    p.x += vx; p.y += vy;
+    // Bounds
+    if (p.y > H - 1) { p.y = H - 1; p.py = p.y; }
+    if (p.x < 0) { p.x = 0; p.px = p.x; }
+    if (p.x > W - 1) { p.x = W - 1; p.px = p.x; }
+  }
+  // Spring constraints (3 iterations)
+  var restX = clothSpacing, restY = clothSpacing;
+  for (var iter = 0; iter < 3; iter++) {
+    for (var r = 0; r < clothRows; r++) {
+      for (var c = 0; c < clothCols; c++) {
+        var idx = r * clothCols + c;
+        var p = clothPts[idx];
+        // Right neighbor
+        if (c < clothCols - 1) {
+          var q = clothPts[idx + 1];
+          var dx = q.x - p.x, dy = q.y - p.y;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d > 0) {
+            var diff = (d - restX) / d * 0.5;
+            if (!p.pinned) { p.x += dx * diff; p.y += dy * diff; }
+            if (!q.pinned) { q.x -= dx * diff; q.y -= dy * diff; }
+          }
+        }
+        // Bottom neighbor
+        if (r < clothRows - 1) {
+          var q = clothPts[idx + clothCols];
+          var dx = q.x - p.x, dy = q.y - p.y;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d > 0) {
+            var diff = (d - restY) / d * 0.5;
+            if (!p.pinned) { p.x += dx * diff; p.y += dy * diff; }
+            if (!q.pinned) { q.x -= dx * diff; q.y -= dy * diff; }
+          }
+        }
+      }
+    }
+  }
+  // Draw
+  for (var r = 0; r < clothRows; r++) {
+    for (var c = 0; c < clothCols; c++) {
+      var idx = r * clothCols + c;
+      var p = clothPts[idx];
+      var sx = p.x | 0, sy = p.y | 0;
+      if (sx < 0 || sx >= W || sy < 0 || sy >= H) continue;
+      // Strain coloring
+      var strain = Math.sqrt((p.x - p.ox) * (p.x - p.ox) + (p.y - p.oy) * (p.y - p.oy));
+      var v = Math.min(1, strain * 0.15);
+      var ch = p.pinned ? '=' : (v > 0.5 ? '#' : (v > 0.2 ? '+' : '.'));
+      var hue = (200 - v * 200) | 0;
+      if (hue < 0) hue += 360;
+      drawCharHSL(ch, sx, sy, hue, 70, (20 + v * 35) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: dla — Diffusion-Limited Aggregation
+// ============================================================
+var dlaGrid, dlaAge, dlaWalkers, dlaW, dlaH, dlaMaxAge;
+function initDla() {
+  dlaW = COLS; dlaH = ROWS;
+  dlaGrid = new Uint8Array(dlaW * dlaH);
+  dlaAge = new Float32Array(dlaW * dlaH);
+  dlaMaxAge = 1;
+  // Seed center
+  var cx = (dlaW / 2) | 0, cy = (dlaH / 2) | 0;
+  dlaGrid[cy * dlaW + cx] = 1;
+  dlaAge[cy * dlaW + cx] = 0;
+  // Walkers
+  dlaWalkers = [];
+  var numW = isMobile ? 300 : 500;
+  for (var i = 0; i < numW; i++) {
+    dlaWalkers.push({x: (Math.random() * dlaW) | 0, y: (Math.random() * dlaH) | 0});
+  }
+}
+initDla();
+
+function renderDla() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (dlaW !== W || dlaH !== H) initDla();
+  // Click adds seeds
+  if (pointer.clicked && currentMode === 'dla') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      dlaGrid[gy * W + gx] = 1;
+      dlaAge[gy * W + gx] = dlaMaxAge;
+      dlaMaxAge++;
+    }
+  }
+  // Walk and stick
+  for (var i = 0; i < dlaWalkers.length; i++) {
+    var w = dlaWalkers[i];
+    for (var s = 0; s < 5; s++) {
+      var dir = (Math.random() * 4) | 0;
+      var nx = w.x + (dir === 0 ? -1 : dir === 1 ? 1 : 0);
+      var ny = w.y + (dir === 2 ? -1 : dir === 3 ? 1 : 0);
+      if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+      // Check neighbors for aggregate
+      var stuck = false;
+      for (var d = 0; d < 4; d++) {
+        var ax = nx + (d === 0 ? -1 : d === 1 ? 1 : 0);
+        var ay = ny + (d === 2 ? -1 : d === 3 ? 1 : 0);
+        if (ax >= 0 && ax < W && ay >= 0 && ay < H && dlaGrid[ay * W + ax]) {
+          stuck = true; break;
+        }
+      }
+      if (stuck && !dlaGrid[ny * W + nx]) {
+        dlaGrid[ny * W + nx] = 1;
+        dlaAge[ny * W + nx] = dlaMaxAge;
+        dlaMaxAge++;
+        // Respawn walker
+        w.x = (Math.random() * W) | 0;
+        w.y = (Math.random() * H) | 0;
+        break;
+      }
+      w.x = nx; w.y = ny;
+    }
+  }
+  // Draw aggregate
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (!dlaGrid[y * W + x]) continue;
+      var age = dlaAge[y * W + x] / (dlaMaxAge + 1);
+      var ri = Math.min(RAMP_DENSE.length - 1, (0.3 + age * 0.7) * RAMP_DENSE.length | 0);
+      var ch = RAMP_DENSE[ri];
+      var hue = (age * 300 + 30) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 70, (20 + age * 40) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: slime — Physarum slime mold (PERF STRESS TEST)
+// ============================================================
+var slimeAgents, slimeTrail, slimeW, slimeH;
+function initSlime() {
+  slimeW = COLS; slimeH = ROWS;
+  slimeTrail = new Float32Array(slimeW * slimeH);
+  var numAgents = isMobile ? 5000 : 8000;
+  slimeAgents = [];
+  var cx = slimeW * 0.5, cy = slimeH * 0.5;
+  for (var i = 0; i < numAgents; i++) {
+    var ang = Math.random() * Math.PI * 2;
+    var r = Math.random() * Math.min(slimeW, slimeH) * 0.3;
+    slimeAgents.push({
+      x: cx + Math.cos(ang) * r,
+      y: cy + Math.sin(ang) * r,
+      angle: Math.random() * Math.PI * 2
+    });
+  }
+}
+initSlime();
+
+function renderSlime() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (slimeW !== W || slimeH !== H) initSlime();
+  var sensorDist = 3, sensorAngle = 0.5, turnSpeed = 0.4, moveSpeed = 0.8;
+  // Pointer deposits attractant
+  if (pointer.down && currentMode === 'slime') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    for (var dy = -3; dy <= 3; dy++) {
+      for (var dx = -3; dx <= 3; dx++) {
+        var nx = gx + dx, ny = gy + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          slimeTrail[ny * W + nx] = Math.min(1, slimeTrail[ny * W + nx] + 0.5);
+        }
+      }
+    }
+  }
+  // Update agents
+  for (var i = 0; i < slimeAgents.length; i++) {
+    var a = slimeAgents[i];
+    // Sense at 3 angles
+    var fl = 0, fc = 0, fr = 0;
+    var slx = (a.x + Math.cos(a.angle - sensorAngle) * sensorDist) | 0;
+    var sly = (a.y + Math.sin(a.angle - sensorAngle) * sensorDist) | 0;
+    if (slx >= 0 && slx < W && sly >= 0 && sly < H) fl = slimeTrail[sly * W + slx];
+    var scx = (a.x + Math.cos(a.angle) * sensorDist) | 0;
+    var scy = (a.y + Math.sin(a.angle) * sensorDist) | 0;
+    if (scx >= 0 && scx < W && scy >= 0 && scy < H) fc = slimeTrail[scy * W + scx];
+    var srx = (a.x + Math.cos(a.angle + sensorAngle) * sensorDist) | 0;
+    var sry = (a.y + Math.sin(a.angle + sensorAngle) * sensorDist) | 0;
+    if (srx >= 0 && srx < W && sry >= 0 && sry < H) fr = slimeTrail[sry * W + srx];
+    // Turn
+    if (fc > fl && fc > fr) { /* go straight */ }
+    else if (fl > fr) a.angle -= turnSpeed * (0.5 + Math.random() * 0.5);
+    else if (fr > fl) a.angle += turnSpeed * (0.5 + Math.random() * 0.5);
+    else a.angle += (Math.random() - 0.5) * turnSpeed;
+    // Move
+    a.x += Math.cos(a.angle) * moveSpeed;
+    a.y += Math.sin(a.angle) * moveSpeed;
+    // Wrap
+    if (a.x < 0) { a.x = W - 1; a.angle = Math.random() * Math.PI * 2; }
+    if (a.x >= W) { a.x = 0; a.angle = Math.random() * Math.PI * 2; }
+    if (a.y < 0) { a.y = H - 1; a.angle = Math.random() * Math.PI * 2; }
+    if (a.y >= H) { a.y = 0; a.angle = Math.random() * Math.PI * 2; }
+    // Deposit
+    var ix = a.x | 0, iy = a.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      slimeTrail[iy * W + ix] = Math.min(1, slimeTrail[iy * W + ix] + 0.05);
+    }
+  }
+  // 3x3 diffusion + decay
+  var next = new Float32Array(W * H);
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      var sum = 0;
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          sum += slimeTrail[idx + dy * W + dx];
+        }
+      }
+      next[idx] = sum / 9 * 0.95;
+    }
+  }
+  slimeTrail = next;
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = slimeTrail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      drawCharHSL(ch, x, y, (80 + v * 60) | 0, 80, (10 + v * 50) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: reaction — Gray-Scott reaction-diffusion (PERF STRESS TEST)
+// ============================================================
+var rxnU, rxnV, rxnW, rxnH;
+function initReaction() {
+  rxnW = COLS; rxnH = ROWS;
+  var sz = rxnW * rxnH;
+  rxnU = new Float32Array(sz).fill(1);
+  rxnV = new Float32Array(sz);
+  // Seed some spots of V
+  for (var i = 0; i < 12; i++) {
+    var cx = (Math.random() * rxnW) | 0;
+    var cy = (Math.random() * rxnH) | 0;
+    for (var dy = -3; dy <= 3; dy++) {
+      for (var dx = -3; dx <= 3; dx++) {
+        var nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < rxnW && ny >= 0 && ny < rxnH) {
+          rxnV[ny * rxnW + nx] = 0.5 + Math.random() * 0.25;
+          rxnU[ny * rxnW + nx] = 0.25;
+        }
+      }
+    }
+  }
+}
+initReaction();
+
+function renderReaction() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (rxnW !== W || rxnH !== H) initReaction();
+  var f = 0.055, k = 0.062, Du = 0.21, Dv = 0.105;
+  // Click injects V
+  if (pointer.down && currentMode === 'reaction') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        var nx = gx + dx, ny = gy + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          rxnV[ny * W + nx] = 0.5;
+          rxnU[ny * W + nx] = 0.25;
+        }
+      }
+    }
+    // Pointer shifts params locally
+    f = 0.03 + (pointer.gx / W) * 0.05;
+    k = 0.04 + (pointer.gy / H) * 0.04;
+  }
+  // 2 substeps per frame
+  for (var sub = 0; sub < 2; sub++) {
+    var nextU = new Float32Array(W * H);
+    var nextV = new Float32Array(W * H);
+    for (var y = 1; y < H - 1; y++) {
+      for (var x = 1; x < W - 1; x++) {
+        var idx = y * W + x;
+        var u = rxnU[idx], v = rxnV[idx];
+        var lapU = rxnU[idx - 1] + rxnU[idx + 1] + rxnU[idx - W] + rxnU[idx + W] - 4 * u;
+        var lapV = rxnV[idx - 1] + rxnV[idx + 1] + rxnV[idx - W] + rxnV[idx + W] - 4 * v;
+        var uvv = u * v * v;
+        nextU[idx] = u + Du * lapU - uvv + f * (1 - u);
+        nextV[idx] = v + Dv * lapV + uvv - (f + k) * v;
+      }
+    }
+    rxnU = nextU;
+    rxnV = nextV;
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = rxnV[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * 2 * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[Math.min(ri, RAMP_DENSE.length - 1)];
+      var u = rxnU[y * W + x];
+      var hue = (200 + v * 160) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 70, (10 + v * 60) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: nbody — N-body gravitational sim (PERF STRESS TEST)
+// ============================================================
+var nbodyParts, nbodyTrail, nbodyW, nbodyH;
+function initNbody() {
+  nbodyW = COLS; nbodyH = ROWS;
+  nbodyTrail = new Float32Array(nbodyW * nbodyH);
+  var num = isMobile ? 100 : 150;
+  nbodyParts = [];
+  var cx = nbodyW * 0.5, cy = nbodyH * 0.5;
+  for (var i = 0; i < num; i++) {
+    var ang = Math.random() * Math.PI * 2;
+    var r = 5 + Math.random() * Math.min(nbodyW, nbodyH) * 0.3;
+    var speed = 0.4 / Math.sqrt(r * 0.1 + 1);
+    nbodyParts.push({
+      x: cx + Math.cos(ang) * r,
+      y: cy + Math.sin(ang) * r,
+      vx: -Math.sin(ang) * speed,
+      vy: Math.cos(ang) * speed,
+      mass: 0.5 + Math.random() * 1.5
+    });
+  }
+}
+initNbody();
+
+function renderNbody() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (nbodyW !== W || nbodyH !== H) initNbody();
+  // Decay trail
+  for (var i = 0; i < nbodyTrail.length; i++) nbodyTrail[i] *= 0.92;
+  // Click spawns massive body
+  if (pointer.clicked && currentMode === 'nbody') {
+    nbodyParts.push({
+      x: pointer.gx, y: pointer.gy,
+      vx: 0, vy: 0, mass: 10
+    });
+  }
+  var softening = 2.0;
+  var G = 0.05;
+  var n = nbodyParts.length;
+  // O(N^2) force computation
+  for (var i = 0; i < n; i++) {
+    var pi = nbodyParts[i];
+    var ax = 0, ay = 0;
+    for (var j = 0; j < n; j++) {
+      if (i === j) continue;
+      var pj = nbodyParts[j];
+      var dx = pj.x - pi.x, dy = pj.y - pi.y;
+      var d2 = dx * dx + dy * dy + softening * softening;
+      var inv = G * pj.mass / (d2 * Math.sqrt(d2));
+      ax += dx * inv;
+      ay += dy * inv;
+    }
+    // Pointer attraction
+    if (pointer.down && currentMode === 'nbody') {
+      var dx = pointer.gx - pi.x, dy = pointer.gy - pi.y;
+      var d2 = dx * dx + dy * dy + 4;
+      var inv = 2.0 / (d2 * Math.sqrt(d2));
+      ax += dx * inv;
+      ay += dy * inv;
+    }
+    pi.vx += ax;
+    pi.vy += ay;
+  }
+  // Leapfrog integration + trail
+  for (var i = 0; i < n; i++) {
+    var p = nbodyParts[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    // Wrap
+    if (p.x < 0) p.x += W;
+    if (p.x >= W) p.x -= W;
+    if (p.y < 0) p.y += H;
+    if (p.y >= H) p.y -= H;
+    var ix = p.x | 0, iy = p.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      nbodyTrail[iy * W + ix] = Math.min(1, nbodyTrail[iy * W + ix] + 0.2 * p.mass);
+    }
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = nbodyTrail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      drawCharHSL(ch, x, y, (40 + v * 30) | 0, 80, (10 + v * 50) | 0);
+    }
+  }
+}
+
+// ============================================================
+// MODE: ants — Ant colony foraging
+// ============================================================
+var antsArr, antFood, antNest, antWalls, antPheroFood, antPheroHome, antW, antH;
+function initAnts() {
+  antW = COLS; antH = ROWS;
+  var sz = antW * antH;
+  antPheroFood = new Float32Array(sz);
+  antPheroHome = new Float32Array(sz);
+  antWalls = new Uint8Array(sz);
+  // Nest at center-left
+  antNest = {x: (antW * 0.2) | 0, y: (antH * 0.5) | 0};
+  // Food sources
+  antFood = [];
+  antFood.push({x: (antW * 0.8) | 0, y: (antH * 0.3) | 0, amount: 500});
+  antFood.push({x: (antW * 0.7) | 0, y: (antH * 0.7) | 0, amount: 500});
+  antFood.push({x: (antW * 0.5) | 0, y: (antH * 0.2) | 0, amount: 500});
+  var numAnts = isMobile ? 200 : 300;
+  antsArr = [];
+  for (var i = 0; i < numAnts; i++) {
+    antsArr.push({
+      x: antNest.x + (Math.random() - 0.5) * 4,
+      y: antNest.y + (Math.random() - 0.5) * 4,
+      angle: Math.random() * Math.PI * 2,
+      hasFood: false
+    });
+  }
+}
+initAnts();
+
+function renderAnts() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (antW !== W || antH !== H) initAnts();
+  // Click places food
+  if (pointer.clicked && currentMode === 'ants') {
+    antFood.push({x: Math.floor(pointer.gx), y: Math.floor(pointer.gy), amount: 300});
+  }
+  // Drag draws walls
+  if (pointer.down && !pointer.clicked && currentMode === 'ants') {
+    var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) antWalls[gy * W + gx] = 1;
+  }
+  // Pheromone evaporation + diffusion
+  var nextF = new Float32Array(W * H);
+  var nextH = new Float32Array(W * H);
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      if (antWalls[idx]) continue;
+      var sf = 0, sh = 0;
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          var ni = idx + dy * W + dx;
+          sf += antPheroFood[ni];
+          sh += antPheroHome[ni];
+        }
+      }
+      nextF[idx] = sf / 9 * 0.97;
+      nextH[idx] = sh / 9 * 0.97;
+    }
+  }
+  antPheroFood = nextF;
+  antPheroHome = nextH;
+  // Update ants
+  var sensorDist = 2, sensorAngle = 0.5;
+  for (var i = 0; i < antsArr.length; i++) {
+    var a = antsArr[i];
+    var phero = a.hasFood ? antPheroHome : antPheroFood;
+    // Sense 3 directions
+    var fl = 0, fc = 0, fr = 0;
+    var lx = (a.x + Math.cos(a.angle - sensorAngle) * sensorDist) | 0;
+    var ly = (a.y + Math.sin(a.angle - sensorAngle) * sensorDist) | 0;
+    if (lx >= 0 && lx < W && ly >= 0 && ly < H) fl = phero[ly * W + lx];
+    var cx2 = (a.x + Math.cos(a.angle) * sensorDist) | 0;
+    var cy2 = (a.y + Math.sin(a.angle) * sensorDist) | 0;
+    if (cx2 >= 0 && cx2 < W && cy2 >= 0 && cy2 < H) fc = phero[cy2 * W + cx2];
+    var rx = (a.x + Math.cos(a.angle + sensorAngle) * sensorDist) | 0;
+    var ry = (a.y + Math.sin(a.angle + sensorAngle) * sensorDist) | 0;
+    if (rx >= 0 && rx < W && ry >= 0 && ry < H) fr = phero[ry * W + rx];
+    // Turn toward strongest
+    if (fc >= fl && fc >= fr) a.angle += (Math.random() - 0.5) * 0.2;
+    else if (fl > fr) a.angle -= 0.3;
+    else a.angle += 0.3;
+    a.angle += (Math.random() - 0.5) * 0.3;
+    // Move
+    var nx = a.x + Math.cos(a.angle) * 0.8;
+    var ny = a.y + Math.sin(a.angle) * 0.8;
+    var nxi = nx | 0, nyi = ny | 0;
+    if (nxi < 0 || nxi >= W || nyi < 0 || nyi >= H || antWalls[nyi * W + nxi]) {
+      a.angle += Math.PI * (0.5 + Math.random());
+    } else {
+      a.x = nx; a.y = ny;
+    }
+    // Deposit pheromone
+    var ix = a.x | 0, iy = a.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      if (a.hasFood) {
+        antPheroFood[iy * W + ix] = Math.min(1, antPheroFood[iy * W + ix] + 0.1);
+      } else {
+        antPheroHome[iy * W + ix] = Math.min(1, antPheroHome[iy * W + ix] + 0.05);
+      }
+    }
+    // Check food pickup
+    if (!a.hasFood) {
+      for (var f = 0; f < antFood.length; f++) {
+        var fd = antFood[f];
+        if (fd.amount <= 0) continue;
+        var dx = a.x - fd.x, dy = a.y - fd.y;
+        if (dx * dx + dy * dy < 4) {
+          a.hasFood = true;
+          fd.amount--;
+          a.angle += Math.PI;
+          break;
+        }
+      }
+    }
+    // Check nest delivery
+    if (a.hasFood) {
+      var dx = a.x - antNest.x, dy = a.y - antNest.y;
+      if (dx * dx + dy * dy < 4) {
+        a.hasFood = false;
+        a.angle += Math.PI;
+      }
+    }
+  }
+  // Draw pheromones
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      if (antWalls[idx]) { drawChar('#', x, y, 80, 60, 40, 0.6); continue; }
+      var vf = antPheroFood[idx], vh = antPheroHome[idx];
+      var v = Math.max(vf, vh);
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      if (vf > vh) {
+        drawChar(RAMP_SOFT[ri], x, y, 50, (100 + vf * 155) | 0, 50, Math.min(1, v * 3));
+      } else {
+        drawChar(RAMP_SOFT[ri], x, y, 50, 80, (100 + vh * 155) | 0, Math.min(1, v * 3));
+      }
+    }
+  }
+  // Draw food sources
+  for (var f = 0; f < antFood.length; f++) {
+    var fd = antFood[f];
+    if (fd.amount <= 0) continue;
+    drawChar('F', fd.x, fd.y, 255, 200, 50, 1);
+  }
+  // Draw nest
+  drawChar('N', antNest.x, antNest.y, 200, 100, 255, 1);
+  // Draw ants
+  for (var i = 0; i < antsArr.length; i++) {
+    var a = antsArr[i];
+    var ix = a.x | 0, iy = a.y | 0;
+    if (ix >= 0 && ix < W && iy >= 0 && iy < H) {
+      if (a.hasFood) {
+        drawChar('o', ix, iy, 255, 200, 50, 0.9);
+      } else {
+        drawChar('.', ix, iy, 200, 150, 100, 0.7);
+      }
+    }
+  }
+}
+
+// ============================================================
+// MODE: strange — Strange attractor gallery
+// ============================================================
+var strangeDensity, strangeW, strangeH, strangeType, strangeTimer;
+function initStrange() {
+  strangeW = COLS; strangeH = ROWS;
+  strangeDensity = new Float32Array(strangeW * strangeH);
+  strangeType = 0;
+  strangeTimer = 0;
+}
+initStrange();
+
+function renderStrange() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (strangeW !== W || strangeH !== H) initStrange();
+  strangeTimer += 0.016;
+  if (strangeTimer > 8) { strangeTimer = 0; strangeType = (strangeType + 1) % 5; strangeDensity = new Float32Array(W * H); }
+  // Decay
+  for (var i = 0; i < strangeDensity.length; i++) strangeDensity[i] *= 0.96;
+  // Pointer controls 3D rotation
+  var rotX = pointer.down && currentMode === 'strange' ? (pointer.gy / H - 0.5) * 2 : Math.sin(time * 0.3) * 0.5;
+  var rotY = pointer.down && currentMode === 'strange' ? (pointer.gx / W - 0.5) * 2 : time * 0.2;
+  var steps = isMobile ? 3000 : 5000;
+  // Integrate attractor
+  var x = 0.1, y = 0.1, z = 0.1;
+  var dt = 0.005;
+  for (var s = 0; s < steps; s++) {
+    var dx, dy, dz;
+    if (strangeType === 0) {
+      // Rossler
+      var a = 0.2, b = 0.2, c = 5.7;
+      dx = (-y - z) * dt;
+      dy = (x + a * y) * dt;
+      dz = (b + z * (x - c)) * dt;
+    } else if (strangeType === 1) {
+      // Aizawa
+      var a = 0.95, b = 0.7, c = 0.6, d = 3.5, e = 0.25, f = 0.1;
+      dx = ((z - b) * x - d * y) * dt;
+      dy = (d * x + (z - b) * y) * dt;
+      dz = (c + a * z - z * z * z / 3 - (x * x + y * y) * (1 + e * z) + f * z * x * x * x) * dt;
+    } else if (strangeType === 2) {
+      // Thomas
+      var b = 0.208186;
+      dx = (Math.sin(y) - b * x) * dt * 2;
+      dy = (Math.sin(z) - b * y) * dt * 2;
+      dz = (Math.sin(x) - b * z) * dt * 2;
+    } else if (strangeType === 3) {
+      // Halvorsen
+      var a = 1.89;
+      dx = (-a * x - 4 * y - 4 * z - y * y) * dt * 0.3;
+      dy = (-a * y - 4 * z - 4 * x - z * z) * dt * 0.3;
+      dz = (-a * z - 4 * x - 4 * y - x * x) * dt * 0.3;
+    } else {
+      // Dadras
+      var p = 3, q = 2.7, r = 1.7, s2 = 2, e = 9;
+      dx = (y - p * x + q * y * z) * dt * 0.3;
+      dy = (r * y - x * z + z) * dt * 0.3;
+      dz = (s2 * x * y - e * z) * dt * 0.3;
+    }
+    x += dx; y += dy; z += dz;
+    // Apply rotation
+    var rx = x * Math.cos(rotY) - z * Math.sin(rotY);
+    var rz = x * Math.sin(rotY) + z * Math.cos(rotY);
+    var ry = y * Math.cos(rotX) - rz * Math.sin(rotX);
+    // Project to screen
+    var scale = Math.min(W, H) * 0.15;
+    var sx = ((rx * scale) + W * 0.5) | 0;
+    var sy = ((ry * scale) + H * 0.5) | 0;
+    if (sx >= 0 && sx < W && sy >= 0 && sy < H) {
+      strangeDensity[sy * W + sx] = Math.min(1, strangeDensity[sy * W + sx] + 0.01);
+    }
+  }
+  // Draw
+  var hueBase = strangeType * 72;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = strangeDensity[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var ch = RAMP_DENSE[ri];
+      drawCharHSL(ch, x, y, (hueBase + v * 60) | 0, 80, (10 + v * 55) | 0);
+    }
+  }
+  // Show attractor name
+  var names = ['Rossler', 'Aizawa', 'Thomas', 'Halvorsen', 'Dadras'];
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.fillText(names[strangeType], 6, NAV_H + 12);
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+}
+
+// ============================================================
+// MODE: mandel — Progressive Mandelbrot zoom
+// ============================================================
+var mandelCx, mandelCy, mandelZoom, mandelIter, mandelImage, mandelW, mandelH, mandelDirty;
+function initMandel() {
+  mandelW = COLS; mandelH = ROWS;
+  mandelCx = -0.745428; mandelCy = 0.113009;
+  mandelZoom = 0.25;
+  mandelImage = new Float32Array(mandelW * mandelH);
+  mandelDirty = true;
+  mandelIter = 0;
+}
+initMandel();
+
+function mandelCompute() {
+  var W = mandelW, H = mandelH;
+  var aspect = W / H * 0.5;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var cr = mandelCx + (x / W - 0.5) * mandelZoom * aspect;
+      var ci = mandelCy + (y / H - 0.5) * mandelZoom;
+      var zr = 0, zi = 0, iter = 0, maxIter = 150;
+      while (zr * zr + zi * zi < 4 && iter < maxIter) {
+        var tr = zr * zr - zi * zi + cr;
+        zi = 2 * zr * zi + ci;
+        zr = tr;
+        iter++;
+      }
+      if (iter === maxIter) {
+        mandelImage[y * W + x] = 0;
+      } else {
+        // Smooth coloring
+        var log2 = Math.log(2);
+        var nu = Math.log(Math.log(Math.sqrt(zr * zr + zi * zi)) / log2) / log2;
+        mandelImage[y * W + x] = (iter + 1 - nu) / maxIter;
+      }
+    }
+  }
+}
+
+function renderMandel() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (mandelW !== W || mandelH !== H) initMandel();
+  // Click sets center
+  if (pointer.clicked && currentMode === 'mandel') {
+    var aspect = W / H * 0.5;
+    mandelCx += (pointer.gx / W - 0.5) * mandelZoom * aspect;
+    mandelCy += (pointer.gy / H - 0.5) * mandelZoom;
+    mandelZoom *= 0.5;
+    mandelDirty = true;
+  }
+  // Hold zooms faster (auto-zoom)
+  if (pointer.down && !pointer.clicked && currentMode === 'mandel') {
+    mandelZoom *= 0.995;
+    mandelDirty = true;
+  }
+  // Auto zoom toward interesting boundary
+  if (!pointer.down) {
+    mandelZoom *= 0.9995;
+    mandelDirty = true;
+  }
+  if (mandelDirty) {
+    mandelCompute();
+    mandelDirty = false;
+  }
+  // Draw
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = mandelImage[y * W + x];
+      if (v < 0.005) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length * 2) | 0);
+      if (ri >= RAMP_DENSE.length) ri = RAMP_DENSE.length - 1;
+      var ch = RAMP_DENSE[ri];
+      var hue = (v * 720 + time * 20) % 360;
+      drawCharHSL(ch, x, y, hue | 0, 80, (5 + v * 55) | 0);
+    }
+  }
+  // Show zoom level
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.fillText('zoom: ' + (3.5 / mandelZoom).toFixed(1) + 'x', 6, NAV_H + 12);
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+}
+
+// ============================================================
+// MODE: storm — Multi-bolt lightning storm
+// ============================================================
+var stormBolts, stormFlash, stormCloud, stormGlow, stormW, stormH, stormTimer;
+function initStorm() {
+  stormW = COLS; stormH = ROWS;
+  stormBolts = [];
+  stormFlash = 0;
+  stormCloud = new Float32Array(stormW);
+  stormGlow = new Float32Array(stormW * stormH);
+  stormTimer = 0;
+  // Init cloud layer
+  for (var x = 0; x < stormW; x++) {
+    stormCloud[x] = 0.3 + Math.random() * 0.7;
+  }
+}
+initStorm();
+
+function stormGenBolt(startX, startY) {
+  var points = [{x: startX, y: startY}];
+  var x = startX, y = startY;
+  var branches = [];
+  while (y < stormH - 1) {
+    y += 1 + Math.random() * 0.5;
+    x += (Math.random() - 0.5) * 3;
+    points.push({x: x | 0, y: y | 0});
+    // Branch randomly
+    if (Math.random() < 0.15 && branches.length < 4) {
+      var bx = x, by = y;
+      var branchPts = [{x: bx | 0, y: by | 0}];
+      for (var b = 0; b < 5 + Math.random() * 8; b++) {
+        by += 1 + Math.random() * 0.5;
+        bx += (Math.random() - 0.5) * 4;
+        branchPts.push({x: bx | 0, y: by | 0});
+      }
+      branches.push(branchPts);
+    }
+  }
+  return {points: points, branches: branches, age: 0, maxAge: 0.4 + Math.random() * 0.3};
+}
+
+function renderStorm() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (stormW !== W || stormH !== H) initStorm();
+  stormTimer += 0.016;
+  // Decay glow
+  for (var i = 0; i < stormGlow.length; i++) stormGlow[i] *= 0.85;
+  // Spawn bolts periodically or on click
+  if (Math.random() < 0.06 || (pointer.clicked && currentMode === 'storm')) {
+    var sx = pointer.down && currentMode === 'storm' ? pointer.gx : Math.random() * W;
+    stormBolts.push(stormGenBolt(sx | 0, 3));
+    stormFlash = 1;
+  }
+  // Update cloud noise
+  for (var x = 0; x < W; x++) {
+    stormCloud[x] = 0.3 + Math.sin(x * 0.1 + time * 0.5) * 0.2 + Math.sin(x * 0.23 + time * 0.3) * 0.15;
+  }
+  // Draw clouds (top rows)
+  var cloudRows = Math.min(5, H);
+  for (var y = 0; y < cloudRows; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = stormCloud[x] * (1 - y / cloudRows);
+      if (v < 0.02) continue;
+      var ch = RAMP_SOFT[Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0)];
+      var flash = stormFlash * 0.5;
+      var bright = (30 + v * 40 + flash * 50) | 0;
+      drawCharHSL(ch, x, y, 230, 30, bright);
+    }
+  }
+  // Update and draw bolts
+  for (var b = stormBolts.length - 1; b >= 0; b--) {
+    var bolt = stormBolts[b];
+    bolt.age += 0.016;
+    if (bolt.age > bolt.maxAge) { stormBolts.splice(b, 1); continue; }
+    var fade = 1 - bolt.age / bolt.maxAge;
+    // Draw main bolt
+    for (var p = 0; p < bolt.points.length; p++) {
+      var pt = bolt.points[p];
+      if (pt.x >= 0 && pt.x < W && pt.y >= 0 && pt.y < H) {
+        stormGlow[pt.y * W + pt.x] = Math.min(1, stormGlow[pt.y * W + pt.x] + fade);
+        var ch = bolt.age < 0.05 ? '#' : (fade > 0.5 ? '|' : ':');
+        drawChar(ch, pt.x, pt.y, (200 + fade * 55) | 0, (200 + fade * 55) | 0, 255, fade);
+      }
+    }
+    // Draw branches
+    for (var br = 0; br < bolt.branches.length; br++) {
+      var branch = bolt.branches[br];
+      for (var p = 0; p < branch.length; p++) {
+        var pt = branch[p];
+        if (pt.x >= 0 && pt.x < W && pt.y >= 0 && pt.y < H) {
+          stormGlow[pt.y * W + pt.x] = Math.min(1, stormGlow[pt.y * W + pt.x] + fade * 0.5);
+          drawChar(':', pt.x, pt.y, 150, 180, 255, fade * 0.7);
+        }
+      }
+    }
+  }
+  // Draw afterglow
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = stormGlow[y * W + x];
+      if (v < 0.05) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length * 0.5) | 0);
+      drawChar(RAMP_SOFT[ri], x, y, 100, 120, (180 + v * 75) | 0, v * 0.4);
+    }
+  }
+  // Flash decay
+  stormFlash *= 0.85;
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -5308,33 +7052,44 @@ var renderers = {
   propfont: renderPropfont, brightmatch: renderBrightmatch, smoothfluid: renderSmoothfluid,
   vidascii: renderVidascii, vidcow: renderVidcow, vidscenes: renderVidscenes,
   vidfootball: renderVidfootball, vidclowns: renderVidclowns,
-  vidneon: renderVidneon
+  vidneon: renderVidneon,
+  terrain: renderTerrain, tunnel: renderTunnel, noise: renderNoise,
+  interference: renderInterference, automata: renderAutomata, maze: renderMaze,
+  langton: renderLangton, wave2d: renderWave2d, heat: renderHeat,
+  lorenz: renderLorenz, galaxy: renderGalaxy, cloth: renderCloth,
+  dla: renderDla, slime: renderSlime, reaction: renderReaction,
+  nbody: renderNbody, ants: renderAnts, strange: renderStrange,
+  mandel: renderMandel, storm: renderStorm
 };
 
-// Glow pass — downscaled for performance on mobile
-var glowCanvas = document.createElement('canvas');
+// Glow pass — CSS-based for GPU acceleration
+var glowCanvas = document.getElementById('glow');
 var glowCtx = glowCanvas.getContext('2d');
 var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
-var GLOW_SCALE = isMobile ? 0.15 : 0.35;
+var GLOW_SCALE = isMobile ? 0.2 : 0.4;
+var currentGlowBlur = -1;
+
+function updateGlowCSS(blur) {
+  var blurAmt = isMobile ? Math.max(4, blur * 0.5) : blur * 0.7;
+  if (blurAmt !== currentGlowBlur) {
+    currentGlowBlur = blurAmt;
+    glowCanvas.style.filter = 'blur(' + blurAmt + 'px)';
+  }
+}
 
 function applyGlow() {
   var g = glows[currentMode];
+  updateGlowCSS(g.blur);
   var gw = (canvas.width * GLOW_SCALE) | 0;
   var gh = (canvas.height * GLOW_SCALE) | 0;
   if (glowCanvas.width !== gw || glowCanvas.height !== gh) {
     glowCanvas.width = gw;
     glowCanvas.height = gh;
+    // Re-apply CSS filter after canvas resize clears it
+    currentGlowBlur = -1;
+    updateGlowCSS(g.blur);
   }
-  var blurAmt = isMobile ? Math.max(3, g.blur * 0.4) : g.blur * 0.6;
-  glowCtx.clearRect(0, 0, gw, gh);
-  glowCtx.filter = 'blur(' + blurAmt + 'px)';
   glowCtx.drawImage(canvas, 0, 0, gw, gh);
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = 0.5;
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.drawImage(glowCanvas, 0, 0, canvas.width, canvas.height);
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
 }
 
 var lastTime = 0;
@@ -5419,10 +7174,45 @@ function switchMode(mode) {
   if (mode === 'vidfootball') initVidfootball();
   if (mode === 'vidclowns') initVidclowns();
   if (mode === 'vidneon') initVidneon();
+  if (mode === 'terrain') initTerrain();
+  if (mode === 'tunnel') initTunnel();
+  if (mode === 'noise') initNoise();
+  if (mode === 'interference') initInterference();
+  if (mode === 'automata') initAutomata();
+  if (mode === 'maze') initMaze();
+  if (mode === 'langton') initLangton();
+  if (mode === 'wave2d') initWave2d();
+  if (mode === 'heat') initHeat();
+  if (mode === 'lorenz') initLorenz();
+  if (mode === 'galaxy') initGalaxy();
+  if (mode === 'cloth') initCloth();
+  if (mode === 'dla') initDla();
+  if (mode === 'slime') initSlime();
+  if (mode === 'reaction') initReaction();
+  if (mode === 'nbody') initNbody();
+  if (mode === 'ants') initAnts();
+  if (mode === 'strange') initStrange();
+  if (mode === 'mandel') initMandel();
+  if (mode === 'storm') initStorm();
 }
 
 buttons.forEach(function(b) {
   b.addEventListener('click', function() { switchMode(b.dataset.mode); scrollNavToMode(b.dataset.mode); });
+});
+
+// Random mode picker
+function getRandomMode() {
+  var modeKeys = Object.keys(renderers);
+  // Exclude vid modes that need user input
+  var filtered = modeKeys.filter(function(m) { return m !== 'vidascii'; });
+  return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
+// Logo click → random mode
+document.getElementById('logo-btn').addEventListener('click', function() {
+  var mode = getRandomMode();
+  switchMode(mode);
+  scrollNavToMode(mode);
 });
 
 // URL-based mode routing
@@ -5431,7 +7221,7 @@ function getModeFromPath() {
   var parts = path.split('/');
   var last = parts[parts.length - 1];
   if (last && renderers[last]) return last;
-  return 'lava';
+  return getRandomMode();
 }
 
 function updateURL(mode) {
@@ -5452,6 +7242,13 @@ function scrollNavToMode(mode, instant) {
     nav.scrollTo({ left: Math.max(0, scrollLeft), behavior: instant ? 'instant' : 'smooth' });
   }
 }
+
+// Mouse wheel horizontal scrolling on nav bar (desktop)
+var navEl = document.querySelector('nav');
+navEl.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  navEl.scrollLeft += e.deltaY || e.deltaX;
+}, { passive: false });
 
 // Wait for font to load before starting
 document.fonts.ready.then(function() {
