@@ -147,6 +147,16 @@
     color: rgba(255,255,255,0.6);
     pointer-events: none;
   }
+  #version {
+    position: fixed;
+    bottom: 2px;
+    right: 6px;
+    z-index: 200;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: rgba(255,255,255,0.35);
+    pointer-events: none;
+  }
 
   @keyframes navFadeIn {
     from { opacity: 0; transform: translateY(-4px); }
@@ -162,6 +172,7 @@
 <body>
 
 <div id="fps"></div>
+<div id="version">v0.1.92</div>
 <nav>
   <span class="logo" id="logo-btn" style="cursor:pointer">textflow</span>
   <div class="nav-buttons">
