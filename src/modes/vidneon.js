@@ -22,7 +22,7 @@ vidNeonEl.onloadeddata = function() { vidNeonReady = true; };
 function initVidneon() {
   vidNeonPaused = false;
   if (!vidNeonReady && !vidNeonEl.getAttribute('src')) {
-    vidNeonEl.src = '/static/neon.mp4';
+    vidNeonEl.src = '/textflow/static/neon.mp4';
     vidNeonEl.load();
   }
   vidNeonEl.currentTime = 0;

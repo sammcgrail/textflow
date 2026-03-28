@@ -22,7 +22,7 @@ vidScenesEl.onloadeddata = function() { vidScenesReady = true; };
 function initVidscenes() {
   vidScenesPaused = false;
   if (!vidScenesReady && !vidScenesEl.getAttribute('src')) {
-    vidScenesEl.src = '/static/scenes.mp4';
+    vidScenesEl.src = '/textflow/static/scenes.mp4';
     vidScenesEl.load();
   }
   vidScenesEl.currentTime = 0;

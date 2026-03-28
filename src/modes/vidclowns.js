@@ -22,7 +22,7 @@ vidClownsEl.onloadeddata = function() { vidClownsReady = true; };
 function initVidclowns() {
   vidClownsPaused = false;
   if (!vidClownsReady && !vidClownsEl.getAttribute('src')) {
-    vidClownsEl.src = '/static/clowns.mp4';
+    vidClownsEl.src = '/textflow/static/clowns.mp4';
     vidClownsEl.load();
   }
   vidClownsEl.currentTime = 0;

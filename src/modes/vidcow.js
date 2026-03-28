@@ -22,7 +22,7 @@ vidCowEl.onloadeddata = function() { vidCowReady = true; };
 function initVidcow() {
   vidCowPaused = false;
   if (!vidCowReady && !vidCowEl.getAttribute('src')) {
-    vidCowEl.src = '/static/strawberry-cow.mp4';
+    vidCowEl.src = '/textflow/static/strawberry-cow.mp4';
     vidCowEl.load();
   }
   vidCowEl.currentTime = 0;

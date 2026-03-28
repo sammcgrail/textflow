@@ -22,7 +22,7 @@ vidFootballEl.onloadeddata = function() { vidFootballReady = true; };
 function initVidfootball() {
   vidFootballPaused = false;
   if (!vidFootballReady && !vidFootballEl.getAttribute('src')) {
-    vidFootballEl.src = '/static/football.mp4';
+    vidFootballEl.src = '/textflow/static/football.mp4';
     vidFootballEl.load();
   }
   vidFootballEl.currentTime = 0;
