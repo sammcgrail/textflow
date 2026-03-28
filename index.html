@@ -144,16 +144,30 @@ let animId = null;
 let COLS, ROWS;
 let time = 0;
 
+// Detect mobile/Safari
+const isMobile = window.innerWidth < 768;
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+                 /iPad|iPhone|iPod/.test(navigator.userAgent);
+const TARGET_FPS = (isMobile || isSafari) ? 24 : 60;
+const FRAME_INTERVAL = 1000 / TARGET_FPS;
+let lastFrameTime = 0;
+
 // Responsive grid sizing
 function calcGrid() {
-  const fontSize = Math.max(10, Math.min(14, window.innerWidth / 90));
+  const fontSize = Math.max(8, Math.min(14, window.innerWidth / (isMobile ? 50 : 90)));
   output.style.fontSize = fontSize + 'px';
   const charW = fontSize * 0.602;
   const charH = fontSize * 1.15;
   COLS = Math.floor((window.innerWidth * 0.92) / charW);
   ROWS = Math.floor((window.innerHeight - 60) / charH);
-  COLS = Math.min(COLS, 120);
-  ROWS = Math.min(ROWS, 55);
+  // Tighter limits on mobile/Safari to prevent DOM thrashing
+  if (isMobile || isSafari) {
+    COLS = Math.min(COLS, 60);
+    ROWS = Math.min(ROWS, 35);
+  } else {
+    COLS = Math.min(COLS, 120);
+    ROWS = Math.min(ROWS, 55);
+  }
 }
 
 calcGrid();
@@ -510,10 +524,12 @@ const renderers = {
   plasma: renderPlasma,
 };
 
-function loop() {
+function loop(timestamp) {
+  animId = requestAnimationFrame(loop);
+  if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
+  lastFrameTime = timestamp;
   time += 0.016;
   renderers[currentMode]();
-  animId = requestAnimationFrame(loop);
 }
 
 function switchMode(mode) {
