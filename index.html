@@ -59,8 +59,7 @@
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    opacity: 0;
-    animation: navFadeIn 0.6s ease-out 0.1s forwards;
+    visibility: hidden;
   }
 
   nav::-webkit-scrollbar { display: none; }
@@ -5450,13 +5449,17 @@ function scrollNavToMode(mode, instant) {
 // Wait for font to load before starting
 document.fonts.ready.then(function() {
   resize();
-  // Stagger button appear animations
-  buttons.forEach(function(b, i) {
-    b.style.animationDelay = (0.1 + i * 0.02) + 's';
-  });
   var startMode = getModeFromPath();
   if (startMode !== 'lava') switchMode(startMode);
   scrollNavToMode(startMode, true);
+  // Reveal nav after scroll is positioned — no flash
+  var nav = document.querySelector('nav');
+  nav.style.visibility = 'visible';
+  nav.style.opacity = '0';
+  nav.style.animation = 'navFadeIn 0.6s ease-out forwards';
+  buttons.forEach(function(b, i) {
+    b.style.animationDelay = (0.05 + i * 0.02) + 's';
+  });
   loop();
 });
 </script>
