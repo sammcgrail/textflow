@@ -2,6 +2,7 @@ import { clearCanvas, drawChar } from '../core/draw.js';
 import { drawFancyLoading } from '../core/loading.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
+import { VA_RAMP } from '../core/ramps.js';
 
 var vidScenesEl = document.createElement('video');
 vidScenesEl.muted = true;

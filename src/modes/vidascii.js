@@ -2,6 +2,7 @@ import { clearCanvas, drawChar } from '../core/draw.js';
 import { drawFancyLoading } from '../core/loading.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
+import { VA_RAMP } from '../core/ramps.js';
 
 var vidEl = document.createElement('video');
 vidEl.muted = true;
@@ -16,7 +17,6 @@ var vidCtx = vidCanvas.getContext('2d', { willReadFrequently: true });
 var vidLoaded = false;
 var vidPlaying = false;
 var vidPaused = false;
-var VA_RAMP = ' `.-\':_,^=;><+!rc*/z?sLTv)J7(|Fi{C}fI31tlu[neoZ5Yxjya]2ESwqkP6h9d4VpOGbUAKXHm8RD#$Bg0MNWQ%&@';
 
 function initVidascii() {
   vidPaused = false;
