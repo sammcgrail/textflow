@@ -4863,20 +4863,21 @@ vidCowEl.loop = true;
 vidCowEl.playsInline = true;
 vidCowEl.crossOrigin = 'anonymous';
 vidCowEl.style.display = 'none';
-vidCowEl.src = '/textflow/static/strawberry-cow.mp4';
 document.body.appendChild(vidCowEl);
 
 var vidCowCanvas = document.createElement('canvas');
 var vidCowCtx = vidCowCanvas.getContext('2d', { willReadFrequently: true });
 var vidCowReady = false;
+var vidCowPaused = false;
 
 vidCowEl.onloadeddata = function() { vidCowReady = true; };
-vidCowEl.load();
-
-var vidCowPaused = false;
 
 function initVidcow() {
   vidCowPaused = false;
+  if (!vidCowReady && !vidCowEl.getAttribute('src')) {
+    vidCowEl.src = '/textflow/static/strawberry-cow.mp4';
+    vidCowEl.load();
+  }
   vidCowEl.currentTime = 0;
   vidCowEl.play().catch(function(){});
 }
@@ -4945,20 +4946,21 @@ vidScenesEl.loop = true;
 vidScenesEl.playsInline = true;
 vidScenesEl.crossOrigin = 'anonymous';
 vidScenesEl.style.display = 'none';
-vidScenesEl.src = '/textflow/static/scenes.mp4';
 document.body.appendChild(vidScenesEl);
 
 var vidScenesCanvas = document.createElement('canvas');
 var vidScenesCtx = vidScenesCanvas.getContext('2d', { willReadFrequently: true });
 var vidScenesReady = false;
+var vidScenesPaused = false;
 
 vidScenesEl.onloadeddata = function() { vidScenesReady = true; };
-vidScenesEl.load();
-
-var vidScenesPaused = false;
 
 function initVidscenes() {
   vidScenesPaused = false;
+  if (!vidScenesReady && !vidScenesEl.getAttribute('src')) {
+    vidScenesEl.src = '/textflow/static/scenes.mp4';
+    vidScenesEl.load();
+  }
   vidScenesEl.currentTime = 0;
   vidScenesEl.play().catch(function(){});
 }
@@ -5026,20 +5028,21 @@ vidFootballEl.loop = true;
 vidFootballEl.playsInline = true;
 vidFootballEl.crossOrigin = 'anonymous';
 vidFootballEl.style.display = 'none';
-vidFootballEl.src = '/textflow/static/football.mp4';
 document.body.appendChild(vidFootballEl);
 
 var vidFootballCanvas = document.createElement('canvas');
 var vidFootballCtx = vidFootballCanvas.getContext('2d', { willReadFrequently: true });
 var vidFootballReady = false;
+var vidFootballPaused = false;
 
 vidFootballEl.onloadeddata = function() { vidFootballReady = true; };
-vidFootballEl.load();
-
-var vidFootballPaused = false;
 
 function initVidfootball() {
   vidFootballPaused = false;
+  if (!vidFootballReady && !vidFootballEl.getAttribute('src')) {
+    vidFootballEl.src = '/textflow/static/football.mp4';
+    vidFootballEl.load();
+  }
   vidFootballEl.currentTime = 0;
   vidFootballEl.play().catch(function(){});
 }
@@ -5107,20 +5110,21 @@ vidClownsEl.loop = true;
 vidClownsEl.playsInline = true;
 vidClownsEl.crossOrigin = 'anonymous';
 vidClownsEl.style.display = 'none';
-vidClownsEl.src = '/textflow/static/clowns.mp4';
 document.body.appendChild(vidClownsEl);
 
 var vidClownsCanvas = document.createElement('canvas');
 var vidClownsCtx = vidClownsCanvas.getContext('2d', { willReadFrequently: true });
 var vidClownsReady = false;
+var vidClownsPaused = false;
 
 vidClownsEl.onloadeddata = function() { vidClownsReady = true; };
-vidClownsEl.load();
-
-var vidClownsPaused = false;
 
 function initVidclowns() {
   vidClownsPaused = false;
+  if (!vidClownsReady && !vidClownsEl.getAttribute('src')) {
+    vidClownsEl.src = '/textflow/static/clowns.mp4';
+    vidClownsEl.load();
+  }
   vidClownsEl.currentTime = 0;
   vidClownsEl.play().catch(function(){});
 }
@@ -5188,20 +5192,21 @@ vidNeonEl.loop = true;
 vidNeonEl.playsInline = true;
 vidNeonEl.crossOrigin = 'anonymous';
 vidNeonEl.style.display = 'none';
-vidNeonEl.src = '/textflow/static/neon.mp4';
 document.body.appendChild(vidNeonEl);
 
 var vidNeonCanvas = document.createElement('canvas');
 var vidNeonCtx = vidNeonCanvas.getContext('2d', { willReadFrequently: true });
 var vidNeonReady = false;
+var vidNeonPaused = false;
 
 vidNeonEl.onloadeddata = function() { vidNeonReady = true; };
-vidNeonEl.load();
-
-var vidNeonPaused = false;
 
 function initVidneon() {
   vidNeonPaused = false;
+  if (!vidNeonReady && !vidNeonEl.getAttribute('src')) {
+    vidNeonEl.src = '/textflow/static/neon.mp4';
+    vidNeonEl.load();
+  }
   vidNeonEl.currentTime = 0;
   vidNeonEl.play().catch(function(){});
 }
