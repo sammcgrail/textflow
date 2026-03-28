@@ -102,6 +102,16 @@
   <button data-mode="life">life</button>
   <button data-mode="warp">warp</button>
   <button data-mode="swirl">swirl</button>
+  <button data-mode="rift">rift</button>
+  <button data-mode="voronoi">voronoi</button>
+  <button data-mode="bolt">bolt</button>
+  <button data-mode="moire">moire</button>
+  <button data-mode="fold">fold</button>
+  <button data-mode="copper">copper</button>
+  <button data-mode="glitch">glitch</button>
+  <button data-mode="flock">flock</button>
+  <button data-mode="roto">roto</button>
+  <button data-mode="erosion">erosion</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -159,7 +169,17 @@ var glows = {
   plasma: { color: 'rgba(180,60,255,0.3)', blur: 12 },
   life:   { color: 'rgba(0,255,180,0.3)', blur: 10 },
   warp:   { color: 'rgba(200,200,255,0.3)', blur: 14 },
-  swirl:  { color: 'rgba(255,100,200,0.3)', blur: 12 }
+  swirl:  { color: 'rgba(255,100,200,0.3)', blur: 12 },
+  rift:   { color: 'rgba(0,180,255,0.3)', blur: 10 },
+  voronoi:{ color: 'rgba(255,255,200,0.25)', blur: 8 },
+  bolt:   { color: 'rgba(150,200,255,0.4)', blur: 16 },
+  moire:  { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  fold:   { color: 'rgba(255,140,0,0.35)', blur: 12 },
+  copper: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  glitch: { color: 'rgba(255,0,255,0.3)', blur: 8 },
+  flock:  { color: 'rgba(255,200,50,0.3)', blur: 10 },
+  roto:   { color: 'rgba(200,100,255,0.3)', blur: 12 },
+  erosion:{ color: 'rgba(200,180,140,0.25)', blur: 8 }
 };
 
 function clearCanvas() {
@@ -683,13 +703,639 @@ function renderSwirl() {
 }
 
 // ============================================================
+// SIMPLEX NOISE (shared utility)
+// ============================================================
+
+var perm = new Uint8Array(512);
+var grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+(function(){
+  var p = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,
+    247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,
+    74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,
+    54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,
+    3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,
+    170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,
+    185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,
+    31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,
+    78,66,215,61,156,180];
+  for(var i=0;i<256;i++) perm[i]=perm[i+256]=p[i];
+})();
+
+function simplex2(xin,yin){
+  var F2=0.5*(Math.sqrt(3)-1), G2=(3-Math.sqrt(3))/6;
+  var s=(xin+yin)*F2, i=Math.floor(xin+s), j=Math.floor(yin+s);
+  var t=(i+j)*G2, x0=xin-(i-t), y0=yin-(j-t);
+  var i1=x0>y0?1:0, j1=x0>y0?0:1;
+  var x1=x0-i1+G2, y1=y0-j1+G2, x2=x0-1+2*G2, y2=y0-1+2*G2;
+  var ii=i&255, jj=j&255;
+  var n0=0,n1=0,n2=0;
+  var t0=0.5-x0*x0-y0*y0;
+  if(t0>0){t0*=t0;var gi=perm[ii+perm[jj]]%12;n0=t0*t0*(grad3[gi][0]*x0+grad3[gi][1]*y0);}
+  var t1=0.5-x1*x1-y1*y1;
+  if(t1>0){t1*=t1;var gi1=perm[ii+i1+perm[jj+j1]]%12;n1=t1*t1*(grad3[gi1][0]*x1+grad3[gi1][1]*y1);}
+  var t2=0.5-x2*x2-y2*y2;
+  if(t2>0){t2*=t2;var gi2=perm[ii+1+perm[jj+1]]%12;n2=t2*t2*(grad3[gi2][0]*x2+grad3[gi2][1]*y2);}
+  return 70*(n0+n1+n2);
+}
+
+function fbm(x,y,oct){
+  var v=0,a=0.5,f=1;
+  for(var i=0;i<oct;i++){v+=a*simplex2(x*f,y*f);a*=0.5;f*=2;}
+  return v;
+}
+
+// ============================================================
+// RIFT — Reaction-Diffusion (Gray-Scott)
+// ============================================================
+
+var riftU, riftV;
+
+function initRift() {
+  var sz = COLS * ROWS;
+  riftU = new Float32Array(sz);
+  riftV = new Float32Array(sz);
+  for (var i = 0; i < sz; i++) { riftU[i] = 1; riftV[i] = 0; }
+  // Seed several spots
+  for (var s = 0; s < 8; s++) {
+    var cx = Math.floor(Math.random() * (COLS - 20)) + 10;
+    var cy = Math.floor(Math.random() * (ROWS - 10)) + 5;
+    for (var dy = -3; dy <= 3; dy++) {
+      for (var dx = -3; dx <= 3; dx++) {
+        var nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+          var idx = ny * COLS + nx;
+          riftU[idx] = 0.5 + Math.random() * 0.1;
+          riftV[idx] = 0.25 + Math.random() * 0.1;
+        }
+      }
+    }
+  }
+}
+initRift();
+
+function renderRift() {
+  clearCanvas();
+  var W = COLS, H = ROWS, sz = W * H;
+  if (!riftU || riftU.length !== sz) initRift();
+
+  var Du = 0.16, Dv = 0.08, f = 0.055, k = 0.062, dt = 1.0;
+  var uNew = new Float32Array(sz);
+  var vNew = new Float32Array(sz);
+
+  for (var step = 0; step < 8; step++) {
+    for (var y = 1; y < H - 1; y++) {
+      for (var x = 1; x < W - 1; x++) {
+        var idx = y * W + x;
+        var u = riftU[idx], v = riftV[idx];
+        var lapU = riftU[idx-1] + riftU[idx+1] + riftU[idx-W] + riftU[idx+W] - 4*u;
+        var lapV = riftV[idx-1] + riftV[idx+1] + riftV[idx-W] + riftV[idx+W] - 4*v;
+        var uvv = u * v * v;
+        uNew[idx] = u + (Du * lapU - uvv + f * (1 - u)) * dt;
+        vNew[idx] = v + (Dv * lapV + uvv - (f + k) * v) * dt;
+      }
+    }
+    var tmp = riftU; riftU = uNew; uNew = tmp;
+    tmp = riftV; riftV = vNew; vNew = tmp;
+  }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = riftV[y * W + x];
+      if (v < 0.05) continue;
+      var t = Math.min(v * 4, 1);
+      var ri = Math.min(RAMP_DENSE.length - 1, (t * RAMP_DENSE.length) | 0);
+      var hue = (200 + t * 60 + time * 10) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + t * 30, 25 + t * 50);
+    }
+  }
+}
+
+// ============================================================
+// VORONOI — Animated Tessellation
+// ============================================================
+
+var voronoiSeeds = [];
+var NUM_VORONOI = 18;
+
+function initVoronoi() {
+  voronoiSeeds = [];
+  for (var i = 0; i < NUM_VORONOI; i++) {
+    voronoiSeeds.push({
+      x: Math.random() * COLS, y: Math.random() * ROWS,
+      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+      hue: (i * 137.508) % 360
+    });
+  }
+}
+initVoronoi();
+
+function renderVoronoi() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  // Move seeds
+  for (var i = 0; i < voronoiSeeds.length; i++) {
+    var s = voronoiSeeds[i];
+    s.x += s.vx + Math.sin(time * 0.3 + i) * 0.1;
+    s.y += s.vy + Math.cos(time * 0.4 + i * 1.5) * 0.08;
+    if (s.x < 0 || s.x >= W) s.vx *= -1;
+    if (s.y < 0 || s.y >= H) s.vy *= -1;
+    s.x = Math.max(0, Math.min(W - 1, s.x));
+    s.y = Math.max(0, Math.min(H - 1, s.y));
+  }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var d1 = 1e9, d2 = 1e9, ci = 0;
+      var px = x * 0.55; // aspect correction
+      for (var i = 0; i < voronoiSeeds.length; i++) {
+        var dx = px - voronoiSeeds[i].x * 0.55;
+        var dy = y - voronoiSeeds[i].y;
+        var d = dx * dx + dy * dy;
+        if (d < d1) { d2 = d1; d1 = d; ci = i; }
+        else if (d < d2) { d2 = d; }
+      }
+      var edge = Math.sqrt(d2) - Math.sqrt(d1);
+      if (edge > 8) continue;
+      var v = edge < 1.5 ? 1 : Math.max(0, 1 - (edge - 1.5) / 6.5);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = voronoiSeeds[ci].hue;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 20 + v * 55);
+    }
+  }
+}
+
+// ============================================================
+// BOLT — Lightning / Dielectric Breakdown
+// ============================================================
+
+var boltGrid, boltAge;
+var boltBranches = [];
+
+function initBolt() {
+  var sz = COLS * ROWS;
+  boltGrid = new Float32Array(sz);
+  boltAge = new Float32Array(sz);
+  boltBranches = [];
+}
+initBolt();
+
+var boltTimer = 0;
+
+function renderBolt() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!boltGrid || boltGrid.length !== W * H) initBolt();
+
+  boltTimer += 1;
+
+  // Spawn new bolt periodically
+  if (boltTimer > 30 || boltBranches.length === 0) {
+    boltTimer = 0;
+    var sx = Math.floor(Math.random() * (W - 10)) + 5;
+    var numBranches = 2 + Math.floor(Math.random() * 3);
+    for (var b = 0; b < numBranches; b++) {
+      boltBranches.push({ x: sx + (Math.random() - 0.5) * 6, y: 0, life: 40 + Math.random() * 30 });
+    }
+  }
+
+  // Grow branches
+  var newBranches = [];
+  for (var i = 0; i < boltBranches.length; i++) {
+    var br = boltBranches[i];
+    if (br.life <= 0 || br.y >= H) continue;
+    br.life--;
+
+    // Move downward with jitter
+    br.x += (Math.random() - 0.5) * 2.5;
+    br.y += 0.5 + Math.random() * 1.5;
+
+    var gx = Math.floor(br.x), gy = Math.floor(br.y);
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      boltGrid[gy * W + gx] = 1;
+      boltAge[gy * W + gx] = 1;
+      // Thicken
+      if (gx > 0) { boltGrid[gy * W + gx - 1] = 0.5; boltAge[gy * W + gx - 1] = Math.max(boltAge[gy * W + gx - 1], 0.7); }
+      if (gx < W-1) { boltGrid[gy * W + gx + 1] = 0.5; boltAge[gy * W + gx + 1] = Math.max(boltAge[gy * W + gx + 1], 0.7); }
+    }
+
+    // Branch
+    if (Math.random() < 0.08 && br.life > 10) {
+      newBranches.push({ x: br.x + (Math.random() - 0.5) * 3, y: br.y, life: br.life * 0.5 });
+    }
+
+    boltBranches[i] = br;
+  }
+  for (var i = 0; i < newBranches.length; i++) boltBranches.push(newBranches[i]);
+  // Prune dead
+  boltBranches = boltBranches.filter(function(b) { return b.life > 0 && b.y < H; });
+
+  // Decay and render
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      var v = boltAge[idx];
+      if (v < 0.01) continue;
+      boltAge[idx] *= 0.96;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var b = (150 + v * 105) | 0;
+      drawChar(RAMP_DENSE[ri], x, y, (100 + v * 55) | 0, (150 + v * 105) | 0, 255, 0.2 + v * 0.8);
+    }
+  }
+}
+
+// ============================================================
+// MOIRE — Multi-center Ring Interference
+// ============================================================
+
+function renderMoire() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  // Three focal points orbiting
+  var f1x = W * 0.5 + Math.cos(time * 0.3) * W * 0.3;
+  var f1y = H * 0.5 + Math.sin(time * 0.4) * H * 0.3;
+  var f2x = W * 0.5 + Math.cos(time * 0.37 + 2) * W * 0.25;
+  var f2y = H * 0.5 + Math.sin(time * 0.29 + 2) * H * 0.35;
+  var f3x = W * 0.5 + Math.sin(time * 0.23 + 4) * W * 0.35;
+  var f3y = H * 0.5 + Math.cos(time * 0.31 + 4) * H * 0.25;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var px = x * 0.55;
+      var dx1 = px - f1x * 0.55, dy1 = y - f1y;
+      var dx2 = px - f2x * 0.55, dy2 = y - f2y;
+      var dx3 = px - f3x * 0.55, dy3 = y - f3y;
+      var d1 = Math.sqrt(dx1*dx1 + dy1*dy1);
+      var d2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+      var d3 = Math.sqrt(dx3*dx3 + dy3*dy3);
+
+      var v = Math.sin(d1 * 0.3 + time) + Math.sin(d2 * 0.31 - time * 0.7) + Math.sin(d3 * 0.29 + time * 0.5);
+      v = (v + 3) / 6; // normalize 0-1
+
+      if (v < 0.15 || v > 0.85) continue; // show only the interference bands
+      var band = Math.abs(v - 0.5) * 2;
+      band = 1 - band; // invert: brightest at edges of bands
+
+      var ri = Math.min(RAMP_SOFT.length - 1, (band * RAMP_SOFT.length) | 0);
+      drawChar(RAMP_SOFT[ri], x, y, 0, (100 + band * 155) | 0, (50 + band * 50) | 0, 0.3 + band * 0.7);
+    }
+  }
+}
+
+// ============================================================
+// FOLD — Domain Warping (nested fBm)
+// ============================================================
+
+function renderFold() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var sc = 0.03;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var px = x * sc, py = y * sc;
+      // Nested domain warping
+      var q1 = fbm(px + time * 0.1, py + time * 0.05, 4);
+      var q2 = fbm(px + 5.2 + time * 0.08, py + 1.3, 4);
+      var r1 = fbm(px + 4 * q1 + 1.7 + time * 0.06, py + 4 * q2 + 9.2, 4);
+      var r2 = fbm(px + 4 * q1 + 8.3, py + 4 * q2 + 2.8 + time * 0.07, 4);
+      var v = fbm(px + 4 * r1, py + 4 * r2, 3);
+
+      v = v * 0.5 + 0.5; // normalize
+      if (v < 0.1) continue;
+
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (v * 60 + 20) % 360; // amber range
+      var sat = 60 + v * 40;
+      var lit = 15 + v * 50;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, sat, lit);
+    }
+  }
+}
+
+// ============================================================
+// COPPER — Demoscene Raster Bars
+// ============================================================
+
+var copperMsg = '  TEXTFLOW  --  ASCII EXPERIMENTS  --  SEBLAND.COM  --  ';
+
+function renderCopper() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var numBars = 7;
+  var barHues = [0, 30, 60, 180, 210, 280, 330];
+  var scrollX = time * 12;
+
+  for (var y = 0; y < H; y++) {
+    // Sum bar contributions
+    var totalV = 0;
+    var bestHue = 0, bestV = 0;
+
+    for (var b = 0; b < numBars; b++) {
+      var barY = H * 0.5 + Math.sin(time * (0.5 + b * 0.15) + b * 1.2) * H * 0.35;
+      var dist = Math.abs(y - barY);
+      var halfH = 2.5 + Math.sin(time * 0.3 + b) * 0.5;
+      if (dist > halfH) continue;
+      var v = 1 - (dist / halfH);
+      v = v * v;
+      totalV += v;
+      if (v > bestV) { bestV = v; bestHue = barHues[b]; }
+    }
+
+    if (totalV < 0.05) continue;
+    totalV = Math.min(totalV, 1);
+
+    for (var x = 0; x < W; x++) {
+      var ci = ((x + scrollX) | 0) % copperMsg.length;
+      if (ci < 0) ci += copperMsg.length;
+      var ch = copperMsg[ci];
+      if (ch === ' ') continue;
+
+      var lit = 30 + totalV * 55;
+      if (totalV > 0.8) lit = 50 + totalV * 45; // hot overlap
+      drawCharHSL(ch, x, y, bestHue, 70 + totalV * 30, lit);
+    }
+  }
+}
+
+// ============================================================
+// GLITCH — Digital Corruption
+// ============================================================
+
+var glitchBase = [];
+var glitchStrips = [];
+var glitchEvent = 0;
+
+function initGlitch() {
+  glitchBase = [];
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*!?<>{}[]=/+-~';
+  for (var y = 0; y < ROWS; y++) {
+    var row = [];
+    for (var x = 0; x < COLS; x++) {
+      row.push(chars[Math.floor(Math.random() * chars.length)]);
+    }
+    glitchBase.push(row);
+  }
+  glitchStrips = [];
+  glitchEvent = 0;
+}
+initGlitch();
+
+function renderGlitch() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!glitchBase.length || glitchBase.length !== H || glitchBase[0].length !== W) initGlitch();
+
+  // Slowly scroll base text
+  if (Math.random() < 0.02) {
+    var row = [];
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*!?<>{}[]=/+-~';
+    for (var x = 0; x < W; x++) row.push(chars[Math.floor(Math.random() * chars.length)]);
+    glitchBase.push(row);
+    glitchBase.shift();
+  }
+
+  // Trigger glitch events
+  glitchEvent--;
+  if (glitchEvent <= 0 && Math.random() < 0.06) {
+    glitchEvent = 5 + Math.floor(Math.random() * 12);
+    glitchStrips = [];
+    var numStrips = 1 + Math.floor(Math.random() * 4);
+    for (var s = 0; s < numStrips; s++) {
+      glitchStrips.push({
+        y: Math.floor(Math.random() * H),
+        h: 1 + Math.floor(Math.random() * 4),
+        offset: Math.floor((Math.random() - 0.5) * 15),
+        color: Math.floor(Math.random() * 3) // 0=cyan, 1=magenta, 2=red
+      });
+    }
+  }
+
+  var glitching = glitchEvent > 0;
+
+  for (var y = 0; y < H; y++) {
+    var strip = null;
+    if (glitching) {
+      for (var s = 0; s < glitchStrips.length; s++) {
+        if (y >= glitchStrips[s].y && y < glitchStrips[s].y + glitchStrips[s].h) {
+          strip = glitchStrips[s];
+          break;
+        }
+      }
+    }
+
+    for (var x = 0; x < W; x++) {
+      var sx = x, sy = y;
+      var r = 120, g = 130, b = 140;
+
+      if (strip) {
+        sx = (x + strip.offset + W) % W;
+        if (strip.color === 0) { r = 0; g = 255; b = 255; }
+        else if (strip.color === 1) { r = 255; g = 0; b = 255; }
+        else { r = 255; g = 50; b = 50; }
+      }
+
+      // Static noise
+      if (Math.random() < 0.015) {
+        var chars = '@#$%!?*';
+        drawChar(chars[Math.floor(Math.random() * chars.length)], x, y, 255, 255, 255, 0.3 + Math.random() * 0.5);
+        continue;
+      }
+
+      if (sy < glitchBase.length && sx < glitchBase[0].length) {
+        var ch = glitchBase[sy][sx];
+        var alpha = strip ? 0.7 + Math.random() * 0.3 : 0.15 + Math.random() * 0.1;
+        drawChar(ch, x, y, r, g, b, alpha);
+      }
+    }
+  }
+
+  // Block corruption
+  if (glitching && Math.random() < 0.3) {
+    var bx = Math.floor(Math.random() * (W - 8));
+    var by = Math.floor(Math.random() * (H - 4));
+    var bch = '#@$%'[Math.floor(Math.random() * 4)];
+    for (var dy = 0; dy < 3; dy++) {
+      for (var dx = 0; dx < 6 + Math.floor(Math.random() * 8); dx++) {
+        if (bx + dx < W && by + dy < H)
+          drawChar(bch, bx + dx, by + dy, 255, 0, 255, 0.6 + Math.random() * 0.4);
+      }
+    }
+  }
+}
+
+// ============================================================
+// FLOCK — Boids Swarm with Trails
+// ============================================================
+
+var boids = [];
+var NUM_BOIDS = 250;
+var flockTrail;
+
+function initFlock() {
+  boids = [];
+  for (var i = 0; i < NUM_BOIDS; i++) {
+    boids.push({
+      x: Math.random() * COLS, y: Math.random() * ROWS,
+      vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2
+    });
+  }
+  flockTrail = new Float32Array(COLS * ROWS);
+}
+initFlock();
+
+function renderFlock() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!flockTrail || flockTrail.length !== W * H) initFlock();
+
+  // Decay trails
+  for (var i = 0; i < flockTrail.length; i++) flockTrail[i] *= 0.93;
+
+  // Update boids
+  for (var i = 0; i < boids.length; i++) {
+    var b = boids[i];
+    var sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0;
+    var sc = 0, ac = 0, cc = 0;
+
+    for (var j = 0; j < boids.length; j += 3) { // sample every 3rd for perf
+      if (i === j) continue;
+      var o = boids[j];
+      var dx = o.x - b.x, dy = o.y - b.y;
+      var d = dx * dx + dy * dy;
+      if (d < 9 && d > 0) { sx -= dx / d; sy -= dy / d; sc++; } // separation
+      if (d < 64) { ax += o.vx; ay += o.vy; ac++; } // alignment
+      if (d < 144) { cx += dx; cy += dy; cc++; } // cohesion
+    }
+
+    if (sc > 0) { b.vx += sx * 0.15; b.vy += sy * 0.15; }
+    if (ac > 0) { b.vx += (ax / ac - b.vx) * 0.05; b.vy += (ay / ac - b.vy) * 0.05; }
+    if (cc > 0) { b.vx += (cx / cc) * 0.005; b.vy += (cy / cc) * 0.005; }
+
+    var spd = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+    if (spd > 1.5) { b.vx = b.vx / spd * 1.5; b.vy = b.vy / spd * 1.5; }
+    if (spd < 0.3) { b.vx *= 1.5; b.vy *= 1.5; }
+
+    b.x += b.vx; b.y += b.vy;
+    if (b.x < 0) b.x += W; if (b.x >= W) b.x -= W;
+    if (b.y < 0) b.y += H; if (b.y >= H) b.y -= H;
+
+    var gx = b.x | 0, gy = b.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      flockTrail[gy * W + gx] = Math.min(flockTrail[gy * W + gx] + 0.5, 1);
+    }
+  }
+
+  // Render trails
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = flockTrail[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (30 + v * 30) % 360; // warm yellow-orange
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + v * 30, 25 + v * 50);
+    }
+  }
+}
+
+// ============================================================
+// ROTO — Rotozoom
+// ============================================================
+
+function renderRoto() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var angle = time * 0.3;
+  var scale = 1.5 + Math.sin(time * 0.7) * 0.8;
+  var cosA = Math.cos(angle), sinA = Math.sin(angle);
+  var cx = W / 2, cy = H / 2;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var dx = x - cx, dy = y - cy;
+      var tx = (dx * cosA - dy * sinA) * scale;
+      var ty = (dx * sinA + dy * cosA) * scale;
+
+      // XOR texture
+      var ix = ((tx | 0) % 32 + 32) % 32;
+      var iy = ((ty | 0) % 32 + 32) % 32;
+      var v = ((ix ^ iy) & 31) / 31;
+
+      // Second layer
+      var angle2 = time * -0.2;
+      var scale2 = 2 + Math.cos(time * 0.5) * 0.5;
+      var cosB = Math.cos(angle2), sinB = Math.sin(angle2);
+      var tx2 = (dx * cosB - dy * sinB) * scale2;
+      var ty2 = (dx * sinB + dy * cosB) * scale2;
+      var ix2 = ((tx2 | 0) % 16 + 16) % 16;
+      var iy2 = ((ty2 | 0) % 16 + 16) % 16;
+      var v2 = ((ix2 ^ iy2) & 15) / 15;
+
+      var combined = (v + v2) * 0.5;
+      if (combined < 0.1) continue;
+
+      var ri = Math.min(RAMP_DENSE.length - 1, (combined * RAMP_DENSE.length) | 0);
+      var hue = (combined * 360 + time * 40) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + combined * 30, 20 + combined * 50);
+    }
+  }
+}
+
+// ============================================================
+// EROSION — Terrain Heightmap
+// ============================================================
+
+var terrainH;
+
+function initErosion() {
+  terrainH = null; // Will generate on first render
+}
+initErosion();
+
+function renderErosion() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  var sc = 0.04;
+  var drift = time * 0.15;
+
+  var terrainChars = ' .,-~:;=+*oO#@';
+  var terrainColors = [
+    [30,60,120], [40,80,50], [60,120,40], [100,160,50],
+    [140,180,60], [180,170,100], [200,190,150], [220,210,180],
+    [240,235,220], [255,250,245]
+  ];
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var px = x * sc + drift, py = y * sc + drift * 0.3;
+      var h = fbm(px, py, 6) * 0.5 + 0.5;
+
+      // Add ridge noise for mountain detail
+      var ridge = Math.abs(simplex2(px * 2, py * 2));
+      h = h * 0.7 + ridge * 0.3;
+
+      h = Math.max(0, Math.min(1, h));
+      if (h < 0.1) continue;
+
+      var ci = Math.min(terrainColors.length - 1, (h * terrainColors.length) | 0);
+      var c = terrainColors[ci];
+      var ri = Math.min(terrainChars.length - 1, (h * terrainChars.length) | 0);
+      drawChar(terrainChars[ri], x, y, c[0], c[1], c[2], 0.3 + h * 0.7);
+    }
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
 var renderers = {
   lava: renderLava, rain: renderRain, wave: renderWave,
   fire: renderFire, plasma: renderPlasma, life: renderLife,
-  warp: renderWarp, swirl: renderSwirl
+  warp: renderWarp, swirl: renderSwirl,
+  rift: renderRift, voronoi: renderVoronoi, bolt: renderBolt,
+  moire: renderMoire, fold: renderFold, copper: renderCopper,
+  glitch: renderGlitch, flock: renderFlock, roto: renderRoto,
+  erosion: renderErosion
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -734,6 +1380,12 @@ function switchMode(mode) {
   if (mode === 'life') initLife();
   if (mode === 'warp') initWarp();
   if (mode === 'swirl') initSwirl();
+  if (mode === 'rift') initRift();
+  if (mode === 'voronoi') initVoronoi();
+  if (mode === 'bolt') initBolt();
+  if (mode === 'glitch') initGlitch();
+  if (mode === 'flock') initFlock();
+  if (mode === 'erosion') initErosion();
 }
 
 buttons.forEach(function(b) {
