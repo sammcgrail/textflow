@@ -726,6 +726,7 @@ function loop(ts) {
 function switchMode(mode) {
   currentMode = mode;
   time = 0;
+  updateURL(mode);
   buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
   if (mode === 'lava') initBlobs();
   if (mode === 'rain') initRain();
@@ -739,9 +740,28 @@ buttons.forEach(function(b) {
   b.addEventListener('click', function() { switchMode(b.dataset.mode); });
 });
 
+// URL-based mode routing
+function getModeFromPath() {
+  var path = window.location.pathname.replace(/\/+$/, '');
+  var parts = path.split('/');
+  var last = parts[parts.length - 1];
+  if (last && renderers[last]) return last;
+  return 'lava';
+}
+
+function updateURL(mode) {
+  var base = window.location.pathname.replace(/\/+$/, '').split('/');
+  // Remove trailing mode if present
+  if (base.length > 1 && renderers[base[base.length - 1]]) base.pop();
+  var newPath = base.join('/') + '/' + mode;
+  history.replaceState(null, '', newPath);
+}
+
 // Wait for font to load before starting
 document.fonts.ready.then(function() {
   resize();
+  var startMode = getModeFromPath();
+  if (startMode !== 'lava') switchMode(startMode);
   loop();
 });
 </script>
