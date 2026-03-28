@@ -59,6 +59,8 @@
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    opacity: 0;
+    animation: navFadeIn 0.6s ease-out 0.1s forwards;
   }
 
   nav::-webkit-scrollbar { display: none; }
@@ -86,6 +88,8 @@
     letter-spacing: 0.05em;
     white-space: nowrap;
     flex-shrink: 0;
+    opacity: 0;
+    animation: btnAppear 0.3s ease-out forwards;
   }
 
   nav button:hover {
@@ -107,13 +111,23 @@
   }
   #fps {
     position: fixed;
-    bottom: 4px;
-    right: 6px;
+    bottom: 2px;
+    left: 6px;
     z-index: 200;
     font-family: 'JetBrains Mono', monospace;
     font-size: 7px;
-    color: rgba(60,60,60,0.4);
+    color: rgba(50,50,50,0.3);
     pointer-events: none;
+  }
+
+  @keyframes navFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes btnAppear {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
   }
 </style>
 </head>
@@ -5422,23 +5436,27 @@ function updateURL(mode) {
   history.replaceState(null, '', newPath);
 }
 
-function scrollNavToMode(mode) {
+function scrollNavToMode(mode, instant) {
   var nav = document.querySelector('nav');
   var btn = nav.querySelector('button[data-mode="' + mode + '"]');
   if (btn) {
     var navRect = nav.getBoundingClientRect();
     var btnRect = btn.getBoundingClientRect();
     var scrollLeft = btn.offsetLeft - navRect.width / 2 + btnRect.width / 2;
-    nav.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+    nav.scrollTo({ left: Math.max(0, scrollLeft), behavior: instant ? 'instant' : 'smooth' });
   }
 }
 
 // Wait for font to load before starting
 document.fonts.ready.then(function() {
   resize();
+  // Stagger button appear animations
+  buttons.forEach(function(b, i) {
+    b.style.animationDelay = (0.1 + i * 0.02) + 's';
+  });
   var startMode = getModeFromPath();
   if (startMode !== 'lava') switchMode(startMode);
-  scrollNavToMode(startMode);
+  scrollNavToMode(startMode, true);
   loop();
 });
 </script>
