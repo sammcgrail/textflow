@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>textflow</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Georgia&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: rgba(10, 10, 15, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  nav .logo {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.4);
+    margin-right: 1rem;
+    text-transform: uppercase;
+  }
+
+  nav button {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.5);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  nav button:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  nav button.active {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+  }
+
+  #canvas {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 3rem;
+  }
+
+  #output {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.15;
+    white-space: pre;
+    letter-spacing: 0.02em;
+    text-align: center;
+    user-select: none;
+  }
+
+  /* Glow effects per experiment */
+  .glow-lava { text-shadow: 0 0 8px rgba(255, 100, 50, 0.4), 0 0 20px rgba(255, 60, 20, 0.15); }
+  .glow-rain { text-shadow: 0 0 6px rgba(0, 255, 120, 0.5), 0 0 15px rgba(0, 200, 80, 0.15); }
+  .glow-wave { text-shadow: 0 0 8px rgba(80, 140, 255, 0.5), 0 0 20px rgba(60, 100, 255, 0.15); }
+  .glow-fire { text-shadow: 0 0 6px rgba(255, 180, 40, 0.5), 0 0 18px rgba(255, 80, 20, 0.2); }
+  .glow-plasma { text-shadow: 0 0 8px rgba(200, 80, 255, 0.5), 0 0 20px rgba(150, 40, 255, 0.15); }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">textflow</span>
+  <button class="active" data-mode="lava">lava lamp</button>
+  <button data-mode="rain">rain</button>
+  <button data-mode="wave">waves</button>
+  <button data-mode="fire">fire</button>
+  <button data-mode="plasma">plasma</button>
+</nav>
+
+<div id="canvas">
+  <div id="output"></div>
+</div>
+
+<script>
+// ============================================================
+// TEXTFLOW — ASCII text experiments
+// ============================================================
+
+const output = document.getElementById('output');
+const buttons = document.querySelectorAll('nav button');
+let currentMode = 'lava';
+let animId = null;
+let COLS, ROWS;
+let time = 0;
+
+// Responsive grid sizing
+function calcGrid() {
+  const fontSize = Math.max(10, Math.min(14, window.innerWidth / 90));
+  output.style.fontSize = fontSize + 'px';
+  const charW = fontSize * 0.602;
+  const charH = fontSize * 1.15;
+  COLS = Math.floor((window.innerWidth * 0.92) / charW);
+  ROWS = Math.floor((window.innerHeight - 60) / charH);
+  COLS = Math.min(COLS, 120);
+  ROWS = Math.min(ROWS, 55);
+}
+
+calcGrid();
+window.addEventListener('resize', () => { calcGrid(); });
+
+// Character ramps
+const RAMP_DENSE = ' .`-:;=+*#%@$';
+const RAMP_BLOCK = ' .:;+xX$#';
+const RAMP_FIRE  = ' .:-=+*%#@';
+const RAMP_SOFT  = ' .,-~:;=!*#';
+
+function rampChar(ramp, t) {
+  const i = Math.max(0, Math.min(ramp.length - 1, Math.floor(t * ramp.length)));
+  return ramp[i];
+}
+
+// ============================================================
+// LAVA LAMP
+// ============================================================
+
+const blobs = [];
+const NUM_BLOBS = 7;
+
+function initBlobs() {
+  blobs.length = 0;
+  for (let i = 0; i < NUM_BLOBS; i++) {
+    blobs.push({
+      x: Math.random() * COLS,
+      y: Math.random() * ROWS,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.5 + (i % 2 === 0 ? -0.15 : 0.15),
+      r: 4 + Math.random() * 6,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+}
+initBlobs();
+
+function renderLava() {
+  const field = new Float32Array(COLS * ROWS);
+
+  // Update blobs
+  for (const b of blobs) {
+    b.x += b.vx + Math.sin(time * 0.4 + b.phase) * 0.15;
+    b.y += b.vy + Math.cos(time * 0.3 + b.phase) * 0.1;
+    b.r += Math.sin(time * 0.5 + b.phase) * 0.03;
+
+    // Bounce off walls
+    if (b.x < 2 || b.x > COLS - 2) { b.vx *= -0.9; b.x = Math.max(2, Math.min(COLS - 2, b.x)); }
+    if (b.y < 2 || b.y > ROWS - 2) { b.vy *= -0.8; b.y = Math.max(2, Math.min(ROWS - 2, b.y)); }
+
+    // Damping + gentle drift
+    b.vx *= 0.995;
+    b.vy *= 0.995;
+    b.vy += Math.sin(time * 0.2 + b.phase * 2) * 0.008;
+  }
+
+  // Compute metaball field
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      let sum = 0;
+      const px = x * 0.55; // aspect ratio correction
+      for (const b of blobs) {
+        const bx = b.x * 0.55;
+        const dx = px - bx;
+        const dy = y - b.y;
+        const d2 = dx * dx + dy * dy;
+        sum += (b.r * b.r) / (d2 + 0.1);
+      }
+      field[y * COLS + x] = sum;
+    }
+  }
+
+  // Render
+  let lines = '';
+  const colors = [
+    [255, 40, 20],
+    [255, 100, 40],
+    [255, 160, 60],
+    [255, 200, 100],
+    [255, 230, 180],
+  ];
+
+  for (let y = 0; y < ROWS; y++) {
+    let line = '';
+    for (let x = 0; x < COLS; x++) {
+      const v = field[y * COLS + x];
+      const t = Math.min(1, v * 0.15);
+      if (t < 0.08) {
+        line += ' ';
+      } else {
+        const ci = Math.min(colors.length - 1, Math.floor(t * colors.length));
+        const c = colors[ci];
+        const alpha = 0.3 + t * 0.7;
+        const ch = rampChar(RAMP_DENSE, t);
+        line += `<span style="color:rgba(${c[0]},${c[1]},${c[2]},${alpha.toFixed(2)})">${ch}</span>`;
+      }
+    }
+    lines += line + '\n';
+  }
+
+  output.innerHTML = lines;
+  output.className = 'glow-lava';
+}
+
+// ============================================================
+// RAIN
+// ============================================================
+
+const drops = [];
+const MAX_DROPS = 180;
+const trails = [];
+
+function initRain() {
+  drops.length = 0;
+  trails.length = 0;
+  for (let i = 0; i < MAX_DROPS; i++) {
+    drops.push({
+      x: Math.floor(Math.random() * COLS),
+      y: Math.random() * ROWS * 2 - ROWS,
+      speed: 0.3 + Math.random() * 0.8,
+      len: 4 + Math.floor(Math.random() * 12),
+      chars: [],
+    });
+    // Pre-fill trail chars
+    const d = drops[i];
+    for (let j = 0; j < d.len; j++) {
+      d.chars.push(String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)));
+    }
+  }
+}
+initRain();
+
+function renderRain() {
+  const grid = new Array(ROWS);
+  const bright = new Float32Array(COLS * ROWS);
+
+  for (let y = 0; y < ROWS; y++) {
+    grid[y] = new Array(COLS).fill(' ');
+  }
+
+  for (const d of drops) {
+    d.y += d.speed;
+    if (d.y - d.len > ROWS) {
+      d.y = -d.len;
+      d.x = Math.floor(Math.random() * COLS);
+      d.speed = 0.3 + Math.random() * 0.8;
+    }
+
+    // Mutate random char in trail
+    if (Math.random() < 0.08) {
+      const ri = Math.floor(Math.random() * d.len);
+      d.chars[ri] = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+    }
+
+    for (let j = 0; j < d.len; j++) {
+      const ty = Math.floor(d.y - j);
+      if (ty >= 0 && ty < ROWS && d.x >= 0 && d.x < COLS) {
+        const fade = 1 - j / d.len;
+        const b = bright[ty * COLS + d.x];
+        if (fade > b) {
+          grid[ty][d.x] = d.chars[j];
+          bright[ty * COLS + d.x] = fade;
+        }
+      }
+    }
+  }
+
+  let lines = '';
+  for (let y = 0; y < ROWS; y++) {
+    let line = '';
+    for (let x = 0; x < COLS; x++) {
+      const b = bright[y * COLS + x];
+      if (b < 0.01) {
+        line += ' ';
+      } else {
+        const g = Math.floor(80 + b * 175);
+        const alpha = 0.2 + b * 0.8;
+        const isHead = b > 0.95;
+        const color = isHead ? `rgba(180,255,200,${alpha.toFixed(2)})` : `rgba(0,${g},${Math.floor(g*0.4)},${alpha.toFixed(2)})`;
+        line += `<span style="color:${color}">${grid[y][x]}</span>`;
+      }
+    }
+    lines += line + '\n';
+  }
+
+  output.innerHTML = lines;
+  output.className = 'glow-rain';
+}
+
+// ============================================================
+// WAVES
+// ============================================================
+
+function renderWave() {
+  let lines = '';
+  const phrase = 'textflow';
+
+  for (let y = 0; y < ROWS; y++) {
+    let line = '';
+    for (let x = 0; x < COLS; x++) {
+      const wave1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
+      const wave2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
+      const wave3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
+      const wave4 = Math.sin(Math.sqrt((x - COLS/2)**2 + (y - ROWS/2)**2) * 0.12 - time * 1.5) * 0.5 + 0.5;
+
+      let v = (wave1 * 0.35 + wave2 * 0.25 + wave3 * 0.2 + wave4 * 0.2);
+      v = Math.pow(v, 1.2);
+
+      if (v < 0.15) {
+        line += ' ';
+      } else {
+        const ci = Math.floor((x + time * 8) % phrase.length);
+        const ch = v > 0.6 ? phrase[Math.abs(ci) % phrase.length] : rampChar(RAMP_SOFT, v);
+
+        const hue = (x * 2.5 + y * 1.5 + time * 30) % 360;
+        const sat = 60 + v * 40;
+        const lit = 30 + v * 50;
+        const alpha = 0.3 + v * 0.7;
+
+        line += `<span style="color:hsla(${hue.toFixed(0)},${sat.toFixed(0)}%,${lit.toFixed(0)}%,${alpha.toFixed(2)})">${ch}</span>`;
+      }
+    }
+    lines += line + '\n';
+  }
+
+  output.innerHTML = lines;
+  output.className = 'glow-wave';
+}
+
+// ============================================================
+// FIRE
+// ============================================================
+
+let fireBuffer;
+function initFire() {
+  fireBuffer = new Float32Array(COLS * (ROWS + 2));
+}
+initFire();
+
+function renderFire() {
+  const W = COLS, H = ROWS + 2;
+
+  // Seed bottom row
+  for (let x = 0; x < W; x++) {
+    fireBuffer[(H - 1) * W + x] = Math.random() > 0.4 ? 0.8 + Math.random() * 0.2 : Math.random() * 0.3;
+  }
+
+  // Propagate upward
+  for (let y = 0; y < H - 1; y++) {
+    for (let x = 0; x < W; x++) {
+      const below = fireBuffer[Math.min(H-1, y + 1) * W + x];
+      const belowL = fireBuffer[Math.min(H-1, y + 1) * W + Math.max(0, x - 1)];
+      const belowR = fireBuffer[Math.min(H-1, y + 1) * W + Math.min(W - 1, x + 1)];
+      const below2 = fireBuffer[Math.min(H-1, y + 2) * W + x];
+
+      let v = (below + belowL + belowR + below2) * 0.25;
+      v *= 0.97 - Math.random() * 0.02;
+      v -= 0.008;
+      fireBuffer[y * W + x] = Math.max(0, v);
+    }
+  }
+
+  // Render
+  let lines = '';
+  const fireColors = [
+    [20, 5, 0],
+    [80, 15, 0],
+    [180, 40, 0],
+    [220, 90, 10],
+    [255, 150, 20],
+    [255, 200, 60],
+    [255, 240, 150],
+    [255, 255, 220],
+  ];
+
+  for (let y = 0; y < ROWS; y++) {
+    let line = '';
+    for (let x = 0; x < W; x++) {
+      const v = fireBuffer[y * W + x];
+      if (v < 0.05) {
+        line += ' ';
+      } else {
+        const ci = Math.min(fireColors.length - 1, Math.floor(v * fireColors.length));
+        const c = fireColors[ci];
+        const ch = rampChar(RAMP_FIRE, v);
+        const alpha = 0.3 + v * 0.7;
+        line += `<span style="color:rgba(${c[0]},${c[1]},${c[2]},${alpha.toFixed(2)})">${ch}</span>`;
+      }
+    }
+    lines += line + '\n';
+  }
+
+  output.innerHTML = lines;
+  output.className = 'glow-fire';
+}
+
+// ============================================================
+// PLASMA
+// ============================================================
+
+function renderPlasma() {
+  let lines = '';
+
+  for (let y = 0; y < ROWS; y++) {
+    let line = '';
+    for (let x = 0; x < COLS; x++) {
+      const v1 = Math.sin(x * 0.06 + time * 0.7);
+      const v2 = Math.sin(y * 0.09 + time * 0.5);
+      const v3 = Math.sin((x + y) * 0.05 + time * 0.4);
+      const cx = x - COLS / 2, cy = y - ROWS / 2;
+      const v4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.1 - time * 0.8);
+      const v5 = Math.sin(x * 0.04 * Math.sin(time * 0.2) + y * 0.05 * Math.cos(time * 0.15));
+
+      let v = (v1 + v2 + v3 + v4 + v5) / 5;
+      v = v * 0.5 + 0.5; // normalize to 0-1
+
+      const ch = rampChar(RAMP_DENSE, v);
+
+      const hue1 = (v * 360 + time * 40) % 360;
+      const hue2 = (v * 180 + x * 1.5 + time * 20) % 360;
+      const hue = (hue1 + hue2) * 0.5 % 360;
+      const sat = 70 + v * 30;
+      const lit = 20 + v * 55;
+      const alpha = 0.4 + v * 0.6;
+
+      if (v < 0.1) {
+        line += ' ';
+      } else {
+        line += `<span style="color:hsla(${hue.toFixed(0)},${sat.toFixed(0)}%,${lit.toFixed(0)}%,${alpha.toFixed(2)})">${ch}</span>`;
+      }
+    }
+    lines += line + '\n';
+  }
+
+  output.innerHTML = lines;
+  output.className = 'glow-plasma';
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+
+const renderers = {
+  lava: renderLava,
+  rain: renderRain,
+  wave: renderWave,
+  fire: renderFire,
+  plasma: renderPlasma,
+};
+
+function loop() {
+  time += 0.016;
+  renderers[currentMode]();
+  animId = requestAnimationFrame(loop);
+}
+
+function switchMode(mode) {
+  currentMode = mode;
+  time = 0;
+  buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+  if (mode === 'lava') initBlobs();
+  if (mode === 'rain') initRain();
+  if (mode === 'fire') initFire();
+}
+
+buttons.forEach(b => {
+  b.addEventListener('click', () => switchMode(b.dataset.mode));
+});
+
+loop();
+</script>
+</body>
+</html>

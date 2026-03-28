@@ -1,0 +1,9 @@
+services:
+  textflow:
+    build: .
+    container_name: textflow
+    restart: unless-stopped
+    ports:
+      - "20004:8080"
+    mem_limit: 32m
+    cpus: 0.1
