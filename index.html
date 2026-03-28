@@ -6899,8 +6899,8 @@ function renderStrange() {
 var mandelCx, mandelCy, mandelZoom, mandelIter, mandelImage, mandelW, mandelH, mandelDirty;
 function initMandel() {
   mandelW = COLS; mandelH = ROWS;
-  mandelCx = -0.745428; mandelCy = 0.113009;
-  mandelZoom = 0.25;
+  mandelCx = -0.5; mandelCy = 0;
+  mandelZoom = 3.0;
   mandelImage = new Float32Array(mandelW * mandelH);
   mandelDirty = true;
   mandelIter = 0;
@@ -6909,11 +6909,15 @@ initMandel();
 
 function mandelCompute() {
   var W = mandelW, H = mandelH;
-  var aspect = W / H * 0.5;
+  // Correct for character aspect ratio (chars are ~2x tall as wide)
+  var charAspect = (CHAR_W || 6) / (CHAR_H || 12.5);
+  var screenAspect = W / H * charAspect;
+  var rangeY = mandelZoom;
+  var rangeX = mandelZoom * screenAspect;
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var cr = mandelCx + (x / W - 0.5) * mandelZoom * aspect;
-      var ci = mandelCy + (y / H - 0.5) * mandelZoom;
+      var cr = mandelCx + (x / W - 0.5) * rangeX;
+      var ci = mandelCy + (y / H - 0.5) * rangeY;
       var zr = 0, zi = 0, iter = 0, maxIter = 150;
       while (zr * zr + zi * zi < 4 && iter < maxIter) {
         var tr = zr * zr - zi * zi + cr;
@@ -6940,8 +6944,9 @@ function renderMandel() {
   // Click sets center and zooms in
   if (pointer.clicked && currentMode === 'mandel') {
     pointer.clicked = false;
-    var aspect = W / H * 0.5;
-    mandelCx += (pointer.gx / W - 0.5) * mandelZoom * aspect;
+    var cAspect = (CHAR_W || 6) / (CHAR_H || 12.5);
+    var sAspect = W / H * cAspect;
+    mandelCx += (pointer.gx / W - 0.5) * mandelZoom * sAspect;
     mandelCy += (pointer.gy / H - 0.5) * mandelZoom;
     mandelZoom *= 0.5;
     mandelDirty = true;
