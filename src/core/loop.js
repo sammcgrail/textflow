@@ -53,9 +53,14 @@ export function scrollNavToMode(mode, instant) {
   if (!btn) return;
   var cRect = container.getBoundingClientRect();
   var bRect = btn.getBoundingClientRect();
-  // Check visibility with margin — buttons near the left edge can hide behind the logo
+  // Check visibility with margin so buttons aren't cramped against edges
   var margin = 8;
   if (bRect.left >= cRect.left + margin && bRect.right <= cRect.right - margin) return;
-  // Scroll to place button near the left of visible area
-  container.scrollTo({ left: Math.max(0, btn.offsetLeft - 12), behavior: instant ? 'instant' : 'smooth' });
+  // Off left side or random mode → place button near left with padding
+  if (bRect.left < cRect.left + margin) {
+    container.scrollTo({ left: Math.max(0, btn.offsetLeft - 12), behavior: instant ? 'instant' : 'smooth' });
+  } else {
+    // Off right side → scroll just enough to show it on the right with padding
+    container.scrollTo({ left: btn.offsetLeft + btn.offsetWidth - container.clientWidth + 12, behavior: instant ? 'instant' : 'smooth' });
+  }
 }
