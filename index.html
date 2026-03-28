@@ -6929,22 +6929,24 @@ function renderMandel() {
   clearCanvas();
   var W = COLS, H = ROWS;
   if (mandelW !== W || mandelH !== H) initMandel();
-  // Click sets center
+  // Click sets center and zooms in
   if (pointer.clicked && currentMode === 'mandel') {
+    pointer.clicked = false;
     var aspect = W / H * 0.5;
     mandelCx += (pointer.gx / W - 0.5) * mandelZoom * aspect;
     mandelCy += (pointer.gy / H - 0.5) * mandelZoom;
     mandelZoom *= 0.5;
     mandelDirty = true;
   }
-  // Hold zooms faster (auto-zoom)
-  if (pointer.down && !pointer.clicked && currentMode === 'mandel') {
-    mandelZoom *= 0.995;
+  // Hold zooms continuously
+  if (pointer.down && currentMode === 'mandel') {
+    mandelZoom *= 0.99;
     mandelDirty = true;
   }
-  // Auto zoom toward interesting boundary
-  if (!pointer.down) {
-    mandelZoom *= 0.9995;
+  // Slow auto zoom (every 4th frame to save CPU)
+  mandelIter++;
+  if (!pointer.down && (mandelIter & 3) === 0) {
+    mandelZoom *= 0.999;
     mandelDirty = true;
   }
   if (mandelDirty) {
