@@ -96,9 +96,10 @@ nav button {
 }
 
 nav button.active {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
   color: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
 }
 
 /* === Canvas === */
