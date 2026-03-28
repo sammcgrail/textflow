@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>textflow</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Georgia&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap');
 
   * {
     margin: 0; padding: 0; box-sizing: border-box;
@@ -97,20 +97,52 @@
 
   #output {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
     line-height: 1.15;
     white-space: pre;
     letter-spacing: 0.02em;
     text-align: center;
-    user-select: none;
   }
 
+  /* Row divs — fixed height, no layout thrashing */
+  .row { white-space: pre; width: fit-content; }
+
+  /* === PRE-COMPUTED COLOR CLASSES (pretext pattern) === */
+  /* 10 alpha levels */
+  .a1 { opacity: 0.1; } .a2 { opacity: 0.2; } .a3 { opacity: 0.3; }
+  .a4 { opacity: 0.4; } .a5 { opacity: 0.5; } .a6 { opacity: 0.6; }
+  .a7 { opacity: 0.7; } .a8 { opacity: 0.8; } .a9 { opacity: 0.9; }
+  .a10 { opacity: 1.0; }
+
+  /* Lava colors */
+  .l1 { color: rgb(255,40,20); }
+  .l2 { color: rgb(255,100,40); }
+  .l3 { color: rgb(255,160,60); }
+  .l4 { color: rgb(255,200,100); }
+  .l5 { color: rgb(255,230,180); }
+
+  /* Rain colors */
+  .r0 { color: rgb(0,80,32); }
+  .r1 { color: rgb(0,120,48); }
+  .r2 { color: rgb(0,160,64); }
+  .r3 { color: rgb(0,200,80); }
+  .r4 { color: rgb(0,230,92); }
+  .rh { color: rgb(180,255,200); }
+
+  /* Fire colors */
+  .f1 { color: rgb(80,15,0); }
+  .f2 { color: rgb(180,40,0); }
+  .f3 { color: rgb(220,90,10); }
+  .f4 { color: rgb(255,150,20); }
+  .f5 { color: rgb(255,200,60); }
+  .f6 { color: rgb(255,240,150); }
+  .f7 { color: rgb(255,255,220); }
+
   /* Glow effects per experiment */
-  .glow-lava { text-shadow: 0 0 8px rgba(255, 100, 50, 0.4), 0 0 20px rgba(255, 60, 20, 0.15); }
-  .glow-rain { text-shadow: 0 0 6px rgba(0, 255, 120, 0.5), 0 0 15px rgba(0, 200, 80, 0.15); }
-  .glow-wave { text-shadow: 0 0 8px rgba(80, 140, 255, 0.5), 0 0 20px rgba(60, 100, 255, 0.15); }
-  .glow-fire { text-shadow: 0 0 6px rgba(255, 180, 40, 0.5), 0 0 18px rgba(255, 80, 20, 0.2); }
-  .glow-plasma { text-shadow: 0 0 8px rgba(200, 80, 255, 0.5), 0 0 20px rgba(150, 40, 255, 0.15); }
+  .glow-lava { text-shadow: 0 0 8px rgba(255,100,50,0.4), 0 0 20px rgba(255,60,20,0.15); }
+  .glow-rain { text-shadow: 0 0 6px rgba(0,255,120,0.5), 0 0 15px rgba(0,200,80,0.15); }
+  .glow-wave { text-shadow: 0 0 8px rgba(80,140,255,0.5), 0 0 20px rgba(60,100,255,0.15); }
+  .glow-fire { text-shadow: 0 0 6px rgba(255,180,40,0.5), 0 0 18px rgba(255,80,20,0.2); }
+  .glow-plasma { text-shadow: 0 0 8px rgba(200,80,255,0.5), 0 0 20px rgba(150,40,255,0.15); }
 </style>
 </head>
 <body>
@@ -129,147 +161,162 @@
 </div>
 
 <script>
-// ============================================================
 // iOS: prevent long-press magnifier & text selection
-document.addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('selectstart', e => e.preventDefault());
+document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+document.addEventListener('selectstart', function(e) { e.preventDefault(); });
 
+// ============================================================
 // TEXTFLOW — ASCII text experiments
+// Rendering pattern from chenglou/pretext:
+//   - Pre-created row divs (no per-frame DOM creation)
+//   - CSS classes instead of inline styles (small HTML strings)
+//   - Row-level innerHTML updates (batched reflow)
 // ============================================================
 
-const output = document.getElementById('output');
-const buttons = document.querySelectorAll('nav button');
-let currentMode = 'lava';
-let animId = null;
-let COLS, ROWS;
-let time = 0;
+var output = document.getElementById('output');
+var buttons = document.querySelectorAll('nav button');
+var currentMode = 'lava';
+var COLS, ROWS;
+var time = 0;
+var rowNodes = []; // Pre-created row div elements
 
-// Detect mobile/Safari
-const isMobile = window.innerWidth < 768;
-const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-                 /iPad|iPhone|iPod/.test(navigator.userAgent);
-const TARGET_FPS = (isMobile || isSafari) ? 24 : 60;
-const FRAME_INTERVAL = 1000 / TARGET_FPS;
-let lastFrameTime = 0;
+// === PRE-COMPUTED LOOKUP TABLES ===
+// Lava: brightness 0-255 -> pre-built span HTML
+var lavaLookup = new Array(256);
+var fireLookup = new Array(256);
+var rainLookup = new Array(256);
 
-// Responsive grid sizing
+var RAMP_DENSE = ' .`-:;=+*#%@$';
+var RAMP_FIRE  = ' .:-=+*%#@';
+
+function buildLookups() {
+  var lavaClasses = ['l1','l2','l3','l4','l5'];
+  var fireClasses = ['f1','f2','f3','f4','f5','f6','f7'];
+  var rainClasses = ['r0','r1','r2','r3','r4'];
+
+  for (var i = 0; i < 256; i++) {
+    var t = i / 255;
+    var alphaClass = 'a' + Math.max(1, Math.min(10, Math.ceil(t * 10)));
+
+    // Lava lookup
+    if (t < 0.08) {
+      lavaLookup[i] = ' ';
+    } else {
+      var ci = Math.min(lavaClasses.length - 1, Math.floor(t * lavaClasses.length));
+      var ri = Math.max(0, Math.min(RAMP_DENSE.length - 1, Math.floor(t * RAMP_DENSE.length)));
+      lavaLookup[i] = '<span class="' + lavaClasses[ci] + ' ' + alphaClass + '">' + RAMP_DENSE[ri] + '</span>';
+    }
+
+    // Fire lookup
+    if (t < 0.05) {
+      fireLookup[i] = ' ';
+    } else {
+      var fci = Math.min(fireClasses.length - 1, Math.floor(t * fireClasses.length));
+      var fri = Math.max(0, Math.min(RAMP_FIRE.length - 1, Math.floor(t * RAMP_FIRE.length)));
+      fireLookup[i] = '<span class="' + fireClasses[fci] + ' ' + alphaClass + '">' + RAMP_FIRE[fri] + '</span>';
+    }
+
+    // Rain lookup
+    if (t < 0.01) {
+      rainLookup[i] = ' ';
+    } else {
+      var rci = Math.min(rainClasses.length - 1, Math.floor(t * rainClasses.length));
+      rainLookup[i] = '<span class="' + rainClasses[rci] + ' ' + alphaClass + '">';
+    }
+  }
+}
+buildLookups();
+
+// Responsive grid sizing + row div creation
 function calcGrid() {
-  const fontSize = Math.max(8, Math.min(14, window.innerWidth / (isMobile ? 50 : 90)));
+  var fontSize = Math.max(10, Math.min(14, window.innerWidth / 90));
   output.style.fontSize = fontSize + 'px';
-  const charW = fontSize * 0.602;
-  const charH = fontSize * 1.15;
-  COLS = Math.floor((window.innerWidth * 0.92) / charW);
-  ROWS = Math.floor((window.innerHeight - 60) / charH);
-  // Tighter limits on mobile/Safari to prevent DOM thrashing
-  if (isMobile || isSafari) {
-    COLS = Math.min(COLS, 60);
-    ROWS = Math.min(ROWS, 35);
-  } else {
-    COLS = Math.min(COLS, 120);
-    ROWS = Math.min(ROWS, 55);
+  var charW = fontSize * 0.602;
+  var charH = fontSize * 1.15;
+  var newCols = Math.floor((window.innerWidth * 0.92) / charW);
+  var newRows = Math.floor((window.innerHeight - 60) / charH);
+  newCols = Math.min(newCols, 120);
+  newRows = Math.min(newRows, 55);
+
+  if (newCols !== COLS || newRows !== ROWS) {
+    COLS = newCols;
+    ROWS = newRows;
+    rebuildRows();
+  }
+}
+
+function rebuildRows() {
+  // Clear and recreate row divs (pretext pattern)
+  output.innerHTML = '';
+  rowNodes = [];
+  for (var i = 0; i < ROWS; i++) {
+    var div = document.createElement('div');
+    div.className = 'row';
+    div.style.height = '1.15em';
+    div.style.lineHeight = '1.15';
+    output.appendChild(div);
+    rowNodes.push(div);
   }
 }
 
 calcGrid();
-window.addEventListener('resize', () => { calcGrid(); });
-
-// Character ramps
-const RAMP_DENSE = ' .`-:;=+*#%@$';
-const RAMP_BLOCK = ' .:;+xX$#';
-const RAMP_FIRE  = ' .:-=+*%#@';
-const RAMP_SOFT  = ' .,-~:;=!*#';
-
-function rampChar(ramp, t) {
-  const i = Math.max(0, Math.min(ramp.length - 1, Math.floor(t * ramp.length)));
-  return ramp[i];
-}
+window.addEventListener('resize', calcGrid);
 
 // ============================================================
 // LAVA LAMP
 // ============================================================
 
-const blobs = [];
-const NUM_BLOBS = 7;
+var blobs = [];
+var NUM_BLOBS = 7;
 
 function initBlobs() {
-  blobs.length = 0;
-  for (let i = 0; i < NUM_BLOBS; i++) {
+  blobs = [];
+  for (var i = 0; i < NUM_BLOBS; i++) {
     blobs.push({
       x: Math.random() * COLS,
       y: Math.random() * ROWS,
       vx: (Math.random() - 0.5) * 0.3,
       vy: (Math.random() - 0.5) * 0.5 + (i % 2 === 0 ? -0.15 : 0.15),
       r: 4 + Math.random() * 6,
-      phase: Math.random() * Math.PI * 2,
+      phase: Math.random() * Math.PI * 2
     });
   }
 }
 initBlobs();
 
 function renderLava() {
-  const field = new Float32Array(COLS * ROWS);
-
   // Update blobs
-  for (const b of blobs) {
+  for (var i = 0; i < blobs.length; i++) {
+    var b = blobs[i];
     b.x += b.vx + Math.sin(time * 0.4 + b.phase) * 0.15;
     b.y += b.vy + Math.cos(time * 0.3 + b.phase) * 0.1;
     b.r += Math.sin(time * 0.5 + b.phase) * 0.03;
-
-    // Bounce off walls
     if (b.x < 2 || b.x > COLS - 2) { b.vx *= -0.9; b.x = Math.max(2, Math.min(COLS - 2, b.x)); }
     if (b.y < 2 || b.y > ROWS - 2) { b.vy *= -0.8; b.y = Math.max(2, Math.min(ROWS - 2, b.y)); }
-
-    // Damping + gentle drift
     b.vx *= 0.995;
     b.vy *= 0.995;
     b.vy += Math.sin(time * 0.2 + b.phase * 2) * 0.008;
   }
 
-  // Compute metaball field
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      let sum = 0;
-      const px = x * 0.55; // aspect ratio correction
-      for (const b of blobs) {
-        const bx = b.x * 0.55;
-        const dx = px - bx;
-        const dy = y - b.y;
-        const d2 = dx * dx + dy * dy;
-        sum += (b.r * b.r) / (d2 + 0.1);
+  // Compute metaball field + render per row
+  for (var y = 0; y < ROWS; y++) {
+    var html = '';
+    for (var x = 0; x < COLS; x++) {
+      var sum = 0;
+      var px = x * 0.55;
+      for (var i = 0; i < blobs.length; i++) {
+        var b = blobs[i];
+        var bx = b.x * 0.55;
+        var dx = px - bx;
+        var dy = y - b.y;
+        sum += (b.r * b.r) / (dx * dx + dy * dy + 0.1);
       }
-      field[y * COLS + x] = sum;
+      var t = Math.min(1, sum * 0.15);
+      var bi = Math.max(0, Math.min(255, (t * 255) | 0));
+      html += lavaLookup[bi];
     }
+    rowNodes[y].innerHTML = html;
   }
-
-  // Render
-  let lines = '';
-  const colors = [
-    [255, 40, 20],
-    [255, 100, 40],
-    [255, 160, 60],
-    [255, 200, 100],
-    [255, 230, 180],
-  ];
-
-  for (let y = 0; y < ROWS; y++) {
-    let line = '';
-    for (let x = 0; x < COLS; x++) {
-      const v = field[y * COLS + x];
-      const t = Math.min(1, v * 0.15);
-      if (t < 0.08) {
-        line += ' ';
-      } else {
-        const ci = Math.min(colors.length - 1, Math.floor(t * colors.length));
-        const c = colors[ci];
-        const alpha = 0.3 + t * 0.7;
-        const ch = rampChar(RAMP_DENSE, t);
-        line += `<span style="color:rgba(${c[0]},${c[1]},${c[2]},${alpha.toFixed(2)})">${ch}</span>`;
-      }
-    }
-    lines += line + '\n';
-  }
-
-  output.innerHTML = lines;
   output.className = 'glow-lava';
 }
 
@@ -277,58 +324,52 @@ function renderLava() {
 // RAIN
 // ============================================================
 
-const drops = [];
-const MAX_DROPS = 180;
-const trails = [];
+var drops = [];
+var MAX_DROPS = 180;
 
 function initRain() {
-  drops.length = 0;
-  trails.length = 0;
-  for (let i = 0; i < MAX_DROPS; i++) {
-    drops.push({
+  drops = [];
+  for (var i = 0; i < MAX_DROPS; i++) {
+    var d = {
       x: Math.floor(Math.random() * COLS),
       y: Math.random() * ROWS * 2 - ROWS,
       speed: 0.3 + Math.random() * 0.8,
       len: 4 + Math.floor(Math.random() * 12),
-      chars: [],
-    });
-    // Pre-fill trail chars
-    const d = drops[i];
-    for (let j = 0; j < d.len; j++) {
+      chars: []
+    };
+    for (var j = 0; j < d.len; j++) {
       d.chars.push(String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)));
     }
+    drops.push(d);
   }
 }
 initRain();
 
 function renderRain() {
-  const grid = new Array(ROWS);
-  const bright = new Float32Array(COLS * ROWS);
+  var grid = [];
+  var bright = new Float32Array(COLS * ROWS);
 
-  for (let y = 0; y < ROWS; y++) {
-    grid[y] = new Array(COLS).fill(' ');
+  for (var y = 0; y < ROWS; y++) {
+    grid[y] = new Array(COLS);
+    for (var x = 0; x < COLS; x++) grid[y][x] = ' ';
   }
 
-  for (const d of drops) {
+  for (var i = 0; i < drops.length; i++) {
+    var d = drops[i];
     d.y += d.speed;
     if (d.y - d.len > ROWS) {
       d.y = -d.len;
       d.x = Math.floor(Math.random() * COLS);
       d.speed = 0.3 + Math.random() * 0.8;
     }
-
-    // Mutate random char in trail
     if (Math.random() < 0.08) {
-      const ri = Math.floor(Math.random() * d.len);
-      d.chars[ri] = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+      d.chars[Math.floor(Math.random() * d.len)] = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
     }
-
-    for (let j = 0; j < d.len; j++) {
-      const ty = Math.floor(d.y - j);
+    for (var j = 0; j < d.len; j++) {
+      var ty = Math.floor(d.y - j);
       if (ty >= 0 && ty < ROWS && d.x >= 0 && d.x < COLS) {
-        const fade = 1 - j / d.len;
-        const b = bright[ty * COLS + d.x];
-        if (fade > b) {
+        var fade = 1 - j / d.len;
+        if (fade > bright[ty * COLS + d.x]) {
           grid[ty][d.x] = d.chars[j];
           bright[ty * COLS + d.x] = fade;
         }
@@ -336,65 +377,63 @@ function renderRain() {
     }
   }
 
-  let lines = '';
-  for (let y = 0; y < ROWS; y++) {
-    let line = '';
-    for (let x = 0; x < COLS; x++) {
-      const b = bright[y * COLS + x];
+  for (var y = 0; y < ROWS; y++) {
+    var html = '';
+    for (var x = 0; x < COLS; x++) {
+      var b = bright[y * COLS + x];
       if (b < 0.01) {
-        line += ' ';
+        html += ' ';
       } else {
-        const g = Math.floor(80 + b * 175);
-        const alpha = 0.2 + b * 0.8;
-        const isHead = b > 0.95;
-        const color = isHead ? `rgba(180,255,200,${alpha.toFixed(2)})` : `rgba(0,${g},${Math.floor(g*0.4)},${alpha.toFixed(2)})`;
-        line += `<span style="color:${color}">${grid[y][x]}</span>`;
+        var bi = Math.max(0, Math.min(255, (b * 255) | 0));
+        var isHead = b > 0.95;
+        if (isHead) {
+          html += '<span class="rh a10">' + grid[y][x] + '</span>';
+        } else {
+          html += rainLookup[bi] + grid[y][x] + '</span>';
+        }
       }
     }
-    lines += line + '\n';
+    rowNodes[y].innerHTML = html;
   }
-
-  output.innerHTML = lines;
   output.className = 'glow-rain';
 }
 
 // ============================================================
-// WAVES
+// WAVES — uses inline hsla (unavoidable for rainbow cycling)
+// but still uses row-level updates
 // ============================================================
 
+var RAMP_SOFT = ' .,-~:;=!*#';
+
 function renderWave() {
-  let lines = '';
-  const phrase = 'textflow';
+  var phrase = 'textflow';
 
-  for (let y = 0; y < ROWS; y++) {
-    let line = '';
-    for (let x = 0; x < COLS; x++) {
-      const wave1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
-      const wave2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
-      const wave3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
-      const wave4 = Math.sin(Math.sqrt((x - COLS/2)**2 + (y - ROWS/2)**2) * 0.12 - time * 1.5) * 0.5 + 0.5;
+  for (var y = 0; y < ROWS; y++) {
+    var html = '';
+    for (var x = 0; x < COLS; x++) {
+      var wave1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
+      var wave2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
+      var wave3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
+      var cx = x - COLS / 2, cy = y - ROWS / 2;
+      var wave4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.12 - time * 1.5) * 0.5 + 0.5;
 
-      let v = (wave1 * 0.35 + wave2 * 0.25 + wave3 * 0.2 + wave4 * 0.2);
+      var v = wave1 * 0.35 + wave2 * 0.25 + wave3 * 0.2 + wave4 * 0.2;
       v = Math.pow(v, 1.2);
 
       if (v < 0.15) {
-        line += ' ';
+        html += ' ';
       } else {
-        const ci = Math.floor((x + time * 8) % phrase.length);
-        const ch = v > 0.6 ? phrase[Math.abs(ci) % phrase.length] : rampChar(RAMP_SOFT, v);
-
-        const hue = (x * 2.5 + y * 1.5 + time * 30) % 360;
-        const sat = 60 + v * 40;
-        const lit = 30 + v * 50;
-        const alpha = 0.3 + v * 0.7;
-
-        line += `<span style="color:hsla(${hue.toFixed(0)},${sat.toFixed(0)}%,${lit.toFixed(0)}%,${alpha.toFixed(2)})">${ch}</span>`;
+        var ci = Math.floor((x + time * 8) % phrase.length);
+        var ri = Math.max(0, Math.min(RAMP_SOFT.length - 1, Math.floor(v * RAMP_SOFT.length)));
+        var ch = v > 0.6 ? phrase[Math.abs(ci) % phrase.length] : RAMP_SOFT[ri];
+        var hue = ((x * 2.5 + y * 1.5 + time * 30) % 360) | 0;
+        var sat = (60 + v * 40) | 0;
+        var lit = (30 + v * 50) | 0;
+        html += '<span style="color:hsl(' + hue + ',' + sat + '%,' + lit + '%)">' + ch + '</span>';
       }
     }
-    lines += line + '\n';
+    rowNodes[y].innerHTML = html;
   }
-
-  output.innerHTML = lines;
   output.className = 'glow-wave';
 }
 
@@ -402,113 +441,82 @@ function renderWave() {
 // FIRE
 // ============================================================
 
-let fireBuffer;
+var fireBuffer;
 function initFire() {
   fireBuffer = new Float32Array(COLS * (ROWS + 2));
 }
 initFire();
 
 function renderFire() {
-  const W = COLS, H = ROWS + 2;
+  var W = COLS, H = ROWS + 2;
 
-  // Re-init buffer if size changed
   if (!fireBuffer || fireBuffer.length !== W * H) {
     fireBuffer = new Float32Array(W * H);
   }
 
   // Seed bottom row
-  for (let x = 0; x < W; x++) {
+  for (var x = 0; x < W; x++) {
     fireBuffer[(H - 1) * W + x] = Math.random() > 0.4 ? 0.8 + Math.random() * 0.2 : Math.random() * 0.3;
   }
 
   // Propagate upward
-  for (let y = 0; y < H - 1; y++) {
-    for (let x = 0; x < W; x++) {
-      const below = fireBuffer[Math.min(H-1, y + 1) * W + x];
-      const belowL = fireBuffer[Math.min(H-1, y + 1) * W + Math.max(0, x - 1)];
-      const belowR = fireBuffer[Math.min(H-1, y + 1) * W + Math.min(W - 1, x + 1)];
-      const below2 = fireBuffer[Math.min(H-1, Math.min(y + 2, H - 1)) * W + x];
-
-      let v = (below + belowL + belowR + below2) * 0.25;
+  for (var y = 0; y < H - 1; y++) {
+    for (var x = 0; x < W; x++) {
+      var y1 = Math.min(H - 1, y + 1);
+      var y2 = Math.min(H - 1, y + 2);
+      var xl = Math.max(0, x - 1);
+      var xr = Math.min(W - 1, x + 1);
+      var v = (fireBuffer[y1 * W + x] + fireBuffer[y1 * W + xl] + fireBuffer[y1 * W + xr] + fireBuffer[y2 * W + x]) * 0.25;
       v *= 0.97 - Math.random() * 0.02;
       v -= 0.008;
-      fireBuffer[y * W + x] = Math.max(0, v);
+      fireBuffer[y * W + x] = v > 0 ? v : 0;
     }
   }
 
-  // Render
-  let lines = '';
-  const fireColors = [
-    [20, 5, 0],
-    [80, 15, 0],
-    [180, 40, 0],
-    [220, 90, 10],
-    [255, 150, 20],
-    [255, 200, 60],
-    [255, 240, 150],
-    [255, 255, 220],
-  ];
-
-  for (let y = 0; y < ROWS; y++) {
-    let line = '';
-    for (let x = 0; x < W; x++) {
-      const v = fireBuffer[y * W + x];
-      if (v < 0.05) {
-        line += ' ';
-      } else {
-        const ci = Math.min(fireColors.length - 1, Math.floor(v * fireColors.length));
-        const c = fireColors[ci];
-        const ch = rampChar(RAMP_FIRE, v);
-        const alpha = 0.3 + v * 0.7;
-        line += `<span style="color:rgba(${c[0]},${c[1]},${c[2]},${alpha.toFixed(2)})">${ch}</span>`;
-      }
+  // Render per row using lookup table
+  for (var y = 0; y < ROWS; y++) {
+    var html = '';
+    for (var x = 0; x < W; x++) {
+      var v = fireBuffer[y * W + x];
+      var bi = Math.max(0, Math.min(255, (v * 255) | 0));
+      html += fireLookup[bi];
     }
-    lines += line + '\n';
+    rowNodes[y].innerHTML = html;
   }
-
-  output.innerHTML = lines;
   output.className = 'glow-fire';
 }
 
 // ============================================================
-// PLASMA
+// PLASMA — uses inline hsla (rainbow cycling)
+// row-level updates
 // ============================================================
 
 function renderPlasma() {
-  let lines = '';
+  for (var y = 0; y < ROWS; y++) {
+    var html = '';
+    for (var x = 0; x < COLS; x++) {
+      var v1 = Math.sin(x * 0.06 + time * 0.7);
+      var v2 = Math.sin(y * 0.09 + time * 0.5);
+      var v3 = Math.sin((x + y) * 0.05 + time * 0.4);
+      var cx = x - COLS / 2, cy = y - ROWS / 2;
+      var v4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.1 - time * 0.8);
+      var v5 = Math.sin(x * 0.04 * Math.sin(time * 0.2) + y * 0.05 * Math.cos(time * 0.15));
 
-  for (let y = 0; y < ROWS; y++) {
-    let line = '';
-    for (let x = 0; x < COLS; x++) {
-      const v1 = Math.sin(x * 0.06 + time * 0.7);
-      const v2 = Math.sin(y * 0.09 + time * 0.5);
-      const v3 = Math.sin((x + y) * 0.05 + time * 0.4);
-      const cx = x - COLS / 2, cy = y - ROWS / 2;
-      const v4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.1 - time * 0.8);
-      const v5 = Math.sin(x * 0.04 * Math.sin(time * 0.2) + y * 0.05 * Math.cos(time * 0.15));
-
-      let v = (v1 + v2 + v3 + v4 + v5) / 5;
-      v = v * 0.5 + 0.5; // normalize to 0-1
-
-      const ch = rampChar(RAMP_DENSE, v);
-
-      const hue1 = (v * 360 + time * 40) % 360;
-      const hue2 = (v * 180 + x * 1.5 + time * 20) % 360;
-      const hue = (hue1 + hue2) * 0.5 % 360;
-      const sat = 70 + v * 30;
-      const lit = 20 + v * 55;
-      const alpha = 0.4 + v * 0.6;
+      var v = (v1 + v2 + v3 + v4 + v5) * 0.1 + 0.5;
 
       if (v < 0.1) {
-        line += ' ';
+        html += ' ';
       } else {
-        line += `<span style="color:hsla(${hue.toFixed(0)},${sat.toFixed(0)}%,${lit.toFixed(0)}%,${alpha.toFixed(2)})">${ch}</span>`;
+        var ri = Math.max(0, Math.min(RAMP_DENSE.length - 1, Math.floor(v * RAMP_DENSE.length)));
+        var ch = RAMP_DENSE[ri];
+        var hue = ((v * 270 + x * 1.5 + time * 30) % 360) | 0;
+        var sat = (70 + v * 30) | 0;
+        var lit = (20 + v * 55) | 0;
+        html += '<span style="color:hsl(' + hue + ',' + sat + '%,' + lit + '%)">' + ch + '</span>';
       }
     }
-    lines += line + '\n';
+    rowNodes[y].innerHTML = html;
   }
-
-  output.innerHTML = lines;
   output.className = 'glow-plasma';
 }
 
@@ -516,34 +524,31 @@ function renderPlasma() {
 // MAIN LOOP
 // ============================================================
 
-const renderers = {
+var renderers = {
   lava: renderLava,
   rain: renderRain,
   wave: renderWave,
   fire: renderFire,
-  plasma: renderPlasma,
+  plasma: renderPlasma
 };
 
-function loop(timestamp) {
-  animId = requestAnimationFrame(loop);
-  if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
-  lastFrameTime = timestamp;
+function loop() {
   time += 0.016;
   renderers[currentMode]();
+  requestAnimationFrame(loop);
 }
 
 function switchMode(mode) {
   currentMode = mode;
   time = 0;
-  buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
-
+  buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
   if (mode === 'lava') initBlobs();
   if (mode === 'rain') initRain();
   if (mode === 'fire') initFire();
 }
 
-buttons.forEach(b => {
-  b.addEventListener('click', () => switchMode(b.dataset.mode));
+buttons.forEach(function(b) {
+  b.addEventListener('click', function() { switchMode(b.dataset.mode); });
 });
 
 loop();
