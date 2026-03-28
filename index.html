@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="28 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:description" content="38 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="28 interactive ASCII art experiments">
+<meta name="twitter:description" content="38 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -139,6 +139,16 @@
   <button data-mode="shatter">shatter</button>
   <button data-mode="pulse">pulse</button>
   <button data-mode="worm">worm</button>
+  <button data-mode="snake">snake</button>
+  <button data-mode="bloom">bloom</button>
+  <button data-mode="fluid">fluid</button>
+  <button data-mode="spiral">spiral</button>
+  <button data-mode="cipher">cipher</button>
+  <button data-mode="aurora">aurora</button>
+  <button data-mode="pendulum">pendulum</button>
+  <button data-mode="diffuse">diffuse</button>
+  <button data-mode="crystal">crystal</button>
+  <button data-mode="tvstatic">tvstatic</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -194,7 +204,9 @@ window.addEventListener('resize', function() {
     bolt: initBolt, glitch: initGlitch, flock: initFlock, erosion: initErosion,
     gravity: initGravity, paint: initPaint, ripple: initRipple, sand: initSand,
     orbit: initOrbit, grow: initGrow, magnet: initMagnet, shatter: initShatter,
-    pulse: initPulse, worm: initWorm
+    pulse: initPulse, worm: initWorm, snake: initSnake, bloom: initBloom,
+    fluid: initFluid, spiral: initSpiral, cipher: initCipher, aurora: initAurora,
+    pendulum: initPendulum, diffuse: initDiffuse, crystal: initCrystal, tvstatic: initStatic
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -228,7 +240,17 @@ var glows = {
   magnet: { color: 'rgba(255,80,80,0.3)', blur: 12 },
   shatter:{ color: 'rgba(200,200,255,0.35)', blur: 14 },
   pulse:  { color: 'rgba(0,255,200,0.35)', blur: 12 },
-  worm:   { color: 'rgba(180,255,50,0.3)', blur: 10 }
+  worm:   { color: 'rgba(180,255,50,0.3)', blur: 10 },
+  snake:  { color: 'rgba(0,255,150,0.35)', blur: 12 },
+  bloom:  { color: 'rgba(255,150,50,0.4)', blur: 16 },
+  fluid:  { color: 'rgba(100,150,255,0.3)', blur: 12 },
+  spiral: { color: 'rgba(255,200,100,0.3)', blur: 10 },
+  cipher: { color: 'rgba(0,255,0,0.3)', blur: 8 },
+  aurora: { color: 'rgba(100,255,200,0.35)', blur: 16 },
+  pendulum:{ color: 'rgba(255,180,80,0.3)', blur: 12 },
+  diffuse:{ color: 'rgba(200,100,255,0.3)', blur: 14 },
+  crystal:{ color: 'rgba(180,220,255,0.3)', blur: 10 },
+  tvstatic: { color: 'rgba(200,200,200,0.2)', blur: 6 }
 };
 
 function clearCanvas() {
@@ -293,6 +315,41 @@ function screenToGrid(clientX, clientY) {
     gy: (clientY - NAV_H) / CHAR_H
   };
 }
+
+// ============================================================
+// UNIVERSAL POINTER TRACKER
+// ============================================================
+var pointer = { down: false, x: 0, y: 0, gx: 0, gy: 0, clicked: false };
+
+canvas.addEventListener('mousedown', function(e) {
+  pointer.down = true; pointer.clicked = true;
+  var g = screenToGrid(e.clientX, e.clientY);
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  pointer.gx = g.gx; pointer.gy = g.gy;
+});
+canvas.addEventListener('mousemove', function(e) {
+  var g = screenToGrid(e.clientX, e.clientY);
+  pointer.x = e.clientX; pointer.y = e.clientY;
+  pointer.gx = g.gx; pointer.gy = g.gy;
+});
+canvas.addEventListener('mouseup', function() { pointer.down = false; });
+canvas.addEventListener('mouseleave', function() { pointer.down = false; });
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  pointer.down = true; pointer.clicked = true;
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  pointer.x = t.clientX; pointer.y = t.clientY;
+  pointer.gx = g.gx; pointer.gy = g.gy;
+}, { passive: false });
+canvas.addEventListener('touchmove', function(e) {
+  var t = e.touches[0];
+  var g = screenToGrid(t.clientX, t.clientY);
+  pointer.x = t.clientX; pointer.y = t.clientY;
+  pointer.gx = g.gx; pointer.gy = g.gy;
+}, { passive: true });
+canvas.addEventListener('touchend', function() { pointer.down = false; });
+canvas.addEventListener('touchcancel', function() { pointer.down = false; });
 
 function spawnLavaBlob(gx, gy) {
   if (blobs.length >= MAX_BLOBS) {
@@ -436,8 +493,16 @@ function initRain() {
 }
 initRain();
 
+// Rain interaction: click to attract drops toward cursor
+var rainAttractX = -1, rainAttractY = -1;
+
 function renderRain() {
   clearCanvas();
+
+  // Click attracts drops
+  if (pointer.down && currentMode === 'rain') {
+    rainAttractX = pointer.gx; rainAttractY = pointer.gy;
+  }
 
   var bright = new Float32Array(COLS * ROWS);
   var charGrid = new Array(COLS * ROWS);
@@ -445,6 +510,14 @@ function renderRain() {
   for (var i = 0; i < drops.length; i++) {
     var d = drops[i];
     d.y += d.speed;
+
+    // Attract toward click point
+    if (rainAttractX >= 0) {
+      var dx = rainAttractX - d.x;
+      var dist = Math.abs(dx);
+      if (dist < 20) d.x += dx * 0.03;
+    }
+
     if (d.y - d.len > ROWS) {
       d.y = -d.len;
       d.x = Math.floor(Math.random() * COLS);
@@ -457,14 +530,17 @@ function renderRain() {
       var ty = (d.y - j) | 0;
       if (ty >= 0 && ty < ROWS && d.x >= 0 && d.x < COLS) {
         var fade = 1 - j / d.len;
-        var idx = ty * COLS + d.x;
-        if (fade > bright[idx]) {
+        var idx = ty * COLS + (d.x | 0);
+        if (idx >= 0 && idx < COLS * ROWS && fade > bright[idx]) {
           charGrid[idx] = d.chars[j];
           bright[idx] = fade;
         }
       }
     }
   }
+
+  // Fade attraction
+  if (!pointer.down) rainAttractX = -1;
 
   for (var y = 0; y < ROWS; y++) {
     for (var x = 0; x < COLS; x++) {
@@ -486,20 +562,43 @@ function renderRain() {
 // WAVES
 // ============================================================
 
+// Wave interaction: click to add wave centers
+var waveCenters = [];
+
 function renderWave() {
   clearCanvas();
   var phrase = 'textflow';
+
+  if (pointer.clicked && currentMode === 'wave') {
+    pointer.clicked = false;
+    if (waveCenters.length > 5) waveCenters.shift();
+    waveCenters.push({ x: pointer.gx, y: pointer.gy, born: time });
+  }
+  // Prune old wave centers
+  var wi = waveCenters.length;
+  while (wi--) { if (time - waveCenters[wi].born > 15) waveCenters.splice(wi, 1); }
 
   for (var y = 0; y < ROWS; y++) {
     for (var x = 0; x < COLS; x++) {
       var w1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
       var w2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
       var w3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
-      var cx = x - COLS / 2, cy = y - ROWS / 2;
-      var w4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.12 - time * 1.5) * 0.5 + 0.5;
+      var ccx = x - COLS / 2, ccy = y - ROWS / 2;
+      var w4 = Math.sin(Math.sqrt(ccx * ccx + ccy * ccy) * 0.12 - time * 1.5) * 0.5 + 0.5;
 
       var v = w1 * 0.35 + w2 * 0.25 + w3 * 0.2 + w4 * 0.2;
-      v = Math.pow(v, 1.2);
+
+      // Add click-spawned wave centers
+      for (var wc = 0; wc < waveCenters.length; wc++) {
+        var cen = waveCenters[wc];
+        var cdx = x - cen.x, cdy = y - cen.y;
+        var cd = Math.sqrt(cdx * cdx + cdy * cdy);
+        var age = time - cen.born;
+        var fade = Math.max(0, 1 - age / 15);
+        v += Math.sin(cd * 0.25 - time * 2) * 0.3 * fade * Math.exp(-cd * 0.03);
+      }
+
+      v = Math.pow(Math.max(0, v), 1.2);
       if (v < 0.15) continue;
 
       var ci = ((x + time * 8) | 0) % phrase.length;
@@ -538,6 +637,19 @@ function renderFire() {
     fireBuffer = new Float32Array(W * H);
   }
 
+  // Click to add fire fuel at cursor
+  if (pointer.down && currentMode === 'fire') {
+    var fx = pointer.gx | 0, fy = (pointer.gy | 0);
+    for (var fdx = -3; fdx <= 3; fdx++) {
+      for (var fdy = -2; fdy <= 2; fdy++) {
+        var nx = fx + fdx, ny = fy + fdy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          fireBuffer[ny * W + nx] = 0.9 + Math.random() * 0.1;
+        }
+      }
+    }
+  }
+
   for (var x = 0; x < W; x++) {
     fireBuffer[(H - 1) * W + x] = Math.random() > 0.4 ? 0.8 + Math.random() * 0.2 : Math.random() * 0.3;
   }
@@ -570,6 +682,7 @@ function renderFire() {
 // PLASMA
 // ============================================================
 
+// Plasma interaction: cursor becomes extra focal point
 function renderPlasma() {
   clearCanvas();
 
@@ -578,11 +691,19 @@ function renderPlasma() {
       var v1 = Math.sin(x * 0.06 + time * 0.7);
       var v2 = Math.sin(y * 0.09 + time * 0.5);
       var v3 = Math.sin((x + y) * 0.05 + time * 0.4);
-      var cx = x - COLS / 2, cy = y - ROWS / 2;
-      var v4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.1 - time * 0.8);
+      var pcx = x - COLS / 2, pcy = y - ROWS / 2;
+      var v4 = Math.sin(Math.sqrt(pcx * pcx + pcy * pcy) * 0.1 - time * 0.8);
       var v5 = Math.sin(x * 0.04 * Math.sin(time * 0.2) + y * 0.05 * Math.cos(time * 0.15));
 
       var v = (v1 + v2 + v3 + v4 + v5) * 0.1 + 0.5;
+
+      // Pointer adds plasma focal point
+      if (pointer.down && currentMode === 'plasma') {
+        var pdx = x - pointer.gx, pdy = y - pointer.gy;
+        var pd = Math.sqrt(pdx * pdx + pdy * pdy);
+        v += Math.sin(pd * 0.2 - time * 2) * 0.3 * Math.exp(-pd * 0.02);
+      }
+
       if (v < 0.1) continue;
 
       var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
@@ -621,6 +742,18 @@ function renderLife() {
   var sz = W * H;
 
   if (!lifeA || lifeA.length !== sz) initLife();
+
+  // Click to paint alive cells
+  if (pointer.down && currentMode === 'life') {
+    var lx = pointer.gx | 0, ly = pointer.gy | 0;
+    for (var ldy = -2; ldy <= 2; ldy++) {
+      for (var ldx = -2; ldx <= 2; ldx++) {
+        var lnx = (lx + ldx + W) % W, lny = (ly + ldy + H) % H;
+        lifeA[lny * W + lnx] = 1;
+        lifeAge[lny * W + lnx] = 0.8;
+      }
+    }
+  }
 
   lifeTickAccum += 1;
   // Step every 6 frames (~10 generations/sec at 60fps)
@@ -703,10 +836,22 @@ initWarp();
 
 var WARP_CHARS = '.,+*oO0#@';
 
+// Warp interaction: click to shift tunnel center
+var warpCX, warpCY;
 function renderWarp() {
   clearCanvas();
   var cx = COLS / 2;
   var cy = ROWS / 2;
+
+  // Click moves the warp center
+  if (pointer.down && currentMode === 'warp') {
+    warpCX = pointer.gx; warpCY = pointer.gy;
+  }
+  if (warpCX !== undefined) {
+    cx = cx * 0.95 + warpCX * 0.05;
+    cy = cy * 0.95 + warpCY * 0.05;
+    warpCX = cx; warpCY = cy;
+  }
   var speed = 0.008;
 
   for (var i = 0; i < stars.length; i++) {
@@ -775,6 +920,8 @@ function initSwirl() {
 }
 initSwirl();
 
+// Swirl interaction: click to add a third attractor at cursor
+var swirlClickAttr = null;
 function renderSwirl() {
   clearCanvas();
   var W = COLS, H = ROWS;
@@ -784,6 +931,12 @@ function renderSwirl() {
   attractor1.y = H * 0.5 + Math.sin(time * 0.6) * H * 0.3;
   attractor2.x = W * 0.5 + Math.cos(time * 0.3 + 2) * W * 0.3;
   attractor2.y = H * 0.5 + Math.sin(time * 0.5 + 2) * H * 0.25;
+
+  // Click creates a strong temporary attractor
+  if (pointer.down && currentMode === 'swirl') {
+    swirlClickAttr = { x: pointer.gx, y: pointer.gy };
+  }
+  if (!pointer.down) swirlClickAttr = null;
 
   // Density field for rendering
   var density = new Float32Array(W * H);
@@ -804,6 +957,15 @@ function renderSwirl() {
     var f2 = 1.5 / d2;
     p.vx += (dx2 / d2 * f2 + dy2 / d2 * f2 * 0.6) * 0.02;
     p.vy += (dy2 / d2 * f2 - dx2 / d2 * f2 * 0.6) * 0.02;
+
+    // Click attractor
+    if (swirlClickAttr) {
+      var dx3 = swirlClickAttr.x - p.x, dy3 = swirlClickAttr.y - p.y;
+      var d3 = Math.sqrt(dx3 * dx3 + dy3 * dy3) + 1;
+      var f3 = 4.0 / d3;
+      p.vx += (dx3 / d3 * f3 - dy3 / d3 * f3 * 1.2) * 0.02;
+      p.vy += (dy3 / d3 * f3 + dx3 / d3 * f3 * 1.2) * 0.02;
+    }
 
     // Damping
     p.vx *= 0.98;
@@ -926,6 +1088,22 @@ function renderRift() {
   var W = COLS, H = ROWS, sz = W * H;
   if (!riftU || riftU.length !== sz) initRift();
 
+  // Click to seed new reaction spots
+  if (pointer.clicked && currentMode === 'rift') {
+    pointer.clicked = false;
+    var rx = pointer.gx | 0, ry = pointer.gy | 0;
+    for (var rdy = -4; rdy <= 4; rdy++) {
+      for (var rdx = -4; rdx <= 4; rdx++) {
+        var rnx = rx + rdx, rny = ry + rdy;
+        if (rnx >= 0 && rnx < W && rny >= 0 && rny < H) {
+          var ridx = rny * W + rnx;
+          riftU[ridx] = 0.5 + Math.random() * 0.1;
+          riftV[ridx] = 0.25 + Math.random() * 0.1;
+        }
+      }
+    }
+  }
+
   var Du = 0.16, Dv = 0.08, f = 0.055, k = 0.062, dt = 1.0;
   if (!riftUNew || riftUNew.length !== sz) { riftUNew = new Float32Array(sz); riftVNew = new Float32Array(sz); }
 
@@ -979,6 +1157,18 @@ initVoronoi();
 function renderVoronoi() {
   clearCanvas();
   var W = COLS, H = ROWS;
+
+  // Click to add new seed points
+  if (pointer.clicked && currentMode === 'voronoi') {
+    pointer.clicked = false;
+    voronoiSeeds.push({
+      x: pointer.gx, y: pointer.gy,
+      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+      hue: (Math.random() * 360) | 0
+    });
+    if (voronoiSeeds.length > 40) voronoiSeeds.shift();
+  }
+
   // Move seeds
   for (var i = 0; i < voronoiSeeds.length; i++) {
     var s = voronoiSeeds[i];
@@ -1034,6 +1224,17 @@ function renderBolt() {
   if (!boltGrid || boltGrid.length !== W * H) initBolt();
 
   boltTimer += 1;
+
+  // Click to spawn bolt at cursor position
+  if (pointer.clicked && currentMode === 'bolt') {
+    pointer.clicked = false;
+    var bsx = pointer.gx;
+    var bsy = pointer.gy;
+    var numB = 3 + Math.floor(Math.random() * 3);
+    for (var bb = 0; bb < numB; bb++) {
+      boltBranches.push({ x: bsx + (Math.random() - 0.5) * 4, y: bsy, life: 30 + Math.random() * 30 });
+    }
+  }
 
   // Spawn new bolt periodically
   if (boltTimer > 30 || boltBranches.length === 0) {
@@ -1094,6 +1295,7 @@ function renderBolt() {
 // MOIRE — Multi-center Ring Interference
 // ============================================================
 
+// Moire interaction: cursor becomes a focal point
 function renderMoire() {
   clearCanvas();
   var W = COLS, H = ROWS;
@@ -1102,8 +1304,14 @@ function renderMoire() {
   var f1y = H * 0.5 + Math.sin(time * 0.4) * H * 0.3;
   var f2x = W * 0.5 + Math.cos(time * 0.37 + 2) * W * 0.25;
   var f2y = H * 0.5 + Math.sin(time * 0.29 + 2) * H * 0.35;
-  var f3x = W * 0.5 + Math.sin(time * 0.23 + 4) * W * 0.35;
-  var f3y = H * 0.5 + Math.cos(time * 0.31 + 4) * H * 0.25;
+  var f3x, f3y;
+  // Cursor replaces third focal point when active
+  if (pointer.down && currentMode === 'moire') {
+    f3x = pointer.gx; f3y = pointer.gy;
+  } else {
+    f3x = W * 0.5 + Math.sin(time * 0.23 + 4) * W * 0.35;
+    f3y = H * 0.5 + Math.cos(time * 0.31 + 4) * H * 0.25;
+  }
 
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
@@ -1132,6 +1340,7 @@ function renderMoire() {
 // FOLD — Domain Warping (nested fBm)
 // ============================================================
 
+// Fold interaction: cursor distorts the domain warp
 function renderFold() {
   clearCanvas();
   var W = COLS, H = ROWS;
@@ -1140,9 +1349,18 @@ function renderFold() {
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var px = x * sc, py = y * sc;
+
+      // Cursor distortion
+      var foldWarp = 0;
+      if (pointer.down && currentMode === 'fold') {
+        var fdx = x - pointer.gx, fdy = y - pointer.gy;
+        var fd = Math.sqrt(fdx * fdx + fdy * fdy);
+        if (fd < 20) foldWarp = (1 - fd / 20) * 2;
+      }
+
       // Nested domain warping
-      var q1 = fbm(px + time * 0.1, py + time * 0.05, 4);
-      var q2 = fbm(px + 5.2 + time * 0.08, py + 1.3, 4);
+      var q1 = fbm(px + time * 0.1 + foldWarp, py + time * 0.05, 4);
+      var q2 = fbm(px + 5.2 + time * 0.08, py + 1.3 + foldWarp, 4);
       var r1 = fbm(px + 4 * q1 + 1.7 + time * 0.06, py + 4 * q2 + 9.2, 4);
       var r2 = fbm(px + 4 * q1 + 8.3, py + 4 * q2 + 2.8 + time * 0.07, 4);
       var v = fbm(px + 4 * r1, py + 4 * r2, 3);
@@ -1165,6 +1383,8 @@ function renderFold() {
 
 var copperMsg = '  TEXTFLOW  --  ASCII EXPERIMENTS  --  SEBLAND.COM  --  ';
 
+// Copper interaction: click adds a bar pinned to cursor Y
+var copperExtraBars = [];
 function renderCopper() {
   clearCanvas();
   var W = COLS, H = ROWS;
@@ -1172,10 +1392,30 @@ function renderCopper() {
   var barHues = [0, 30, 60, 180, 210, 280, 330];
   var scrollX = time * 12;
 
+  if (pointer.clicked && currentMode === 'copper') {
+    pointer.clicked = false;
+    if (copperExtraBars.length > 5) copperExtraBars.shift();
+    copperExtraBars.push({ y: pointer.gy, hue: (Math.random() * 360) | 0, born: time });
+  }
+
   for (var y = 0; y < H; y++) {
     // Sum bar contributions
     var totalV = 0;
     var bestHue = 0, bestV = 0;
+
+    // Extra click-spawned bars
+    for (var eb = 0; eb < copperExtraBars.length; eb++) {
+      var ebar = copperExtraBars[eb];
+      var eAge = time - ebar.born;
+      if (eAge > 20) { copperExtraBars.splice(eb, 1); eb--; continue; }
+      var eFade = Math.max(0, 1 - eAge / 20);
+      var eDist = Math.abs(y - (ebar.y + Math.sin(time * 0.8 + eb) * 3));
+      if (eDist < 3) {
+        var ev = (1 - eDist / 3) * eFade;
+        totalV += ev;
+        if (ev > bestV) { bestV = ev; bestHue = ebar.hue; }
+      }
+    }
 
     for (var b = 0; b < numBars; b++) {
       var barY = H * 0.5 + Math.sin(time * (0.5 + b * 0.15) + b * 1.2) * H * 0.35;
@@ -1239,6 +1479,22 @@ function renderGlitch() {
     for (var x = 0; x < W; x++) row.push(chars[Math.floor(Math.random() * chars.length)]);
     glitchBase.push(row);
     glitchBase.shift();
+  }
+
+  // Click to force glitch at cursor
+  if (pointer.clicked && currentMode === 'glitch') {
+    pointer.clicked = false;
+    glitchEvent = 10 + Math.floor(Math.random() * 10);
+    glitchStrips = [];
+    var gy = pointer.gy | 0;
+    for (var gs = 0; gs < 3 + Math.floor(Math.random() * 4); gs++) {
+      glitchStrips.push({
+        y: gy + gs * 2 - 3,
+        h: 1 + Math.floor(Math.random() * 3),
+        offset: Math.floor((pointer.gx - COLS / 2) * 0.5 + (Math.random() - 0.5) * 10),
+        color: Math.floor(Math.random() * 3)
+      });
+    }
   }
 
   // Trigger glitch events
@@ -1344,6 +1600,13 @@ function renderFlock() {
     var sx = 0, sy = 0, ax = 0, ay = 0, cx = 0, cy = 0;
     var sc = 0, ac = 0, cc = 0;
 
+    // Click attracts flock toward cursor
+    if (pointer.down && currentMode === 'flock') {
+      var fdx = pointer.gx - b.x, fdy = pointer.gy - b.y;
+      var fd = Math.sqrt(fdx * fdx + fdy * fdy) + 1;
+      b.vx += fdx / fd * 0.15; b.vy += fdy / fd * 0.15;
+    }
+
     for (var j = 0; j < boids.length; j += 3) { // sample every 3rd for perf
       if (i === j) continue;
       var o = boids[j];
@@ -1388,6 +1651,8 @@ function renderFlock() {
 // ROTO — Rotozoom
 // ============================================================
 
+// Roto interaction: click to shift rotation center
+var rotoCX, rotoCY;
 function renderRoto() {
   clearCanvas();
   var W = COLS, H = ROWS;
@@ -1395,6 +1660,15 @@ function renderRoto() {
   var scale = 1.5 + Math.sin(time * 0.7) * 0.8;
   var cosA = Math.cos(angle), sinA = Math.sin(angle);
   var cx = W / 2, cy = H / 2;
+
+  if (pointer.down && currentMode === 'roto') {
+    rotoCX = pointer.gx; rotoCY = pointer.gy;
+  }
+  if (rotoCX !== undefined) {
+    cx = cx * 0.97 + rotoCX * 0.03;
+    cy = cy * 0.97 + rotoCY * 0.03;
+    rotoCX = cx; rotoCY = cy;
+  }
 
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
@@ -1438,11 +1712,19 @@ function initErosion() {
 }
 initErosion();
 
+// Erosion interaction: click to raise terrain
+var erosionBumps = [];
 function renderErosion() {
   clearCanvas();
   var W = COLS, H = ROWS;
   var sc = 0.04;
   var drift = time * 0.15;
+
+  if (pointer.clicked && currentMode === 'erosion') {
+    pointer.clicked = false;
+    if (erosionBumps.length > 8) erosionBumps.shift();
+    erosionBumps.push({ x: pointer.gx, y: pointer.gy, born: time });
+  }
 
   var terrainChars = ' .,-~:;=+*oO#@';
   var terrainColors = [
@@ -1459,6 +1741,17 @@ function renderErosion() {
       // Add ridge noise for mountain detail
       var ridge = Math.abs(simplex2(px * 2, py * 2));
       h = h * 0.7 + ridge * 0.3;
+
+      // Add click-raised terrain bumps
+      for (var eb = 0; eb < erosionBumps.length; eb++) {
+        var bump = erosionBumps[eb];
+        var bdx = x - bump.x, bdy = y - bump.y;
+        var bd = Math.sqrt(bdx * bdx + bdy * bdy);
+        var bAge = time - bump.born;
+        if (bd < 10 && bAge < 30) {
+          h += (1 - bd / 10) * 0.4 * Math.max(0, 1 - bAge / 30);
+        }
+      }
 
       h = Math.max(0, Math.min(1, h));
       if (h < 0.1) continue;
@@ -2597,6 +2890,755 @@ function renderWorm() {
 }
 
 // ============================================================
+// SNAKE — Click to steer a growing snake
+// ============================================================
+
+var snakeBody = [];
+var snakeAngle = 0;
+var snakeTrailGrid;
+var snakeTarget = null;
+
+function initSnake() {
+  snakeBody = [{ x: COLS / 2, y: ROWS / 2 }];
+  snakeAngle = -Math.PI / 2;
+  snakeTrailGrid = new Float32Array(COLS * ROWS);
+  snakeTarget = null;
+}
+initSnake();
+
+function renderSnake() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!snakeTrailGrid || snakeTrailGrid.length !== W * H) initSnake();
+
+  // Click sets target direction
+  if (pointer.clicked && currentMode === 'snake') {
+    pointer.clicked = false;
+    snakeTarget = { x: pointer.gx, y: pointer.gy };
+  }
+  if (pointer.down && currentMode === 'snake') {
+    snakeTarget = { x: pointer.gx, y: pointer.gy };
+  }
+
+  // Steer toward target
+  if (snakeTarget) {
+    var head = snakeBody[0];
+    var targetAngle = Math.atan2(snakeTarget.y - head.y, snakeTarget.x - head.x);
+    var diff = targetAngle - snakeAngle;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    snakeAngle += diff * 0.08;
+  }
+
+  // Move head
+  var speed = 0.4;
+  var newHead = {
+    x: snakeBody[0].x + Math.cos(snakeAngle) * speed,
+    y: snakeBody[0].y + Math.sin(snakeAngle) * speed
+  };
+  // Wrap
+  if (newHead.x < 0) newHead.x += W; if (newHead.x >= W) newHead.x -= W;
+  if (newHead.y < 0) newHead.y += H; if (newHead.y >= H) newHead.y -= H;
+
+  snakeBody.unshift(newHead);
+  if (snakeBody.length > 200) snakeBody.pop();
+
+  // Trail decay
+  for (var i = 0; i < snakeTrailGrid.length; i++) snakeTrailGrid[i] *= 0.995;
+
+  // Draw snake and trail
+  for (var s = 0; s < snakeBody.length; s++) {
+    var seg = snakeBody[s];
+    var gx = seg.x | 0, gy = seg.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      snakeTrailGrid[gy * W + gx] = Math.min(1, snakeTrailGrid[gy * W + gx] + 0.3);
+    }
+  }
+
+  // Render trail
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = snakeTrailGrid[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (120 + v * 40 + time * 15) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 15 + v * 55);
+    }
+  }
+
+  // Draw snake body brighter
+  for (var s = 0; s < snakeBody.length; s++) {
+    var seg = snakeBody[s];
+    var gx = seg.x | 0, gy = seg.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      var bright = 1 - s / snakeBody.length;
+      var ch = s === 0 ? '@' : (s < 5 ? '#' : '*');
+      drawCharHSL(ch, gx, gy, (140 + bright * 30) % 360, 80, 30 + bright * 50);
+    }
+  }
+}
+
+// ============================================================
+// BLOOM — Click to spawn firework text blooms
+// ============================================================
+
+var blooms = [];
+var bloomTrail;
+
+function initBloom() {
+  blooms = [];
+  bloomTrail = new Float32Array(COLS * ROWS);
+}
+initBloom();
+
+function renderBloom() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!bloomTrail || bloomTrail.length !== W * H) initBloom();
+
+  if (pointer.clicked && currentMode === 'bloom') {
+    pointer.clicked = false;
+    var numP = 30 + Math.floor(Math.random() * 30);
+    var hue = (Math.random() * 360) | 0;
+    for (var bp = 0; bp < numP; bp++) {
+      var angle = (bp / numP) * Math.PI * 2 + Math.random() * 0.3;
+      var spd = 0.5 + Math.random() * 1.5;
+      blooms.push({
+        x: pointer.gx, y: pointer.gy,
+        vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd - 0.3,
+        life: 3 + Math.random() * 4, born: time, hue: hue + Math.random() * 40,
+        ch: RAMP_DENSE[Math.floor(Math.random() * RAMP_DENSE.length)]
+      });
+    }
+  }
+
+  // Decay trail
+  for (var i = 0; i < bloomTrail.length; i++) bloomTrail[i] *= 0.95;
+
+  // Update particles
+  var bi = blooms.length;
+  while (bi--) {
+    var p = blooms[bi];
+    var age = time - p.born;
+    if (age > p.life) { blooms.splice(bi, 1); continue; }
+    p.vy += 0.015; // gravity
+    p.vx *= 0.99; p.vy *= 0.99;
+    p.x += p.vx; p.y += p.vy;
+
+    var gx = p.x | 0, gy = p.y | 0;
+    if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+      var fade = 1 - age / p.life;
+      bloomTrail[gy * W + gx] = Math.min(1, bloomTrail[gy * W + gx] + fade * 0.5);
+      drawCharHSL(p.ch, gx, gy, p.hue, 70 + fade * 30, 20 + fade * 60);
+    }
+  }
+
+  // Render trails
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = bloomTrail[y * W + x];
+      if (v < 0.03) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      drawCharHSL(RAMP_SOFT[ri], x, y, (30 + v * 30) % 360, 60, 10 + v * 30);
+    }
+  }
+}
+
+// ============================================================
+// FLUID — Click/drag to push fluid velocity field
+// ============================================================
+
+var fluidVX, fluidVY, fluidDens;
+
+function initFluid() {
+  var sz = COLS * ROWS;
+  fluidVX = new Float32Array(sz);
+  fluidVY = new Float32Array(sz);
+  fluidDens = new Float32Array(sz);
+  // Seed some initial density
+  for (var i = 0; i < sz; i++) fluidDens[i] = Math.random() * 0.2;
+}
+initFluid();
+
+function renderFluid() {
+  clearCanvas();
+  var W = COLS, H = ROWS, sz = W * H;
+  if (!fluidDens || fluidDens.length !== sz) initFluid();
+
+  // Click adds velocity and density
+  if (pointer.down && currentMode === 'fluid') {
+    var fx = pointer.gx | 0, fy = pointer.gy | 0;
+    for (var fdy = -3; fdy <= 3; fdy++) {
+      for (var fdx = -3; fdx <= 3; fdx++) {
+        var nx = fx + fdx, ny = fy + fdy;
+        if (nx >= 1 && nx < W - 1 && ny >= 1 && ny < H - 1) {
+          var idx = ny * W + nx;
+          fluidDens[idx] = Math.min(fluidDens[idx] + 0.15, 1);
+          // Add velocity in drag direction (based on pointer movement heuristic)
+          fluidVX[idx] += (Math.random() - 0.5) * 0.3;
+          fluidVY[idx] += (Math.random() - 0.5) * 0.3 - 0.1;
+        }
+      }
+    }
+  }
+
+  // Simple advection + diffusion
+  var newDens = new Float32Array(sz);
+  var newVX = new Float32Array(sz);
+  var newVY = new Float32Array(sz);
+
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      // Advect density
+      var srcX = x - fluidVX[idx];
+      var srcY = y - fluidVY[idx];
+      srcX = Math.max(0.5, Math.min(W - 1.5, srcX));
+      srcY = Math.max(0.5, Math.min(H - 1.5, srcY));
+      var sx0 = srcX | 0, sy0 = srcY | 0;
+      var sx1 = sx0 + 1, sy1 = sy0 + 1;
+      var fx = srcX - sx0, fy = srcY - sy0;
+      newDens[idx] = (1 - fx) * (1 - fy) * fluidDens[sy0 * W + sx0] +
+                     fx * (1 - fy) * fluidDens[sy0 * W + sx1] +
+                     (1 - fx) * fy * fluidDens[sy1 * W + sx0] +
+                     fx * fy * fluidDens[sy1 * W + sx1];
+
+      // Diffuse velocity
+      newVX[idx] = fluidVX[idx] * 0.99 + (fluidVX[idx - 1] + fluidVX[idx + 1] + fluidVX[idx - W] + fluidVX[idx + W] - 4 * fluidVX[idx]) * 0.1;
+      newVY[idx] = fluidVY[idx] * 0.99 + (fluidVY[idx - 1] + fluidVY[idx + 1] + fluidVY[idx - W] + fluidVY[idx + W] - 4 * fluidVY[idx]) * 0.1;
+      newDens[idx] *= 0.998;
+    }
+  }
+  fluidDens = newDens; fluidVX = newVX; fluidVY = newVY;
+
+  // Render
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = fluidDens[y * W + x];
+      if (v < 0.02) continue;
+      v = Math.min(1, v);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var vel = Math.sqrt(fluidVX[y * W + x] * fluidVX[y * W + x] + fluidVY[y * W + x] * fluidVY[y * W + x]);
+      var hue = (200 + vel * 100 + time * 10) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 15 + v * 50);
+    }
+  }
+}
+
+// ============================================================
+// SPIRAL — Click to spawn Archimedean spirals
+// ============================================================
+
+var spirals = [];
+var spiralGrid;
+
+function initSpiral() {
+  spirals = [];
+  spiralGrid = new Float32Array(COLS * ROWS);
+}
+initSpiral();
+
+function renderSpiral() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!spiralGrid || spiralGrid.length !== W * H) initSpiral();
+
+  if (pointer.clicked && currentMode === 'spiral') {
+    pointer.clicked = false;
+    spirals.push({
+      x: pointer.gx, y: pointer.gy, born: time,
+      dir: Math.random() < 0.5 ? 1 : -1,
+      hue: (Math.random() * 360) | 0,
+      speed: 0.3 + Math.random() * 0.3
+    });
+    if (spirals.length > 15) spirals.shift();
+  }
+
+  // Decay
+  for (var i = 0; i < spiralGrid.length; i++) spiralGrid[i] *= 0.97;
+
+  // Draw spirals
+  for (var si = 0; si < spirals.length; si++) {
+    var sp = spirals[si];
+    var age = time - sp.born;
+    if (age > 25) { spirals.splice(si, 1); si--; continue; }
+    var maxAngle = age * 3 * sp.speed;
+    var fade = Math.max(0, 1 - age / 25);
+
+    for (var a = 0; a < maxAngle; a += 0.15) {
+      var r = a * 0.4;
+      var px = sp.x + Math.cos(a * sp.dir) * r;
+      var py = sp.y + Math.sin(a * sp.dir) * r * 0.6; // aspect correction
+      var gx = px | 0, gy = py | 0;
+      if (gx >= 0 && gx < W && gy >= 0 && gy < H) {
+        var brightness = fade * (1 - a / (maxAngle + 1));
+        spiralGrid[gy * W + gx] = Math.min(1, spiralGrid[gy * W + gx] + brightness * 0.3);
+      }
+    }
+  }
+
+  // Render
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = spiralGrid[y * W + x];
+      if (v < 0.02) continue;
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (40 + v * 40 + time * 20) % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 70 + v * 30, 15 + v * 55);
+    }
+  }
+}
+
+// ============================================================
+// CIPHER — Click to decode/encrypt text in expanding circles
+// ============================================================
+
+var cipherDecodes = [];
+var cipherText;
+
+function initCipher() {
+  cipherDecodes = [];
+  cipherText = [];
+  var msg = 'THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG -- TEXTFLOW CIPHER MODE -- SEBLAND.COM -- ';
+  for (var y = 0; y < ROWS; y++) {
+    var row = [];
+    for (var x = 0; x < COLS; x++) {
+      row.push(msg[(x + y * COLS) % msg.length]);
+    }
+    cipherText.push(row);
+  }
+}
+initCipher();
+
+function renderCipher() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!cipherText || cipherText.length !== H) initCipher();
+
+  if (pointer.clicked && currentMode === 'cipher') {
+    pointer.clicked = false;
+    cipherDecodes.push({ x: pointer.gx, y: pointer.gy, born: time });
+    if (cipherDecodes.length > 10) cipherDecodes.shift();
+  }
+
+  // Prune old decodes
+  var ci = cipherDecodes.length;
+  while (ci--) { if (time - cipherDecodes[ci].born > 12) cipherDecodes.splice(ci, 1); }
+
+  var scrambleChars = '@#$%&*!?><{}[]=/+-~^';
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var decoded = false;
+      var bestFade = 0;
+
+      for (var d = 0; d < cipherDecodes.length; d++) {
+        var dec = cipherDecodes[d];
+        var dx = x - dec.x, dy = y - dec.y;
+        var dist = Math.sqrt(dx * dx * 0.3 + dy * dy);
+        var age = time - dec.born;
+        var radius = age * 4;
+        var fade = Math.max(0, 1 - age / 12);
+
+        if (dist < radius) {
+          decoded = true;
+          if (fade > bestFade) bestFade = fade;
+        }
+      }
+
+      if (decoded) {
+        var ch = cipherText[y][x];
+        var lit = 30 + bestFade * 50;
+        drawCharHSL(ch, x, y, 120, 80, lit);
+      } else {
+        // Show scrambled
+        if (Math.random() < 0.02) continue; // gaps
+        var sch = scrambleChars[(x * 7 + y * 13 + (time * 3 | 0)) % scrambleChars.length];
+        drawCharHSL(sch, x, y, 0, 0, 12 + Math.random() * 8);
+      }
+    }
+  }
+}
+
+// ============================================================
+// AURORA — Click to add curtain wave points
+// ============================================================
+
+var auroraWaves = [];
+
+function initAurora() {
+  auroraWaves = [];
+  // Start with a few default curtains
+  for (var i = 0; i < 3; i++) {
+    auroraWaves.push({
+      x: COLS * (0.2 + i * 0.3), phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.3, born: -100
+    });
+  }
+}
+initAurora();
+
+function renderAurora() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  if (pointer.clicked && currentMode === 'aurora') {
+    pointer.clicked = false;
+    auroraWaves.push({
+      x: pointer.gx, phase: Math.random() * Math.PI * 2,
+      speed: 0.2 + Math.random() * 0.4, born: time
+    });
+    if (auroraWaves.length > 12) auroraWaves.shift();
+  }
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var totalV = 0;
+      var bestHue = 120;
+
+      for (var aw = 0; aw < auroraWaves.length; aw++) {
+        var wave = auroraWaves[aw];
+        var dx = x - wave.x;
+        var spread = 15 + Math.sin(time * wave.speed + wave.phase) * 5;
+        var xFade = Math.exp(-dx * dx / (2 * spread * spread));
+
+        // Vertical curtain — stronger at top
+        var yFade = Math.max(0, 1 - y / (H * 0.8));
+        yFade = yFade * yFade;
+
+        // Shimmer
+        var shimmer = Math.sin(y * 0.3 + x * 0.05 + time * wave.speed * 3 + wave.phase) * 0.5 + 0.5;
+        shimmer *= Math.sin(y * 0.15 - time * 0.5 + wave.phase) * 0.5 + 0.5;
+
+        var v = xFade * yFade * shimmer;
+        if (wave.born > 0) {
+          var age = time - wave.born;
+          if (age < 2) v *= age / 2; // fade in
+          if (age > 20) v *= Math.max(0, 1 - (age - 20) / 10);
+        }
+
+        totalV += v;
+        if (v > 0.1) bestHue = (120 + aw * 40 + y * 0.5) % 360;
+      }
+
+      if (totalV < 0.03) continue;
+      totalV = Math.min(1, totalV);
+      var ri = Math.min(RAMP_SOFT.length - 1, (totalV * RAMP_SOFT.length) | 0);
+      drawCharHSL(RAMP_SOFT[ri], x, y, bestHue, 60 + totalV * 40, 15 + totalV * 50);
+    }
+  }
+}
+
+// ============================================================
+// PENDULUM — Click to drop swinging pendulums
+// ============================================================
+
+var pendulums = [];
+var pendulumTrail;
+
+function initPendulum() {
+  pendulums = [];
+  pendulumTrail = new Float32Array(COLS * ROWS);
+}
+initPendulum();
+
+function renderPendulum() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!pendulumTrail || pendulumTrail.length !== W * H) initPendulum();
+
+  if (pointer.clicked && currentMode === 'pendulum') {
+    pointer.clicked = false;
+    pendulums.push({
+      pivotX: pointer.gx, pivotY: pointer.gy,
+      len: 5 + Math.random() * 10,
+      angle: (Math.random() - 0.5) * Math.PI * 0.8,
+      vel: 0,
+      hue: (Math.random() * 360) | 0,
+      born: time
+    });
+    if (pendulums.length > 20) pendulums.shift();
+  }
+
+  // Decay trail
+  for (var i = 0; i < pendulumTrail.length; i++) pendulumTrail[i] *= 0.97;
+
+  // Update pendulums
+  for (var pi = 0; pi < pendulums.length; pi++) {
+    var p = pendulums[pi];
+    var age = time - p.born;
+    // Simple pendulum physics
+    var gravity = 0.015;
+    p.vel += -gravity * Math.sin(p.angle);
+    p.vel *= 0.999; // tiny damping
+    p.angle += p.vel;
+
+    // Draw arm and bob
+    var bobX = p.pivotX + Math.sin(p.angle) * p.len;
+    var bobY = p.pivotY + Math.cos(p.angle) * p.len;
+
+    // Draw arm
+    var steps = p.len | 0;
+    for (var s = 0; s <= steps; s++) {
+      var t = s / steps;
+      var ax = (p.pivotX + (bobX - p.pivotX) * t) | 0;
+      var ay = (p.pivotY + (bobY - p.pivotY) * t) | 0;
+      if (ax >= 0 && ax < W && ay >= 0 && ay < H) {
+        drawCharHSL('|', ax, ay, p.hue, 40, 25);
+      }
+    }
+
+    // Bob leaves trail
+    var bx = bobX | 0, by = bobY | 0;
+    if (bx >= 0 && bx < W && by >= 0 && by < H) {
+      pendulumTrail[by * W + bx] = 1;
+      drawCharHSL('@', bx, by, p.hue, 80, 60);
+    }
+    // Pivot
+    var px = p.pivotX | 0, py = p.pivotY | 0;
+    if (px >= 0 && px < W && py >= 0 && py < H) {
+      drawCharHSL('+', px, py, p.hue, 50, 40);
+    }
+  }
+
+  // Render trails
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = pendulumTrail[y * W + x];
+      if (v < 0.03) continue;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      drawCharHSL(RAMP_SOFT[ri], x, y, (30 + v * 30) % 360, 60, 10 + v * 35);
+    }
+  }
+}
+
+// ============================================================
+// DIFFUSE — Click to drop ink that diffuses
+// ============================================================
+
+var diffuseGrid;
+var diffuseHueGrid;
+
+function initDiffuse() {
+  var sz = COLS * ROWS;
+  diffuseGrid = new Float32Array(sz);
+  diffuseHueGrid = new Float32Array(sz);
+}
+initDiffuse();
+
+function renderDiffuse() {
+  clearCanvas();
+  var W = COLS, H = ROWS, sz = W * H;
+  if (!diffuseGrid || diffuseGrid.length !== sz) initDiffuse();
+
+  // Click to drop ink
+  if (pointer.down && currentMode === 'diffuse') {
+    var ix = pointer.gx | 0, iy = pointer.gy | 0;
+    var inkHue = (time * 30) % 360;
+    for (var idy = -1; idy <= 1; idy++) {
+      for (var idx = -1; idx <= 1; idx++) {
+        var nx = ix + idx, ny = iy + idy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+          var ii = ny * W + nx;
+          diffuseGrid[ii] = Math.min(1, diffuseGrid[ii] + 0.3);
+          diffuseHueGrid[ii] = inkHue;
+        }
+      }
+    }
+  }
+
+  // Diffuse
+  var newGrid = new Float32Array(sz);
+  for (var y = 1; y < H - 1; y++) {
+    for (var x = 1; x < W - 1; x++) {
+      var idx = y * W + x;
+      var avg = (diffuseGrid[idx - 1] + diffuseGrid[idx + 1] + diffuseGrid[idx - W] + diffuseGrid[idx + W]) * 0.25;
+      newGrid[idx] = diffuseGrid[idx] * 0.95 + avg * 0.05;
+      newGrid[idx] *= 0.9995;
+      // Blend hue
+      if (avg > diffuseGrid[idx] * 0.5) {
+        diffuseHueGrid[idx] = diffuseHueGrid[idx] * 0.95 +
+          (diffuseHueGrid[idx - 1] + diffuseHueGrid[idx + 1] + diffuseHueGrid[idx - W] + diffuseHueGrid[idx + W]) * 0.0125;
+      }
+    }
+  }
+  diffuseGrid = newGrid;
+
+  // Render
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = diffuseGrid[y * W + x];
+      if (v < 0.02) continue;
+      v = Math.min(1, v);
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = diffuseHueGrid[y * W + x] % 360;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, 60 + v * 40, 15 + v * 50);
+    }
+  }
+}
+
+// ============================================================
+// CRYSTAL — Click to nucleate growing crystals
+// ============================================================
+
+var crystalGrid, crystalHueGrid;
+var crystalSeeds = [];
+
+function initCrystal() {
+  var sz = COLS * ROWS;
+  crystalGrid = new Float32Array(sz);
+  crystalHueGrid = new Float32Array(sz);
+  crystalSeeds = [];
+}
+initCrystal();
+
+function renderCrystal() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+  if (!crystalGrid || crystalGrid.length !== W * H) initCrystal();
+
+  if (pointer.clicked && currentMode === 'crystal') {
+    pointer.clicked = false;
+    var sx = pointer.gx | 0, sy = pointer.gy | 0;
+    if (sx >= 0 && sx < W && sy >= 0 && sy < H) {
+      crystalGrid[sy * W + sx] = 1;
+      crystalHueGrid[sy * W + sx] = (Math.random() * 360) | 0;
+      crystalSeeds.push({ x: sx, y: sy });
+    }
+  }
+
+  // Grow crystals — DLA-like (diffusion-limited aggregation)
+  for (var g = 0; g < 5; g++) {
+    var rx = Math.floor(Math.random() * (W - 2)) + 1;
+    var ry = Math.floor(Math.random() * (H - 2)) + 1;
+    var ridx = ry * W + rx;
+    if (crystalGrid[ridx] > 0) continue;
+
+    // Check if adjacent to crystal
+    var hasNeighbor = false;
+    var neighborHue = 0;
+    var dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+    for (var d = 0; d < dirs.length; d++) {
+      var nx = rx + dirs[d][0], ny = ry + dirs[d][1];
+      if (nx >= 0 && nx < W && ny >= 0 && ny < H && crystalGrid[ny * W + nx] > 0.5) {
+        hasNeighbor = true;
+        neighborHue = crystalHueGrid[ny * W + nx];
+        break;
+      }
+    }
+
+    if (hasNeighbor && Math.random() < 0.3) {
+      crystalGrid[ridx] = 0.9 + Math.random() * 0.1;
+      crystalHueGrid[ridx] = neighborHue + (Math.random() - 0.5) * 5;
+    }
+  }
+
+  // Render
+  var crystalChars = '.:;=+*#@';
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = crystalGrid[y * W + x];
+      if (v < 0.1) continue;
+      var ci = Math.min(crystalChars.length - 1, (v * crystalChars.length) | 0);
+      var hue = crystalHueGrid[y * W + x] % 360;
+      // Shimmer
+      var shimmer = Math.sin(x * 0.3 + y * 0.2 + time * 2) * 0.1 + 0.9;
+      drawCharHSL(crystalChars[ci], x, y, hue, 50 + v * 50, (15 + v * 50) * shimmer);
+    }
+  }
+}
+
+// ============================================================
+// STATIC — Click to tune through TV static channels
+// ============================================================
+
+var staticChannel = 0;
+var staticTuning = 0;
+var staticChannelData = [];
+
+function initStatic() {
+  staticChannel = 0;
+  staticTuning = 0;
+  // Pre-generate "channel" patterns
+  staticChannelData = [];
+  var patterns = [
+    function(x, y, t) { return 'TEXTFLOW'[(x + (t * 5 | 0)) % 8]; }, // scrolling text
+    function(x, y, t) { return ((x ^ y) & 7) / 7; }, // XOR pattern
+    function(x, y, t) { var d = Math.sqrt((x - COLS/2)*(x-COLS/2) + (y-ROWS/2)*(y-ROWS/2)); return Math.sin(d * 0.2 - t * 2) * 0.5 + 0.5; }, // circles
+    function(x, y, t) { return (Math.sin(x * 0.1 + t) + Math.sin(y * 0.15 - t * 0.7)) * 0.25 + 0.5; }, // waves
+    function(x, y, t) { return (x % 8 < 4) !== (y % 6 < 3) ? 0.8 : 0.1; }, // checkerboard
+  ];
+  staticChannelData = patterns;
+}
+initStatic();
+
+function renderStatic() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  // Click to change channel
+  if (pointer.clicked && currentMode === 'tvstatic') {
+    pointer.clicked = false;
+    staticTuning = 15; // frames of static while tuning
+    staticChannel = (staticChannel + 1) % staticChannelData.length;
+  }
+
+  if (staticTuning > 0) {
+    staticTuning--;
+    // Pure static noise while tuning
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        if (Math.random() < 0.6) continue;
+        var v = Math.random();
+        var chars = '@#$%&*!?.,:;+-=~';
+        var ch = chars[Math.floor(Math.random() * chars.length)];
+        var grey = (v * 200) | 0;
+        drawChar(ch, x, y, grey, grey, grey, 0.3 + v * 0.7);
+      }
+    }
+    // Horizontal bars
+    for (var sy = 0; sy < 3; sy++) {
+      var barY = Math.floor(Math.random() * H);
+      for (var x = 0; x < W; x++) {
+        drawChar('-', x, barY, 255, 255, 255, 0.5);
+      }
+    }
+  } else {
+    // Show current channel with some static overlay
+    var pattern = staticChannelData[staticChannel];
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var v;
+        var result = pattern(x, y, time);
+        if (typeof result === 'string') {
+          // Text channel
+          var ch = result;
+          drawCharHSL(ch, x, y, (time * 20 + x) % 360, 60, 40);
+          continue;
+        }
+        v = result;
+        // Add static noise
+        v += (Math.random() - 0.5) * 0.1;
+        v = Math.max(0, Math.min(1, v));
+        if (v < 0.1) continue;
+
+        var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+        var grey = (v * 255) | 0;
+        drawChar(RAMP_DENSE[ri], x, y, grey, grey, grey, 0.3 + v * 0.7);
+      }
+    }
+  }
+
+  // Scanlines
+  for (var y = 0; y < H; y += 2) {
+    for (var x = 0; x < W; x++) {
+      if (Math.random() < 0.95) continue;
+      drawChar('-', x, y, 50, 50, 50, 0.15);
+    }
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -2610,7 +3652,10 @@ var renderers = {
   erosion: renderErosion, gravity: renderGravity, paint: renderPaint,
   ripple: renderRipple, sand: renderSand, orbit: renderOrbit,
   grow: renderGrow, magnet: renderMagnet, shatter: renderShatter,
-  pulse: renderPulse, worm: renderWorm
+  pulse: renderPulse, worm: renderWorm, snake: renderSnake,
+  bloom: renderBloom, fluid: renderFluid, spiral: renderSpiral,
+  cipher: renderCipher, aurora: renderAurora, pendulum: renderPendulum,
+  diffuse: renderDiffuse, crystal: renderCrystal, tvstatic: renderStatic
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -2674,6 +3719,16 @@ function switchMode(mode) {
   if (mode === 'shatter') initShatter();
   if (mode === 'pulse') initPulse();
   if (mode === 'worm') initWorm();
+  if (mode === 'snake') initSnake();
+  if (mode === 'bloom') initBloom();
+  if (mode === 'fluid') initFluid();
+  if (mode === 'spiral') initSpiral();
+  if (mode === 'cipher') initCipher();
+  if (mode === 'aurora') initAurora();
+  if (mode === 'pendulum') initPendulum();
+  if (mode === 'diffuse') initDiffuse();
+  if (mode === 'crystal') initCrystal();
+  if (mode === 'tvstatic') initStatic();
 }
 
 buttons.forEach(function(b) {
