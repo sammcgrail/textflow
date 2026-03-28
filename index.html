@@ -5305,7 +5305,7 @@ function switchMode(mode) {
 }
 
 buttons.forEach(function(b) {
-  b.addEventListener('click', function() { switchMode(b.dataset.mode); });
+  b.addEventListener('click', function() { switchMode(b.dataset.mode); scrollNavToMode(b.dataset.mode); });
 });
 
 // URL-based mode routing
@@ -5325,11 +5325,23 @@ function updateURL(mode) {
   history.replaceState(null, '', newPath);
 }
 
+function scrollNavToMode(mode) {
+  var nav = document.querySelector('nav');
+  var btn = nav.querySelector('button[data-mode="' + mode + '"]');
+  if (btn) {
+    var navRect = nav.getBoundingClientRect();
+    var btnRect = btn.getBoundingClientRect();
+    var scrollLeft = btn.offsetLeft - navRect.width / 2 + btnRect.width / 2;
+    nav.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+  }
+}
+
 // Wait for font to load before starting
 document.fonts.ready.then(function() {
   resize();
   var startMode = getModeFromPath();
   if (startMode !== 'lava') switchMode(startMode);
+  scrollNavToMode(startMode);
   loop();
 });
 </script>
