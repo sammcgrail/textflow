@@ -51,15 +51,11 @@ export function scrollNavToMode(mode, instant) {
   var container = document.querySelector('.nav-buttons');
   var btn = container.querySelector('button[data-mode="' + mode + '"]');
   if (!btn) return;
-  // Only scroll if button is not already visible in the container
   var cRect = container.getBoundingClientRect();
   var bRect = btn.getBoundingClientRect();
-  if (bRect.left >= cRect.left && bRect.right <= cRect.right) return; // already visible
-  // Scroll just enough to bring button into view with some padding
-  var pad = 40;
-  if (bRect.left < cRect.left) {
-    container.scrollTo({ left: btn.offsetLeft - pad, behavior: instant ? 'instant' : 'smooth' });
-  } else {
-    container.scrollTo({ left: btn.offsetLeft + btn.offsetWidth - container.clientWidth + pad, behavior: instant ? 'instant' : 'smooth' });
-  }
+  // Check visibility with margin — buttons near the left edge can hide behind the logo
+  var margin = 8;
+  if (bRect.left >= cRect.left + margin && bRect.right <= cRect.right - margin) return;
+  // Scroll to place button near the left of visible area
+  container.scrollTo({ left: Math.max(0, btn.offsetLeft - 12), behavior: instant ? 'instant' : 'smooth' });
 }
