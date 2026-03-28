@@ -7798,20 +7798,22 @@ function renderCircuit() {
 // ============================================================
 // MODE: rain3d — Isometric 3D rain on a surface
 // ============================================================
-var r3dDrops, r3dCount, r3dW, r3dH, r3dSplash, r3dRipples;
+var r3dDrops, r3dCount, r3dW, r3dH, r3dSplashes;
 function initRain3d() {
   r3dW = COLS; r3dH = ROWS;
-  r3dCount = isMobile ? 150 : 350;
+  r3dCount = isMobile ? 200 : 500;
   r3dDrops = [];
-  r3dSplash = new Float32Array(r3dW * r3dH);
-  r3dRipples = [];
+  r3dSplashes = [];
+  // 3 depth layers of rain covering full screen width
   for (var i = 0; i < r3dCount; i++) {
+    var layer = (Math.random() * 3) | 0; // 0=far, 1=mid, 2=near
     r3dDrops.push({
       x: Math.random() * r3dW,
-      y: Math.random() * r3dH * 0.6,
-      z: Math.random() * 30,
-      speed: 8 + Math.random() * 16,
-      windX: -0.3 - Math.random() * 0.4
+      y: Math.random() * r3dH,
+      speed: [6, 12, 22][layer] + Math.random() * 4,
+      layer: layer,
+      windX: -0.5 - layer * 0.3,
+      len: [1, 2, 3][layer]
     });
   }
 }
@@ -7821,104 +7823,93 @@ function renderRain3d() {
   clearCanvas();
   var W = COLS, H = ROWS;
   if (r3dW !== W || r3dH !== H) initRain3d();
-  // Ground plane at bottom 40% of screen
-  var groundY = (H * 0.6) | 0;
-  // Decay splashes
-  for (var i = 0; i < r3dSplash.length; i++) r3dSplash[i] *= 0.9;
-  // Draw puddle/ground with perspective
+  // Draw ground puddles at bottom 15%
+  var groundY = (H * 0.85) | 0;
   for (var gy = groundY; gy < H; gy++) {
-    var depth = (gy - groundY) / (H - groundY); // 0 at horizon, 1 at bottom
     for (var gx = 0; gx < W; gx++) {
-      var splash = r3dSplash[gy * W + gx];
-      var checker = ((gx + gy) & 1) === 0;
-      var ch = splash > 0.5 ? 'O' : splash > 0.2 ? 'o' : (checker ? '·' : '.');
-      var base = (15 + depth * 25) | 0;
-      var blue = (30 + depth * 40 + splash * 120) | 0;
-      drawChar(ch, gx, gy, base, base, blue, 0.15 + depth * 0.2 + splash * 0.6);
+      var wave = Math.sin(gx * 0.3 + time * 2 + gy * 0.5) * 0.15;
+      var ch = Math.random() < 0.15 ? '~' : (((gx + gy) & 1) === 0 ? '.' : ' ');
+      drawChar(ch, gx, gy, 20, 25, (50 + wave * 40) | 0, 0.15 + wave);
     }
   }
-  // Update and draw ripples
-  for (var i = r3dRipples.length - 1; i >= 0; i--) {
-    var rp = r3dRipples[i];
-    rp.age += 0.016;
-    if (rp.age > 0.8) { r3dRipples.splice(i, 1); continue; }
-    var rad = rp.age * 6;
-    var alpha = 1 - rp.age / 0.8;
-    var rpChars = '~-=~';
-    for (var a = 0; a < 8; a++) {
-      var ang = a * Math.PI * 0.25;
-      var rx = (rp.x + Math.cos(ang) * rad) | 0;
-      var ry = (rp.y + Math.sin(ang) * rad * 0.4) | 0;
-      if (rx >= 0 && rx < W && ry >= groundY && ry < H) {
-        drawChar(rpChars[a & 3], rx, ry, 100, 140, 255, alpha * 0.6);
+  // Decay and draw splashes
+  for (var i = r3dSplashes.length - 1; i >= 0; i--) {
+    var sp = r3dSplashes[i];
+    sp.age += 0.016;
+    if (sp.age > 0.5) { r3dSplashes.splice(i, 1); continue; }
+    var alpha = 1 - sp.age / 0.5;
+    var rad = sp.age * 5;
+    // Expanding ring
+    for (var a = 0; a < 6; a++) {
+      var ang = a * Math.PI / 3;
+      var rx = (sp.x + Math.cos(ang) * rad) | 0;
+      var ry = (sp.y + Math.sin(ang) * rad * 0.3) | 0;
+      if (rx >= 0 && rx < W && ry >= 0 && ry < H) {
+        drawChar('·', rx, ry, 140, 170, 255, alpha * 0.7);
       }
     }
+    // Center splash
+    if (sp.age < 0.15) {
+      var sx = sp.x | 0, sy = sp.y | 0;
+      if (sx >= 0 && sx < W && sy >= 0 && sy < H) drawChar('*', sx, sy, 200, 220, 255, alpha);
+    }
   }
-  // Pointer interaction — click/touch creates splash burst
+  // Pointer interaction — umbrella effect, repels rain
+  var umbX = -100, umbY = -100;
   if (pointer.down && currentMode === 'rain3d') {
-    var px = pointer.gx | 0, py = pointer.gy | 0;
-    if (py >= groundY && py < H && px >= 0 && px < W) {
-      r3dSplash[py * W + px] = 1;
-      for (var dd = -2; dd <= 2; dd++) {
-        var nx = px + dd;
-        if (nx >= 0 && nx < W) r3dSplash[py * W + nx] = Math.max(r3dSplash[py * W + nx], 0.7 - Math.abs(dd) * 0.2);
+    umbX = pointer.gx; umbY = pointer.gy;
+    // Draw umbrella hint
+    var ux = umbX | 0, uy = umbY | 0;
+    for (var dx = -4; dx <= 4; dx++) {
+      var px = ux + dx;
+      if (px >= 0 && px < W && uy >= 0 && uy < H) {
+        drawChar('_', px, uy, 200, 200, 255, 0.4);
       }
-      if (r3dRipples.length < 40) r3dRipples.push({ x: px, y: py, age: 0 });
-    }
-    // Pointer repels nearby drops
-    for (var ri = 0; ri < r3dCount; ri++) {
-      var rd = r3dDrops[ri];
-      var rdx = (rd.x | 0) - pointer.gx, rdy = ((groundY + (H - groundY) * 0.5) | 0) - pointer.gy;
-      if (Math.abs(rdx) < 6 && Math.abs(rdy) < 6) rd.x += rdx * 0.3;
     }
   }
   if (pointer.clicked && currentMode === 'rain3d') {
-    // Big splash burst — spawn extra drops converging on click point
-    for (var bi = 0; bi < 15; bi++) {
-      r3dDrops.push({
-        x: pointer.gx + (Math.random() - 0.5) * 10,
-        y: 0,
-        z: 20 + Math.random() * 10,
-        speed: 15 + Math.random() * 10,
-        windX: (pointer.gx - (pointer.gx + (Math.random() - 0.5) * 10)) * 0.02
-      });
+    // Lightning flash — brief bright column
+    var lx = (pointer.gx | 0);
+    for (var ly = 0; ly < H; ly++) {
+      if (lx >= 0 && lx < W) drawChar('|', lx, ly, 255, 255, 255, 0.8 * Math.random());
     }
-    // Trim back to limit
-    while (r3dDrops.length > r3dCount + 50) r3dDrops.shift();
+    // Burst of splashes around click
+    for (var bi = 0; bi < 8; bi++) {
+      r3dSplashes.push({ x: pointer.gx + (Math.random() - 0.5) * 10, y: pointer.gy + (Math.random() - 0.5) * 3, age: 0 });
+    }
   }
-  // Update and draw rain drops — perspective: bigger/brighter near bottom
-  for (var i = 0; i < r3dCount; i++) {
-    var d = r3dDrops[i];
-    d.z -= d.speed * 0.016;
-    d.x += d.windX;
-    if (d.z <= 0 || d.x < -2) {
-      // Hit ground — create splash and ripple
-      var hitX = d.x | 0;
-      var hitY = (groundY + Math.random() * (H - groundY)) | 0;
-      if (hitX >= 0 && hitX < W && hitY >= 0 && hitY < H) {
-        r3dSplash[hitY * W + hitX] = 1;
-        if (hitX > 0) r3dSplash[hitY * W + hitX - 1] = 0.5;
-        if (hitX < W - 1) r3dSplash[hitY * W + hitX + 1] = 0.5;
-        if (r3dRipples.length < 40) r3dRipples.push({ x: hitX, y: hitY, age: 0 });
+  // Update and draw rain — by layer (far first, near last for overlap)
+  for (var layer = 0; layer < 3; layer++) {
+    var chars = [':', '|', '|'][layer];
+    var alphaBase = [0.15, 0.35, 0.7][layer];
+    var r = [60, 100, 160][layer];
+    var g = [70, 120, 180][layer];
+    var b = [120, 180, 255][layer];
+    for (var i = 0; i < r3dDrops.length; i++) {
+      var d = r3dDrops[i];
+      if (d.layer !== layer) continue;
+      d.y += d.speed * 0.016;
+      d.x += d.windX * 0.016;
+      // Umbrella repel
+      var udx = d.x - umbX, udy = d.y - umbY;
+      if (udx * udx + udy * udy < 25) {
+        d.x += udx * 0.4;
+        d.y -= 0.5;
       }
-      d.x = Math.random() * W;
-      d.y = Math.random() * H * 0.6;
-      d.z = 25 + Math.random() * 15;
-      d.speed = 8 + Math.random() * 16;
-    }
-    // Project: rain falls from top, perspective depth = z maps to screen position
-    var depthFactor = 1 - d.z / 40;
-    var screenX = d.x | 0;
-    var screenY = (d.y + (groundY - d.y) * depthFactor) | 0;
-    if (screenX < 0 || screenX >= W || screenY < 0 || screenY >= H) continue;
-    // Draw rain streak (2-3 chars tall for depth effect)
-    var streakLen = depthFactor > 0.5 ? 3 : 2;
-    var bright = (120 + depthFactor * 135) | 0;
-    for (var s = 0; s < streakLen; s++) {
-      var sy = screenY - s;
-      if (sy >= 0 && sy < H) {
-        var ch = s === 0 ? '|' : (s === 1 ? '|' : ':');
-        drawChar(ch, screenX, sy, bright, bright, 255, (0.2 + depthFactor * 0.6) * (1 - s * 0.3));
+      if (d.y > groundY) {
+        // Splash on ground
+        if (r3dSplashes.length < 60) r3dSplashes.push({ x: d.x, y: groundY, age: 0 });
+        d.y = -d.len;
+        d.x = Math.random() * W;
+      }
+      if (d.x < -2) d.x = W + 1;
+      var ix = d.x | 0;
+      if (ix < 0 || ix >= W) continue;
+      for (var s = 0; s < d.len; s++) {
+        var sy = (d.y - s) | 0;
+        if (sy >= 0 && sy < H) {
+          drawChar(chars, ix, sy, r, g, b, alphaBase * (1 - s * 0.25));
+        }
       }
     }
   }
@@ -8231,7 +8222,7 @@ function renderChem() {
 // ============================================================
 // MODE: typewriter — Text appearing letter by letter
 // ============================================================
-var twTexts, twIdx, twCharIdx, twTimer, twW, twH, twChars, twDelay;
+var twIdx, twCharIdx, twW, twH, twChars, twAccum;
 var TW_QUOTES = [
   "The only way to do great work is to love what you do. - Steve Jobs",
   "In the middle of difficulty lies opportunity. - Albert Einstein",
@@ -8242,108 +8233,122 @@ var TW_QUOTES = [
   "That which does not kill us makes us stronger. - Nietzsche",
   "The only thing we have to fear is fear itself. - FDR",
   "Stay hungry, stay foolish. - Steve Jobs",
-  "Hello World. Every great program starts here."
+  "Hello World. Every great program starts here.",
+  "Any sufficiently advanced technology is indistinguishable from magic. - Arthur C. Clarke",
+  "The medium is the message. - Marshall McLuhan",
+  "We are what we repeatedly do. Excellence is not an act but a habit. - Aristotle",
+  "Imagination is more important than knowledge. - Einstein"
 ];
+var twHistory, twLineH, twDoneTimer;
 function initTypewriter() {
   twW = COLS; twH = ROWS;
-  twIdx = 0; twCharIdx = 0; twTimer = 0;
+  twIdx = 0; twCharIdx = 0; twAccum = 0;
   twChars = [];
-  twDelay = 0.02; // Fast typing — 50 chars/sec
-  twLineH = 3; // Vertical spacing between quotes
-  twHistory = []; // Previously completed quotes stay on screen
+  twHistory = [];
+  twLineH = 2;
+  twDoneTimer = 0;
 }
 initTypewriter();
-
-function twCalcPos(text, charIdx, startY, maxPerLine) {
-  var col = 0, line = 0;
-  for (var c = 0; c < charIdx; c++) {
-    if (text[c] === '\n' || col >= maxPerLine) { col = 0; line++; }
-    else col++;
-  }
-  return { x: 2 + col, y: startY + line, lines: line + 1 };
-}
 
 function renderTypewriter() {
   clearCanvas();
   var W = COLS, H = ROWS;
   if (twW !== W || twH !== H) { twW = W; twH = H; }
-  var maxPerLine = W - 4;
-  twTimer += 0.016;
-  // Skip to next on click
-  if (pointer.clicked && currentMode === 'typewriter') {
-    // Complete current quote instantly
-    var text = TW_QUOTES[twIdx];
-    var startY = 2;
-    for (var h = 0; h < twHistory.length; h++) startY += twHistory[h].lines + twLineH;
-    while (twCharIdx < text.length) {
-      var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
-      if (text[twCharIdx] !== '\n') twChars.push({ ch: text[twCharIdx], x: pos.x, y: pos.y, t: time });
-      twCharIdx++;
-    }
-    // Move to next
-    var info = twCalcPos(text, text.length, startY, maxPerLine);
-    twHistory.push({ chars: twChars.slice(), lines: info.lines });
-    twIdx = (twIdx + 1) % TW_QUOTES.length;
-    twCharIdx = 0;
-    twChars = [];
-    twTimer = 0;
-  }
+  var maxPerLine = W - 6;
+  if (maxPerLine < 10) maxPerLine = 10;
   var text = TW_QUOTES[twIdx];
-  var startY = 2;
-  for (var h = 0; h < twHistory.length; h++) startY += twHistory[h].lines + twLineH;
-  // Scroll if we're running off screen
-  var scrollOff = 0;
-  if (startY > H - 8) {
-    scrollOff = startY - (H - 8);
-    startY -= scrollOff;
+  // Click = skip to next quote
+  if (pointer.clicked && currentMode === 'typewriter') {
+    // If still typing, complete it instantly
+    if (twCharIdx < text.length) {
+      twCharIdx = text.length;
+      twChars = [];
+      var col = 0, line = 0;
+      for (var c = 0; c < text.length; c++) {
+        if (col >= maxPerLine) { col = 0; line++; }
+        twChars.push({ ch: text[c], x: 3 + col, line: line, t: time });
+        col++;
+      }
+    }
+    // Push to history and advance
+    twHistory.push({ chars: twChars.slice(), lines: ((text.length / maxPerLine) | 0) + 1 });
+    if (twHistory.length > 6) twHistory.shift();
+    twIdx = (twIdx + 1) % TW_QUOTES.length;
+    twCharIdx = 0; twChars = []; twAccum = 0; twDoneTimer = 0;
+    text = TW_QUOTES[twIdx];
   }
-  // Type multiple chars per frame for snappy feel
-  var charsPerFrame = 3;
-  for (var cp = 0; cp < charsPerFrame; cp++) {
-    if (twTimer > twDelay && twCharIdx < text.length) {
-      twTimer = 0;
-      var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
-      if (text[twCharIdx] !== '\n') twChars.push({ ch: text[twCharIdx], x: pos.x, y: pos.y, t: time });
+  // Type 4 chars per frame — no timer gating, just accumulate
+  var charsThisFrame = 4;
+  for (var cp = 0; cp < charsThisFrame; cp++) {
+    if (twCharIdx < text.length) {
+      var col = 0, line = 0;
+      for (var c = 0; c < twCharIdx; c++) {
+        col++;
+        if (col >= maxPerLine) { col = 0; line++; }
+      }
+      twChars.push({ ch: text[twCharIdx], x: 3 + col, line: line, t: time - cp * 0.005 });
       twCharIdx++;
     }
   }
-  // Auto advance after finishing
-  if (twCharIdx >= text.length && twTimer > 1.5) {
-    var info = twCalcPos(text, text.length, startY, maxPerLine);
-    twHistory.push({ chars: twChars.slice(), lines: info.lines });
-    twIdx = (twIdx + 1) % TW_QUOTES.length;
-    twCharIdx = 0;
-    twChars = [];
-    twTimer = 0;
-    // Keep only last 5 quotes on screen
-    if (twHistory.length > 5) twHistory.shift();
+  // Auto advance after done typing
+  if (twCharIdx >= text.length) {
+    twDoneTimer += 0.016;
+    if (twDoneTimer > 2) {
+      twHistory.push({ chars: twChars.slice(), lines: ((text.length / maxPerLine) | 0) + 1 });
+      if (twHistory.length > 6) twHistory.shift();
+      twIdx = (twIdx + 1) % TW_QUOTES.length;
+      twCharIdx = 0; twChars = []; twAccum = 0; twDoneTimer = 0;
+    }
+  }
+  // Calculate vertical layout
+  var yOff = 2;
+  var totalHistH = 0;
+  for (var h = 0; h < twHistory.length; h++) totalHistH += twHistory[h].lines + twLineH;
+  var curLines = ((twCharIdx / maxPerLine) | 0) + 2;
+  if (totalHistH + curLines > H - 4) {
+    // Scroll: remove oldest history
+    while (twHistory.length > 0 && totalHistH + curLines > H - 4) {
+      totalHistH -= twHistory[0].lines + twLineH;
+      twHistory.shift();
+    }
   }
   // Draw history (completed quotes, faded)
+  var drawY = yOff;
   for (var h = 0; h < twHistory.length; h++) {
     var hChars = twHistory[h].chars;
+    var fade = 0.2 + (h / Math.max(1, twHistory.length)) * 0.3;
     for (var i = 0; i < hChars.length; i++) {
       var c = hChars[i];
-      var drawY = c.y - scrollOff;
-      if (drawY < 0 || drawY >= H) continue;
-      var fade = 0.3 + (h / twHistory.length) * 0.3;
-      drawChar(c.ch, c.x, drawY, 120, 100, 80, fade);
+      var cy = drawY + c.line;
+      if (cy >= 0 && cy < H) drawChar(c.ch, c.x, cy, 100, 90, 70, fade);
     }
+    drawY += twHistory[h].lines + twLineH;
   }
   // Draw current typing chars
   for (var i = 0; i < twChars.length; i++) {
     var c = twChars[i];
-    var drawY = c.y;
-    if (drawY < 0 || drawY >= H) continue;
+    var cy = drawY + c.line;
+    if (cy < 0 || cy >= H) continue;
     var age = time - c.t;
-    var flash = age < 0.08 ? 1 : 0;
-    var bright = flash ? 255 : (200 + Math.sin(age * 2) * 20) | 0;
-    drawChar(c.ch, c.x, drawY, bright, (180 + flash * 75) | 0, flash ? 255 : 120, 0.9 + flash * 0.1);
+    var flash = age < 0.1 ? 1 : 0;
+    var bright = flash ? 255 : (200 + Math.sin(age * 3) * 25) | 0;
+    var gb = flash ? 255 : (160 + Math.sin(age * 2) * 20) | 0;
+    drawChar(c.ch, c.x, cy, bright, gb, flash ? 255 : 100, 0.85 + flash * 0.15);
   }
   // Draw blinking cursor
   if (twCharIdx < text.length) {
-    var pos = twCalcPos(text, twCharIdx, startY, maxPerLine);
+    var curCol = 0, curLine = 0;
+    for (var c = 0; c < twCharIdx; c++) { curCol++; if (curCol >= maxPerLine) { curCol = 0; curLine++; } }
+    var curY = drawY + curLine;
     var blink = Math.sin(time * 8) > 0 ? 1 : 0;
-    if (blink) drawChar('█', pos.x, pos.y, 255, 220, 100, 1);
+    if (blink && curY >= 0 && curY < H) drawChar('█', 3 + curCol, curY, 255, 220, 100, 1);
+  } else {
+    // Done typing — show pulsing cursor at end
+    var endCol = 0, endLine = 0;
+    for (var c = 0; c < text.length; c++) { endCol++; if (endCol >= maxPerLine) { endCol = 0; endLine++; } }
+    var endY = drawY + endLine;
+    var pulse = (Math.sin(time * 4) * 0.3 + 0.7);
+    if (endY >= 0 && endY < H) drawChar('█', 3 + endCol, endY, 255, 180, 50, pulse);
   }
 }
 
