@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0a0a0f">
 <meta property="og:title" content="textflow">
-<meta property="og:description" content="47 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:description" content="48 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
 <meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -15,7 +15,7 @@
 <meta property="og:url" content="https://sebland.com/textflow">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="textflow">
-<meta name="twitter:description" content="47 interactive ASCII art experiments">
+<meta name="twitter:description" content="48 interactive ASCII art experiments">
 <meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
 <link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
@@ -169,6 +169,7 @@
   <button data-mode="brightmatch">brightmatch</button>
   <button data-mode="smoothfluid">smoothfluid</button>
   <button data-mode="vidascii">vidascii</button>
+  <button data-mode="vidcow">vidcow</button>
 </nav>
 
 <canvas id="c"></canvas>
@@ -229,7 +230,7 @@ window.addEventListener('resize', function() {
     pendulum: initPendulum, diffuse: initDiffuse, crystal: initCrystal, tvstatic: initStatic,
     crt: initCRT, vhs: initVHS, terminal: initTerminal, oscilloscope: initScope, dial: initDial,
     propfont: initPropfont, brightmatch: initBrightmatch, smoothfluid: initSmoothfluid,
-    vidascii: initVidascii
+    vidascii: initVidascii, vidcow: initVidcow
   };
   if (inits[currentMode]) inits[currentMode]();
 });
@@ -282,7 +283,8 @@ var glows = {
   propfont: { color: 'rgba(150,100,255,0.35)', blur: 14 },
   brightmatch: { color: 'rgba(255,180,80,0.35)', blur: 12 },
   smoothfluid: { color: 'rgba(100,180,255,0.4)', blur: 16 },
-  vidascii: { color: 'rgba(200,200,200,0.2)', blur: 8 }
+  vidascii: { color: 'rgba(200,200,200,0.2)', blur: 8 },
+  vidcow: { color: 'rgba(255,150,180,0.3)', blur: 10 }
 };
 
 function clearCanvas() {
@@ -4833,6 +4835,91 @@ function renderVidascii() {
 }
 
 // ============================================================
+// VIDCOW — Seeded ASCII video player with strawberry cow
+// ============================================================
+
+var vidCowEl = document.createElement('video');
+vidCowEl.muted = true;
+vidCowEl.loop = true;
+vidCowEl.playsInline = true;
+vidCowEl.crossOrigin = 'anonymous';
+vidCowEl.style.display = 'none';
+vidCowEl.src = '/textflow/static/strawberry-cow.mp4';
+document.body.appendChild(vidCowEl);
+
+var vidCowCanvas = document.createElement('canvas');
+var vidCowCtx = vidCowCanvas.getContext('2d', { willReadFrequently: true });
+var vidCowReady = false;
+
+vidCowEl.onloadeddata = function() { vidCowReady = true; };
+vidCowEl.load();
+
+var vidCowPaused = false;
+
+function initVidcow() {
+  vidCowPaused = false;
+  vidCowEl.currentTime = 0;
+  vidCowEl.play().catch(function(){});
+}
+
+// Click to pause/play
+canvas.addEventListener('click', function() {
+  if (currentMode !== 'vidcow') return;
+  if (vidCowEl.paused) {
+    vidCowEl.play().catch(function(){});
+    vidCowPaused = false;
+  } else {
+    vidCowEl.pause();
+    vidCowPaused = true;
+  }
+});
+
+function renderVidcow() {
+  clearCanvas();
+  var W = COLS, H = ROWS;
+
+  if (!vidCowReady) {
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.textAlign = 'center';
+    ctx.fillText('loading strawberry cow...', (W * CHAR_W) / 2, NAV_H + (H * CHAR_H) / 2);
+    ctx.textAlign = 'left';
+    return;
+  }
+
+  if (vidCowCanvas.width !== W || vidCowCanvas.height !== H) {
+    vidCowCanvas.width = W;
+    vidCowCanvas.height = H;
+  }
+
+  vidCowCtx.drawImage(vidCowEl, 0, 0, W, H);
+  var imgData = vidCowCtx.getImageData(0, 0, W, H).data;
+
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var pi = (y * W + x) * 4;
+      var r = imgData[pi];
+      var g = imgData[pi + 1];
+      var b = imgData[pi + 2];
+      var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      if (lum < 0.02) continue;
+      var ri = Math.min(VA_RAMP.length - 1, (lum * VA_RAMP.length) | 0);
+      var ch = VA_RAMP[ri];
+      var alpha = Math.max(0.2, Math.min(1, lum * 1.3));
+      drawChar(ch, x, y, r, g, b, alpha);
+    }
+  }
+
+  if (vidCowPaused) {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('PAUSED', window.innerWidth - 10, NAV_H + 10);
+    ctx.textAlign = 'left';
+    ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  }
+}
+
+// ============================================================
 // MAIN LOOP
 // ============================================================
 
@@ -4853,7 +4940,7 @@ var renderers = {
   crt: renderCRT, vhs: renderVHS, terminal: renderTerminal,
   oscilloscope: renderScope, dial: renderDial,
   propfont: renderPropfont, brightmatch: renderBrightmatch, smoothfluid: renderSmoothfluid,
-  vidascii: renderVidascii
+  vidascii: renderVidascii, vidcow: renderVidcow
 };
 
 // Single-pass glow: draw canvas onto itself with blur via offscreen canvas
@@ -4954,6 +5041,7 @@ function switchMode(mode) {
   if (mode === 'brightmatch') initBrightmatch();
   if (mode === 'smoothfluid') initSmoothfluid();
   if (mode === 'vidascii') initVidascii();
+  if (mode === 'vidcow') initVidcow();
 }
 
 buttons.forEach(function(b) {
