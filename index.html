@@ -162,10 +162,8 @@ function clearCanvas() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
   ctx.textBaseline = 'top';
-  // Apply glow
-  var g = glows[currentMode];
-  ctx.shadowColor = g.color;
-  ctx.shadowBlur = g.blur;
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 }
 
 function drawChar(ch, x, y, r, g, b, a) {
@@ -433,9 +431,32 @@ var renderers = {
   fire: renderFire, plasma: renderPlasma
 };
 
-function loop() {
-  time += 0.016;
+// Single-pass glow: draw canvas onto itself with blur via offscreen canvas
+var glowCanvas = document.createElement('canvas');
+var glowCtx = glowCanvas.getContext('2d');
+
+function applyGlow() {
+  var g = glows[currentMode];
+  glowCanvas.width = canvas.width;
+  glowCanvas.height = canvas.height;
+  glowCtx.filter = 'blur(' + g.blur + 'px)';
+  glowCtx.drawImage(canvas, 0, 0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 0.5;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.drawImage(glowCanvas, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+var lastTime = 0;
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  var dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  time += dt;
   renderers[currentMode]();
+  applyGlow();
   requestAnimationFrame(loop);
 }
 
