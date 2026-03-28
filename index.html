@@ -587,11 +587,12 @@ canvas.addEventListener('touchstart', function(e) {
   pointer.gx = g.gx; pointer.gy = g.gy;
 }, { passive: false });
 canvas.addEventListener('touchmove', function(e) {
+  e.preventDefault();
   var t = e.touches[0];
   var g = screenToGrid(t.clientX, t.clientY);
   pointer.x = t.clientX; pointer.y = t.clientY;
   pointer.gx = g.gx; pointer.gy = g.gy;
-}, { passive: true });
+}, { passive: false });
 canvas.addEventListener('touchend', function() { pointer.down = false; });
 canvas.addEventListener('touchcancel', function() { pointer.down = false; });
 
@@ -7278,10 +7279,10 @@ function initFirework() {
   fwRockets = [];
   fwParticles = [];
   fwTimer = 0;
-  // Initial burst — 3 rockets already mid-flight so it's not blank on load
+  // Initial burst — 3 rockets mid-flight
   for (var i = 0; i < 3; i++) {
     var x = fwW * 0.2 + Math.random() * fwW * 0.6;
-    fwRockets.push({ x: x, y: fwH * 0.3 + Math.random() * fwH * 0.3, vx: (Math.random() - 0.5) * 2, vy: -(3 + Math.random() * 4), hue: (Math.random() * 360) | 0 });
+    fwRockets.push({ x: x, y: fwH * 0.3 + Math.random() * fwH * 0.3, vx: (Math.random() - 0.5) * 2, vy: -(fwH * 0.1 + Math.random() * fwH * 0.1), targetY: fwH * 0.15, hue: (Math.random() * 360) | 0 });
   }
   // Plus 2 already-exploded bursts
   for (var i = 0; i < 2; i++) {
@@ -7292,14 +7293,18 @@ function initFirework() {
 initFirework();
 
 function fwLaunch(x) {
-  fwRockets.push({ x: x, y: fwH - 1, vx: (Math.random() - 0.5) * 2, vy: -(12 + Math.random() * 8), hue: (Math.random() * 360) | 0 });
+  // Scale velocity to grid size so rockets peak at ~20-35% from top
+  var launchVy = -(fwH * 0.4 + Math.random() * fwH * 0.3);
+  fwRockets.push({ x: x, y: fwH - 1, vx: (Math.random() - 0.5) * 2, vy: launchVy, targetY: fwH * (0.15 + Math.random() * 0.2), hue: (Math.random() * 360) | 0 });
 }
 
 function fwExplode(r) {
   var count = isMobile ? 40 : 70;
+  // Scale particle spread to grid size
+  var spread = Math.min(fwW, fwH) * 0.15;
   for (var i = 0; i < count; i++) {
     var angle = Math.random() * Math.PI * 2;
-    var speed = 2 + Math.random() * 8;
+    var speed = spread * (0.2 + Math.random() * 0.8);
     fwParticles.push({
       x: r.x, y: r.y,
       vx: Math.cos(angle) * speed,
@@ -7329,8 +7334,8 @@ function renderFirework() {
     var r = fwRockets[i];
     r.x += r.vx * 0.016 * 15;
     r.y += r.vy * 0.016 * 15;
-    r.vy += 5 * 0.016;
-    if (r.vy > -2) { fwExplode(r); fwRockets.splice(i, 1); continue; }
+    r.vy += fwH * 0.15 * 0.016;
+    if (r.y <= r.targetY || r.vy > 0) { fwExplode(r); fwRockets.splice(i, 1); continue; }
     var ix = r.x | 0, iy = r.y | 0;
     if (ix >= 0 && ix < W && iy >= 0 && iy < H) drawChar('|', ix, iy, 255, 255, 200, 1);
   }
