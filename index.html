@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>textflow</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
   * {
     margin: 0; padding: 0; box-sizing: border-box;
@@ -29,9 +29,7 @@
 
   nav {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     z-index: 100;
     display: flex;
     align-items: center;
@@ -84,65 +82,12 @@
     color: #fff;
   }
 
-  #canvas {
+  canvas {
+    display: block;
     width: 100%;
     height: 100%;
     height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: 2.5rem;
-    overflow: hidden;
   }
-
-  #output {
-    font-family: 'JetBrains Mono', monospace;
-    line-height: 1.15;
-    white-space: pre;
-    letter-spacing: 0.02em;
-    text-align: center;
-  }
-
-  /* Row divs — fixed height, no layout thrashing */
-  .row { white-space: pre; width: fit-content; }
-
-  /* === PRE-COMPUTED COLOR CLASSES (pretext pattern) === */
-  /* 10 alpha levels */
-  .a1 { opacity: 0.1; } .a2 { opacity: 0.2; } .a3 { opacity: 0.3; }
-  .a4 { opacity: 0.4; } .a5 { opacity: 0.5; } .a6 { opacity: 0.6; }
-  .a7 { opacity: 0.7; } .a8 { opacity: 0.8; } .a9 { opacity: 0.9; }
-  .a10 { opacity: 1.0; }
-
-  /* Lava colors */
-  .l1 { color: rgb(255,40,20); }
-  .l2 { color: rgb(255,100,40); }
-  .l3 { color: rgb(255,160,60); }
-  .l4 { color: rgb(255,200,100); }
-  .l5 { color: rgb(255,230,180); }
-
-  /* Rain colors */
-  .r0 { color: rgb(0,80,32); }
-  .r1 { color: rgb(0,120,48); }
-  .r2 { color: rgb(0,160,64); }
-  .r3 { color: rgb(0,200,80); }
-  .r4 { color: rgb(0,230,92); }
-  .rh { color: rgb(180,255,200); }
-
-  /* Fire colors */
-  .f1 { color: rgb(80,15,0); }
-  .f2 { color: rgb(180,40,0); }
-  .f3 { color: rgb(220,90,10); }
-  .f4 { color: rgb(255,150,20); }
-  .f5 { color: rgb(255,200,60); }
-  .f6 { color: rgb(255,240,150); }
-  .f7 { color: rgb(255,255,220); }
-
-  /* Glow effects per experiment */
-  .glow-lava { text-shadow: 0 0 8px rgba(255,100,50,0.4), 0 0 20px rgba(255,60,20,0.15); }
-  .glow-rain { text-shadow: 0 0 6px rgba(0,255,120,0.5), 0 0 15px rgba(0,200,80,0.15); }
-  .glow-wave { text-shadow: 0 0 8px rgba(80,140,255,0.5), 0 0 20px rgba(60,100,255,0.15); }
-  .glow-fire { text-shadow: 0 0 6px rgba(255,180,40,0.5), 0 0 18px rgba(255,80,20,0.2); }
-  .glow-plasma { text-shadow: 0 0 8px rgba(200,80,255,0.5), 0 0 20px rgba(150,40,255,0.15); }
 </style>
 </head>
 <body>
@@ -156,111 +101,84 @@
   <button data-mode="plasma">plasma</button>
 </nav>
 
-<div id="canvas">
-  <div id="output"></div>
-</div>
+<canvas id="c"></canvas>
 
 <script>
-// iOS: prevent long-press magnifier & text selection
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 document.addEventListener('selectstart', function(e) { e.preventDefault(); });
 
 // ============================================================
-// TEXTFLOW — ASCII text experiments
-// Rendering pattern from chenglou/pretext:
-//   - Pre-created row divs (no per-frame DOM creation)
-//   - CSS classes instead of inline styles (small HTML strings)
-//   - Row-level innerHTML updates (batched reflow)
+// TEXTFLOW — Canvas-based ASCII text renderer
+// Zero DOM manipulation per frame. Just fillText calls.
 // ============================================================
 
-var output = document.getElementById('output');
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
 var buttons = document.querySelectorAll('nav button');
 var currentMode = 'lava';
 var COLS, ROWS;
 var time = 0;
-var rowNodes = []; // Pre-created row div elements
-
-// === PRE-COMPUTED LOOKUP TABLES ===
-// Lava: brightness 0-255 -> pre-built span HTML
-var lavaLookup = new Array(256);
-var fireLookup = new Array(256);
-var rainLookup = new Array(256);
+var CHAR_W, CHAR_H, FONT_SIZE;
+var NAV_H = 36;
+var dpr = window.devicePixelRatio || 1;
 
 var RAMP_DENSE = ' .`-:;=+*#%@$';
 var RAMP_FIRE  = ' .:-=+*%#@';
+var RAMP_SOFT  = ' .,-~:;=!*#';
 
-function buildLookups() {
-  var lavaClasses = ['l1','l2','l3','l4','l5'];
-  var fireClasses = ['f1','f2','f3','f4','f5','f6','f7'];
-  var rainClasses = ['r0','r1','r2','r3','r4'];
+function resize() {
+  var w = window.innerWidth;
+  var h = window.innerHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(dpr, dpr);
 
-  for (var i = 0; i < 256; i++) {
-    var t = i / 255;
-    var alphaClass = 'a' + Math.max(1, Math.min(10, Math.ceil(t * 10)));
+  FONT_SIZE = Math.max(10, Math.min(16, w / 70));
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  CHAR_W = ctx.measureText('M').width;
+  CHAR_H = FONT_SIZE * 1.25;
 
-    // Lava lookup
-    if (t < 0.08) {
-      lavaLookup[i] = ' ';
-    } else {
-      var ci = Math.min(lavaClasses.length - 1, Math.floor(t * lavaClasses.length));
-      var ri = Math.max(0, Math.min(RAMP_DENSE.length - 1, Math.floor(t * RAMP_DENSE.length)));
-      lavaLookup[i] = '<span class="' + lavaClasses[ci] + ' ' + alphaClass + '">' + RAMP_DENSE[ri] + '</span>';
-    }
-
-    // Fire lookup
-    if (t < 0.05) {
-      fireLookup[i] = ' ';
-    } else {
-      var fci = Math.min(fireClasses.length - 1, Math.floor(t * fireClasses.length));
-      var fri = Math.max(0, Math.min(RAMP_FIRE.length - 1, Math.floor(t * RAMP_FIRE.length)));
-      fireLookup[i] = '<span class="' + fireClasses[fci] + ' ' + alphaClass + '">' + RAMP_FIRE[fri] + '</span>';
-    }
-
-    // Rain lookup
-    if (t < 0.01) {
-      rainLookup[i] = ' ';
-    } else {
-      var rci = Math.min(rainClasses.length - 1, Math.floor(t * rainClasses.length));
-      rainLookup[i] = '<span class="' + rainClasses[rci] + ' ' + alphaClass + '">';
-    }
-  }
-}
-buildLookups();
-
-// Responsive grid sizing + row div creation
-function calcGrid() {
-  var fontSize = Math.max(10, Math.min(14, window.innerWidth / 90));
-  output.style.fontSize = fontSize + 'px';
-  var charW = fontSize * 0.602;
-  var charH = fontSize * 1.15;
-  var newCols = Math.floor((window.innerWidth * 0.92) / charW);
-  var newRows = Math.floor((window.innerHeight - 60) / charH);
-  newCols = Math.min(newCols, 120);
-  newRows = Math.min(newRows, 55);
-
-  if (newCols !== COLS || newRows !== ROWS) {
-    COLS = newCols;
-    ROWS = newRows;
-    rebuildRows();
-  }
+  COLS = Math.floor(w / CHAR_W);
+  ROWS = Math.floor((h - NAV_H) / CHAR_H);
 }
 
-function rebuildRows() {
-  // Clear and recreate row divs (pretext pattern)
-  output.innerHTML = '';
-  rowNodes = [];
-  for (var i = 0; i < ROWS; i++) {
-    var div = document.createElement('div');
-    div.className = 'row';
-    div.style.height = '1.15em';
-    div.style.lineHeight = '1.15';
-    output.appendChild(div);
-    rowNodes.push(div);
-  }
+resize();
+window.addEventListener('resize', resize);
+
+// Glow configs per mode
+var glows = {
+  lava:   { color: 'rgba(255,80,30,0.35)', blur: 12 },
+  rain:   { color: 'rgba(0,220,100,0.35)', blur: 10 },
+  wave:   { color: 'rgba(80,140,255,0.3)', blur: 12 },
+  fire:   { color: 'rgba(255,150,30,0.35)', blur: 10 },
+  plasma: { color: 'rgba(180,60,255,0.3)', blur: 12 }
+};
+
+function clearCanvas() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = FONT_SIZE + 'px "JetBrains Mono", monospace';
+  ctx.textBaseline = 'top';
+  // Apply glow
+  var g = glows[currentMode];
+  ctx.shadowColor = g.color;
+  ctx.shadowBlur = g.blur;
 }
 
-calcGrid();
-window.addEventListener('resize', calcGrid);
+function drawChar(ch, x, y, r, g, b, a) {
+  if (ch === ' ') return;
+  ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + a.toFixed(2) + ')';
+  ctx.fillText(ch, x * CHAR_W, NAV_H + y * CHAR_H);
+}
+
+function drawCharHSL(ch, x, y, h, s, l) {
+  if (ch === ' ') return;
+  ctx.fillStyle = 'hsl(' + (h|0) + ',' + (s|0) + '%,' + (l|0) + '%)';
+  ctx.fillText(ch, x * CHAR_W, NAV_H + y * CHAR_H);
+}
 
 // ============================================================
 // LAVA LAMP
@@ -284,8 +202,13 @@ function initBlobs() {
 }
 initBlobs();
 
+var lavaColors = [
+  [255,40,20], [255,100,40], [255,160,60], [255,200,100], [255,230,180]
+];
+
 function renderLava() {
-  // Update blobs
+  clearCanvas();
+
   for (var i = 0; i < blobs.length; i++) {
     var b = blobs[i];
     b.x += b.vx + Math.sin(time * 0.4 + b.phase) * 0.15;
@@ -293,31 +216,29 @@ function renderLava() {
     b.r += Math.sin(time * 0.5 + b.phase) * 0.03;
     if (b.x < 2 || b.x > COLS - 2) { b.vx *= -0.9; b.x = Math.max(2, Math.min(COLS - 2, b.x)); }
     if (b.y < 2 || b.y > ROWS - 2) { b.vy *= -0.8; b.y = Math.max(2, Math.min(ROWS - 2, b.y)); }
-    b.vx *= 0.995;
-    b.vy *= 0.995;
+    b.vx *= 0.995; b.vy *= 0.995;
     b.vy += Math.sin(time * 0.2 + b.phase * 2) * 0.008;
   }
 
-  // Compute metaball field + render per row
   for (var y = 0; y < ROWS; y++) {
-    var html = '';
     for (var x = 0; x < COLS; x++) {
       var sum = 0;
       var px = x * 0.55;
       for (var i = 0; i < blobs.length; i++) {
         var b = blobs[i];
-        var bx = b.x * 0.55;
-        var dx = px - bx;
+        var dx = px - b.x * 0.55;
         var dy = y - b.y;
         sum += (b.r * b.r) / (dx * dx + dy * dy + 0.1);
       }
-      var t = Math.min(1, sum * 0.15);
-      var bi = Math.max(0, Math.min(255, (t * 255) | 0));
-      html += lavaLookup[bi];
+      var t = sum * 0.15;
+      if (t > 1) t = 1;
+      if (t < 0.08) continue;
+      var ci = Math.min(4, (t * 5) | 0);
+      var c = lavaColors[ci];
+      var ri = Math.min(RAMP_DENSE.length - 1, (t * RAMP_DENSE.length) | 0);
+      drawChar(RAMP_DENSE[ri], x, y, c[0], c[1], c[2], 0.3 + t * 0.7);
     }
-    rowNodes[y].innerHTML = html;
   }
-  output.className = 'glow-lava';
 }
 
 // ============================================================
@@ -346,13 +267,10 @@ function initRain() {
 initRain();
 
 function renderRain() {
-  var grid = [];
-  var bright = new Float32Array(COLS * ROWS);
+  clearCanvas();
 
-  for (var y = 0; y < ROWS; y++) {
-    grid[y] = new Array(COLS);
-    for (var x = 0; x < COLS; x++) grid[y][x] = ' ';
-  }
+  var bright = new Float32Array(COLS * ROWS);
+  var charGrid = new Array(COLS * ROWS);
 
   for (var i = 0; i < drops.length; i++) {
     var d = drops[i];
@@ -366,75 +284,65 @@ function renderRain() {
       d.chars[Math.floor(Math.random() * d.len)] = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
     }
     for (var j = 0; j < d.len; j++) {
-      var ty = Math.floor(d.y - j);
+      var ty = (d.y - j) | 0;
       if (ty >= 0 && ty < ROWS && d.x >= 0 && d.x < COLS) {
         var fade = 1 - j / d.len;
-        if (fade > bright[ty * COLS + d.x]) {
-          grid[ty][d.x] = d.chars[j];
-          bright[ty * COLS + d.x] = fade;
+        var idx = ty * COLS + d.x;
+        if (fade > bright[idx]) {
+          charGrid[idx] = d.chars[j];
+          bright[idx] = fade;
         }
       }
     }
   }
 
   for (var y = 0; y < ROWS; y++) {
-    var html = '';
     for (var x = 0; x < COLS; x++) {
-      var b = bright[y * COLS + x];
-      if (b < 0.01) {
-        html += ' ';
+      var idx = y * COLS + x;
+      var b = bright[idx];
+      if (b < 0.01) continue;
+      var ch = charGrid[idx];
+      if (b > 0.95) {
+        drawChar(ch, x, y, 180, 255, 200, 1);
       } else {
-        var bi = Math.max(0, Math.min(255, (b * 255) | 0));
-        var isHead = b > 0.95;
-        if (isHead) {
-          html += '<span class="rh a10">' + grid[y][x] + '</span>';
-        } else {
-          html += rainLookup[bi] + grid[y][x] + '</span>';
-        }
+        var g = (80 + b * 175) | 0;
+        drawChar(ch, x, y, 0, g, (g * 0.4) | 0, 0.2 + b * 0.8);
       }
     }
-    rowNodes[y].innerHTML = html;
   }
-  output.className = 'glow-rain';
 }
 
 // ============================================================
-// WAVES — uses inline hsla (unavoidable for rainbow cycling)
-// but still uses row-level updates
+// WAVES
 // ============================================================
 
-var RAMP_SOFT = ' .,-~:;=!*#';
-
 function renderWave() {
+  clearCanvas();
   var phrase = 'textflow';
 
   for (var y = 0; y < ROWS; y++) {
-    var html = '';
     for (var x = 0; x < COLS; x++) {
-      var wave1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
-      var wave2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
-      var wave3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
+      var w1 = Math.sin(x * 0.08 - time * 1.2 + y * 0.15) * 0.5 + 0.5;
+      var w2 = Math.sin(x * 0.12 + time * 0.8 - y * 0.1) * 0.5 + 0.5;
+      var w3 = Math.sin((x + y) * 0.06 + time * 0.5) * 0.5 + 0.5;
       var cx = x - COLS / 2, cy = y - ROWS / 2;
-      var wave4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.12 - time * 1.5) * 0.5 + 0.5;
+      var w4 = Math.sin(Math.sqrt(cx * cx + cy * cy) * 0.12 - time * 1.5) * 0.5 + 0.5;
 
-      var v = wave1 * 0.35 + wave2 * 0.25 + wave3 * 0.2 + wave4 * 0.2;
+      var v = w1 * 0.35 + w2 * 0.25 + w3 * 0.2 + w4 * 0.2;
       v = Math.pow(v, 1.2);
+      if (v < 0.15) continue;
 
-      if (v < 0.15) {
-        html += ' ';
-      } else {
-        var ci = Math.floor((x + time * 8) % phrase.length);
-        var ri = Math.max(0, Math.min(RAMP_SOFT.length - 1, Math.floor(v * RAMP_SOFT.length)));
-        var ch = v > 0.6 ? phrase[Math.abs(ci) % phrase.length] : RAMP_SOFT[ri];
-        var hue = ((x * 2.5 + y * 1.5 + time * 30) % 360) | 0;
-        var sat = (60 + v * 40) | 0;
-        var lit = (30 + v * 50) | 0;
-        html += '<span style="color:hsl(' + hue + ',' + sat + '%,' + lit + '%)">' + ch + '</span>';
-      }
+      var ci = ((x + time * 8) | 0) % phrase.length;
+      if (ci < 0) ci += phrase.length;
+      var ri = Math.min(RAMP_SOFT.length - 1, (v * RAMP_SOFT.length) | 0);
+      var ch = v > 0.6 ? phrase[ci] : RAMP_SOFT[ri];
+
+      var hue = (x * 2.5 + y * 1.5 + time * 30) % 360;
+      var sat = 60 + v * 40;
+      var lit = 30 + v * 50;
+      drawCharHSL(ch, x, y, hue, sat, lit);
     }
-    rowNodes[y].innerHTML = html;
   }
-  output.className = 'glow-wave';
 }
 
 // ============================================================
@@ -447,53 +355,55 @@ function initFire() {
 }
 initFire();
 
+var fireColors = [
+  [20,5,0], [80,15,0], [180,40,0], [220,90,10],
+  [255,150,20], [255,200,60], [255,240,150], [255,255,220]
+];
+
 function renderFire() {
+  clearCanvas();
   var W = COLS, H = ROWS + 2;
 
   if (!fireBuffer || fireBuffer.length !== W * H) {
     fireBuffer = new Float32Array(W * H);
   }
 
-  // Seed bottom row
   for (var x = 0; x < W; x++) {
     fireBuffer[(H - 1) * W + x] = Math.random() > 0.4 ? 0.8 + Math.random() * 0.2 : Math.random() * 0.3;
   }
 
-  // Propagate upward
   for (var y = 0; y < H - 1; y++) {
     for (var x = 0; x < W; x++) {
-      var y1 = Math.min(H - 1, y + 1);
+      var y1 = y + 1;
       var y2 = Math.min(H - 1, y + 2);
-      var xl = Math.max(0, x - 1);
-      var xr = Math.min(W - 1, x + 1);
+      var xl = x > 0 ? x - 1 : 0;
+      var xr = x < W - 1 ? x + 1 : W - 1;
       var v = (fireBuffer[y1 * W + x] + fireBuffer[y1 * W + xl] + fireBuffer[y1 * W + xr] + fireBuffer[y2 * W + x]) * 0.25;
-      v *= 0.97 - Math.random() * 0.02;
-      v -= 0.008;
+      v = v * (0.97 - Math.random() * 0.02) - 0.008;
       fireBuffer[y * W + x] = v > 0 ? v : 0;
     }
   }
 
-  // Render per row using lookup table
   for (var y = 0; y < ROWS; y++) {
-    var html = '';
     for (var x = 0; x < W; x++) {
       var v = fireBuffer[y * W + x];
-      var bi = Math.max(0, Math.min(255, (v * 255) | 0));
-      html += fireLookup[bi];
+      if (v < 0.05) continue;
+      var ci = Math.min(7, (v * 8) | 0);
+      var c = fireColors[ci];
+      var ri = Math.min(RAMP_FIRE.length - 1, (v * RAMP_FIRE.length) | 0);
+      drawChar(RAMP_FIRE[ri], x, y, c[0], c[1], c[2], 0.3 + v * 0.7);
     }
-    rowNodes[y].innerHTML = html;
   }
-  output.className = 'glow-fire';
 }
 
 // ============================================================
-// PLASMA — uses inline hsla (rainbow cycling)
-// row-level updates
+// PLASMA
 // ============================================================
 
 function renderPlasma() {
+  clearCanvas();
+
   for (var y = 0; y < ROWS; y++) {
-    var html = '';
     for (var x = 0; x < COLS; x++) {
       var v1 = Math.sin(x * 0.06 + time * 0.7);
       var v2 = Math.sin(y * 0.09 + time * 0.5);
@@ -503,21 +413,15 @@ function renderPlasma() {
       var v5 = Math.sin(x * 0.04 * Math.sin(time * 0.2) + y * 0.05 * Math.cos(time * 0.15));
 
       var v = (v1 + v2 + v3 + v4 + v5) * 0.1 + 0.5;
+      if (v < 0.1) continue;
 
-      if (v < 0.1) {
-        html += ' ';
-      } else {
-        var ri = Math.max(0, Math.min(RAMP_DENSE.length - 1, Math.floor(v * RAMP_DENSE.length)));
-        var ch = RAMP_DENSE[ri];
-        var hue = ((v * 270 + x * 1.5 + time * 30) % 360) | 0;
-        var sat = (70 + v * 30) | 0;
-        var lit = (20 + v * 55) | 0;
-        html += '<span style="color:hsl(' + hue + ',' + sat + '%,' + lit + '%)">' + ch + '</span>';
-      }
+      var ri = Math.min(RAMP_DENSE.length - 1, (v * RAMP_DENSE.length) | 0);
+      var hue = (v * 270 + x * 1.5 + time * 30) % 360;
+      var sat = 70 + v * 30;
+      var lit = 20 + v * 55;
+      drawCharHSL(RAMP_DENSE[ri], x, y, hue, sat, lit);
     }
-    rowNodes[y].innerHTML = html;
   }
-  output.className = 'glow-plasma';
 }
 
 // ============================================================
@@ -525,11 +429,8 @@ function renderPlasma() {
 // ============================================================
 
 var renderers = {
-  lava: renderLava,
-  rain: renderRain,
-  wave: renderWave,
-  fire: renderFire,
-  plasma: renderPlasma
+  lava: renderLava, rain: renderRain, wave: renderWave,
+  fire: renderFire, plasma: renderPlasma
 };
 
 function loop() {
@@ -551,7 +452,11 @@ buttons.forEach(function(b) {
   b.addEventListener('click', function() { switchMode(b.dataset.mode); });
 });
 
-loop();
+// Wait for font to load before starting
+document.fonts.ready.then(function() {
+  resize();
+  loop();
+});
 </script>
 </body>
 </html>
