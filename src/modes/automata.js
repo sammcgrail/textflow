@@ -46,8 +46,8 @@ function renderAutomata() {
       }
     }
   }
-  // Drag changes rule — horizontal position maps to rule 0-255
-  if (pointer.down && state.currentMode === 'automata') {
+  // Drag changes rule — horizontal position maps to rule 0-255 (only on drag, not click)
+  else if (pointer.down && state.currentMode === 'automata') {
     var newRule = Math.floor((pointer.gx / W) * 256);
     if (newRule !== autoRule && newRule >= 0 && newRule < 256) {
       autoRule = newRule;
