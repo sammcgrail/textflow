@@ -141,7 +141,8 @@ export var glows = {
   vidlava: { color: 'rgba(255,100,30,0.4)', blur: 14 },
   vidcity: { color: 'rgba(255,200,100,0.3)', blur: 12 },
   vidocean: { color: 'rgba(50,150,255,0.35)', blur: 14 },
-  vidfireworks: { color: 'rgba(255,150,50,0.4)', blur: 18 }
+  vidfireworks: { color: 'rgba(255,150,50,0.4)', blur: 18 },
+  handpose: { color: 'rgba(150,200,255,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;

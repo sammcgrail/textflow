@@ -86,25 +86,26 @@ function buildLaunchButton(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
+  el.style.padding = '6px';
   win95Raised(el);
   var btn = document.createElement('button');
   btn.textContent = 'Launch';
   btn.style.background = WIN95_BG;
-  btn.style.border = 'none';
   btn.style.color = WIN95_TEXT;
   btn.style.fontFamily = '"MS Sans Serif", "Segoe UI", sans-serif';
   btn.style.fontSize = '12px';
   btn.style.fontWeight = 'bold';
   btn.style.cursor = 'pointer';
-  btn.style.padding = '2px 6px';
-  btn.style.width = '100%';
-  btn.style.height = '100%';
+  btn.style.padding = '2px 12px';
+  btn.style.boxSizing = 'border-box';
+  win95Raised(btn);
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    win95Sunken(el);
-    setTimeout(function() { win95Raised(el); }, 200);
+    win95Sunken(btn);
+    setTimeout(function() { win95Raised(btn); }, 200);
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 30);
   });
+  btn.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
   el.appendChild(btn);
 }
 
@@ -142,8 +143,19 @@ function buildToggle(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.gap = '8px';
+  el.style.padding = '6px';
   win95Raised(el);
+
+  var inner = document.createElement('div');
+  inner.style.display = 'flex';
+  inner.style.alignItems = 'center';
+  inner.style.justifyContent = 'center';
+  inner.style.gap = '8px';
+  inner.style.background = WIN95_BG;
+  inner.style.cursor = 'pointer';
+  inner.style.padding = '2px 10px';
+  inner.style.boxSizing = 'border-box';
+  win95Raised(inner);
 
   var checkbox = document.createElement('div');
   checkbox.style.width = '13px';
@@ -156,10 +168,7 @@ function buildToggle(elem) {
   checkbox.style.fontSize = '11px';
   checkbox.style.fontWeight = 'bold';
   checkbox.style.color = WIN95_TEXT;
-  checkbox.style.borderTop = '2px solid ' + WIN95_DARK;
-  checkbox.style.borderLeft = '2px solid ' + WIN95_DARK;
-  checkbox.style.borderBottom = '2px solid ' + WIN95_LIGHT;
-  checkbox.style.borderRight = '2px solid ' + WIN95_LIGHT;
+  win95Sunken(checkbox);
   checkbox.textContent = toggleOn ? '\u2713' : '';
 
   var label = document.createElement('span');
@@ -167,14 +176,18 @@ function buildToggle(elem) {
   label.style.color = WIN95_TEXT;
   label.style.fontSize = '12px';
 
-  el.appendChild(checkbox);
-  el.appendChild(label);
+  inner.appendChild(checkbox);
+  inner.appendChild(label);
+  el.appendChild(inner);
 
-  el.addEventListener('click', function(e) {
+  inner.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+  inner.addEventListener('click', function(e) {
     e.stopPropagation();
     toggleOn = !toggleOn;
     checkbox.textContent = toggleOn ? '\u2713' : '';
     label.textContent = toggleOn ? 'Enabled' : 'Disabled';
+    win95Sunken(inner);
+    setTimeout(function() { win95Raised(inner); }, 150);
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 15);
   });
 }
@@ -330,17 +343,7 @@ function flickerBorders(t) {
 // --- Init ---
 function initButtons() {
   var W = state.COLS, H = state.ROWS;
-  var mobile = state.isMobile;
-
-  // Define element sizes
-  var bw = mobile ? 14 : 20;
-  var bh = mobile ? 4 : 4;
-
-  // Spread elements across the grid
-  var cx = Math.floor(W / 2);
-  var cy = Math.floor(H / 2);
-  var spacingX = mobile ? 16 : 24;
-  var spacingY = mobile ? 6 : 7;
+  var mobile = W < 50;
 
   // Remove old DOM elements
   for (var i = 0; i < elements.length; i++) {
@@ -349,13 +352,39 @@ function initButtons() {
     }
   }
 
-  elements = [
-    makeElement('launch',  cx - spacingX,     cy - spacingY,     bw, bh, 'LAUNCH'),
-    makeElement('input',   cx + 2,            cy - spacingY,     bw + 2, bh, 'INPUT'),
-    makeElement('toggle',  cx - spacingX - 2, cy,                bw - 2, bh, 'TOGGLE'),
-    makeElement('slider',  cx + 3,            cy,                bw + 4, bh, 'SLIDER'),
-    makeElement('badge',   cx - 3,            cy + spacingY,     bw - 4, bh, 'BADGE'),
-  ];
+  if (mobile) {
+    // Mobile: stack vertically, centered, narrower elements
+    var bw = Math.min(W - 4, 18);
+    var bh = 3;
+    var startX = Math.floor((W - bw) / 2);
+    var gap = 1; // 1 row gap between elements
+    var totalH = 5 * bh + 4 * gap;
+    var startY = Math.max(1, Math.floor((H - totalH) / 2));
+
+    elements = [
+      makeElement('launch',  startX, startY,                        bw, bh, 'LAUNCH'),
+      makeElement('input',   startX, startY + (bh + gap),           bw, bh, 'INPUT'),
+      makeElement('toggle',  startX, startY + 2 * (bh + gap),      bw, bh, 'TOGGLE'),
+      makeElement('slider',  startX, startY + 3 * (bh + gap),      bw, bh, 'SLIDER'),
+      makeElement('badge',   startX, startY + 4 * (bh + gap),      bw, bh, 'BADGE'),
+    ];
+  } else {
+    // Desktop: 2-column layout
+    var bw = 20;
+    var bh = 4;
+    var cx = Math.floor(W / 2);
+    var cy = Math.floor(H / 2);
+    var spacingX = 24;
+    var spacingY = 7;
+
+    elements = [
+      makeElement('launch',  cx - spacingX,     cy - spacingY,     bw, bh, 'LAUNCH'),
+      makeElement('input',   cx + 2,            cy - spacingY,     bw + 2, bh, 'INPUT'),
+      makeElement('toggle',  cx - spacingX - 2, cy,                bw - 2, bh, 'TOGGLE'),
+      makeElement('slider',  cx + 3,            cy,                bw + 4, bh, 'SLIDER'),
+      makeElement('badge',   cx - 3,            cy + spacingY,     bw - 4, bh, 'BADGE'),
+    ];
+  }
 
   // Clamp positions
   for (var j = 0; j < elements.length; j++) {
