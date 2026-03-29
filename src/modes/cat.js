@@ -115,17 +115,16 @@ function renderCat() {
 
   computeCatSize();
 
-  // Smooth interpolation toward target
-  var lerp = 0.15;
-  catGX += (catTargetGX - catGX) * lerp;
-  catGY += (catTargetGY - catGY) * lerp;
+  // Direct position from target (no lerp), half-cell snap for finer movement
+  catGX = Math.round(catTargetGX * 2) / 2;
+  catGY = Math.round(catTargetGY * 2) / 2;
 
   if (catImg) {
     catImg.style.display = (state.currentMode === 'cat' && catLoaded) ? 'block' : 'none';
   }
   positionCatImg();
 
-  // Snap to grid for text exclusion
+  // Snap to integer grid for text exclusion
   var snapGX = Math.round(catGX);
   var snapGY = Math.round(catGY);
   var cLeft = snapGX;
@@ -186,18 +185,18 @@ function renderCat() {
         bright = 20 + hintAlpha * 50;
       } else {
         hue = (y * 3 + x * 0.5 + t * 15) % 360;
-        bright = 10 + nd * 25;
-        sat = 20 + nd * 30;
+        bright = 30 + nd * 55;
+        sat = 45 + nd * 45;
 
         if (rowInCat) {
           var el = Math.abs(x - cLeft);
           var er = Math.abs(x - (cRight - 1));
           var ed = Math.min(el, er);
-          if (ed < 3) { bright += (3 - ed) * 4; hue = (hue + 20) % 360; }
+          if (ed < 4) { bright += (4 - ed) * 6; hue = (hue + 25) % 360; }
         }
       }
 
-      drawCharHSL(ch, x, y, hue, Math.min(70, sat), Math.min(50, bright));
+      drawCharHSL(ch, x, y, hue, Math.min(95, sat), Math.min(80, bright));
     }
   }
 }
