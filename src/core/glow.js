@@ -93,7 +93,29 @@ export var glows = {
   chem: { color: 'rgba(200,100,255,0.3)', blur: 12 },
   typewriter: { color: 'rgba(255,200,100,0.25)', blur: 8 },
   conway3: { color: 'rgba(255,150,0,0.3)', blur: 10 },
-  wfc: { color: 'rgba(100,200,255,0.3)', blur: 12 }
+  wfc: { color: 'rgba(100,200,255,0.3)', blur: 12 },
+  metaball: { color: 'rgba(255,100,200,0.35)', blur: 14 },
+  heartbeat: { color: 'rgba(0,255,100,0.35)', blur: 10 },
+  bubbles: { color: 'rgba(100,200,255,0.3)', blur: 12 },
+  waterfall: { color: 'rgba(80,160,255,0.35)', blur: 14 },
+  pixelsort: { color: 'rgba(255,100,255,0.3)', blur: 10 },
+  pendwave: { color: 'rgba(255,180,80,0.3)', blur: 12 },
+  hexlife: { color: 'rgba(200,100,255,0.3)', blur: 10 },
+  bacteria: { color: 'rgba(100,255,80,0.3)', blur: 10 },
+  harmonograph: { color: 'rgba(200,150,255,0.35)', blur: 14 },
+  topography: { color: 'rgba(100,200,100,0.3)', blur: 10 },
+  lissajous: { color: 'rgba(180,100,255,0.35)', blur: 14 },
+  embers: { color: 'rgba(255,120,30,0.4)', blur: 16 },
+  eclipse: { color: 'rgba(255,200,50,0.35)', blur: 18 },
+  caustics: { color: 'rgba(80,180,255,0.35)', blur: 16 },
+  constellations: { color: 'rgba(200,200,255,0.25)', blur: 10 },
+  dissolve: { color: 'rgba(255,150,200,0.3)', blur: 12 },
+  tetris: { color: 'rgba(100,200,255,0.3)', blur: 10 },
+  highway: { color: 'rgba(255,200,80,0.3)', blur: 10 },
+  cityscape: { color: 'rgba(255,200,100,0.25)', blur: 12 },
+  ocean: { color: 'rgba(50,150,255,0.35)', blur: 14 },
+  piano: { color: 'rgba(200,150,255,0.3)', blur: 12 },
+  clock: { color: 'rgba(100,255,200,0.3)', blur: 10 }
 };
 
 var glowCanvas = null;
