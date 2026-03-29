@@ -1,6 +1,7 @@
 // ============================================================
 // TEXTFLOW — Entry Point
-// Canvas-based ASCII text renderer. Zero DOM manipulation per frame.
+// WebGL 2 instanced renderer with Canvas 2D fallback.
+// Zero DOM manipulation per frame.
 // ============================================================
 
 import { state } from './core/state.js';
@@ -10,6 +11,7 @@ import { initGlow } from './core/glow.js';
 import { initLoop, loop, switchMode, scrollNavToMode } from './core/loop.js';
 import { getModeFromPath, getRandomMode } from './core/router.js';
 import { getMode, getRenderers } from './core/registry.js';
+import { initWebGL } from './core/webgl-renderer.js';
 
 // Import all modes — each self-registers via registerMode()
 import './modes/lava.js';
@@ -162,10 +164,29 @@ document.addEventListener('selectstart', function(e) { e.preventDefault(); });
 
 // Initialize state
 state.canvas = document.getElementById('c');
-state.ctx = state.canvas.getContext('2d', { alpha: false, desynchronized: true });
 state.buttons = document.querySelectorAll('nav button');
 state.dpr = window.devicePixelRatio || 1;
 state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
+
+// Try WebGL 2 first, fall back to Canvas 2D
+var webglOK = initWebGL();
+if (!webglOK) {
+  console.log('WebGL 2 not available, using Canvas 2D fallback');
+  state.ctx = state.canvas.getContext('2d', { alpha: false, desynchronized: true });
+  state.useWebGL = false;
+} else {
+  console.log('WebGL 2 renderer active');
+  // Keep a 2D context reference for font measurement and edge cases
+  // (video mode PAUSED text, propfont mode)
+  var measureCanvas = document.createElement('canvas');
+  state.ctx = measureCanvas.getContext('2d');
+}
+
+// Hide glow canvas when using WebGL (bloom shader handles it)
+if (state.useWebGL) {
+  var glowEl = document.getElementById('glow');
+  if (glowEl) glowEl.style.display = 'none';
+}
 
 // Initialize subsystems
 resize();
@@ -210,9 +231,8 @@ navBtnsEl.addEventListener('wheel', function(e) {
 document.fonts.ready.then(function() {
   resize();
   var startMode = getModeFromPath();
-  if (startMode !== 'lava') switchMode(startMode);
+  switchMode(startMode);
   scrollNavToMode(startMode, true);
-  // Reveal nav after scroll is positioned
   var nav = document.querySelector('nav');
   nav.style.visibility = 'visible';
   nav.style.opacity = '1';
