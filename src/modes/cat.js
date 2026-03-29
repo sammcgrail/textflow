@@ -108,20 +108,20 @@ function renderCat() {
 
   computeCatSize();
 
-  // Half-cell snap for fine movement
-  catGX = Math.round(catTargetGX * 2) / 2;
-  catGY = Math.round(catTargetGY * 2) / 2;
+  // Snap to integer grid — keeps DOM overlay and exclusion zone perfectly aligned
+  catGX = Math.round(catTargetGX);
+  catGY = Math.round(catTargetGY);
 
   if (catImg) {
     catImg.style.display = (state.currentMode === 'cat' && catLoaded) ? 'block' : 'none';
   }
   positionCatImg();
 
-  // Tight exclusion zone — ceil/floor to match DOM overlay exactly
-  var cLeft = Math.ceil(catGX);
-  var cRight = Math.floor(catGX + catGridW);
-  var cTop = Math.ceil(catGY);
-  var cBottom = Math.floor(catGY + catGridH);
+  // Exclusion zone — integer-aligned, matches DOM overlay exactly
+  var cLeft = catGX;
+  var cRight = catGX + catGridW;
+  var cTop = catGY;
+  var cBottom = catGY + catGridH;
 
   var ci = Math.floor(t * 2) % loremText.length;
   var hintAlpha = getHintAlpha(t);
