@@ -40,6 +40,8 @@ function ensureCatImg() {
   catImg.style.pointerEvents = 'none';
   catImg.style.display = 'none';
   catImg.style.borderRadius = '6px';
+  catImg.style.border = '3px solid #0a0a0f';
+  catImg.style.boxSizing = 'border-box';
   catImg.style.objectFit = 'cover';
   catImg.draggable = false;
   document.body.appendChild(catImg);
