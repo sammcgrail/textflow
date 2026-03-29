@@ -81,8 +81,9 @@ in vec4 v_color;\n\
 out vec4 fragColor;\n\
 void main(){\n\
   vec4 t = texture(u_atlas, v_uv);\n\
-  float mask = max(t.r, max(t.g, t.b));\n\
-  if(mask < 0.05) discard;\n\
+  float raw = max(t.r, max(t.g, t.b));\n\
+  if(raw < 0.05) discard;\n\
+  float mask = smoothstep(0.1, 0.6, raw);\n\
   fragColor = vec4(v_color.rgb, v_color.a * mask);\n\
 }';
 
@@ -236,12 +237,13 @@ function createBloomVAO() {
 // FBO MANAGEMENT
 // ============================================================
 
-function makeFBO(w, h) {
+function makeFBO(w, h, linear) {
   var tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  var filt = linear ? gl.LINEAR : gl.NEAREST;
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filt);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filt);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
@@ -269,13 +271,13 @@ function rebuildFBOs() {
   destroyFBO(sceneFBO);
   for (var i = 0; i < bloomFBOs.length; i++) destroyFBO(bloomFBOs[i]);
 
-  // Scene FBO (full res)
-  sceneFBO = makeFBO(cw, ch);
+  // Scene FBO (full res, NEAREST — pixel-perfect sampling)
+  sceneFBO = makeFBO(cw, ch, false);
 
-  // Bloom ping-pong (quarter res)
+  // Bloom ping-pong (quarter res, LINEAR — intentionally blurred)
   var bw = Math.max(1, (cw * BLOOM_SCALE) | 0);
   var bh = Math.max(1, (ch * BLOOM_SCALE) | 0);
-  bloomFBOs = [makeFBO(bw, bh), makeFBO(bw, bh)];
+  bloomFBOs = [makeFBO(bw, bh, true), makeFBO(bw, bh, true)];
 }
 
 // ============================================================
@@ -432,7 +434,7 @@ function finishBloom() {
   // Parse tint from glow config color string
   var tint = parseGlowColor(g.color);
   gl.uniform3f(bu_tint, tint[0], tint[1], tint[2]);
-  gl.uniform1f(bu_intensity, tint[3] * 2.5); // boost a bit for visual parity with CSS blur
+  gl.uniform1f(bu_intensity, tint[3] * 1.5); // reduced from 2.5 for crisper text
 
   gl.bindVertexArray(bloomVAO);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
