@@ -171,6 +171,7 @@ import './modes/vidink.js';
 import './modes/vidaurora.js';
 import './modes/vidgyro.js';
 import './modes/vidstars.js';
+import './modes/cat.js';
 
 // ============================================================
 // INITIALIZATION
