@@ -261,16 +261,16 @@ function renderHeadcube() {
   faceY += (targetFaceY - faceY) * smooth;
   faceZ += (targetFaceZ - faceZ) * smooth;
 
-  // If no face, gently orbit
+  // If no face, hold steady at center
   if (!faceDetected) {
-    targetFaceX = 0.5 + 0.15 * Math.sin(t * 0.3);
-    targetFaceY = 0.5 + 0.1 * Math.cos(t * 0.25);
+    targetFaceX = 0.5;
+    targetFaceY = 0.5;
     targetFaceZ = 0.5;
   }
 
-  // Slow auto-rotation
-  var rotY = t * 0.3;
-  var rotX = t * 0.2;
+  // No auto-rotation — cube orientation is purely driven by head position
+  var rotY = 0;
+  var rotX = 0;
 
   // Character aspect ratio correction
   var ar = state.CHAR_W / state.CHAR_H;
