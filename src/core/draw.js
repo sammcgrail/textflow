@@ -77,15 +77,17 @@ export function drawCharHSL(ch, x, y, h, s, l) {
 }
 
 // ============================================================
-// HSL to RGB (returns normalized 0-1 values)
-// ============================================================
-// ============================================================
 // drawString — render a string using drawChar (WebGL-compatible)
 // ============================================================
-export function drawString(str, pixelX, pixelY, r, g, b, a) {
+export function drawString(str, pixelX, pixelY, r, g, b, a, align) {
   // Convert pixel position to grid position
   var gx = pixelX / state.CHAR_W;
   var gy = (pixelY - state.NAV_H) / state.CHAR_H;
+  // Support right-alignment: shift gx left by string length
+  if (align === 'right') gx -= str.length;
+  // Snap to integer grid to avoid fractional glyph positions
+  gx = Math.round(gx);
+  gy = Math.round(gy);
   for (var i = 0; i < str.length; i++) {
     drawChar(str[i], gx + i, gy, r, g, b, a);
   }

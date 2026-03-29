@@ -71,7 +71,7 @@ function renderVidascii() {
 
   // Paused indicator
   if (vidPaused) {
-    drawString('PAUSED', window.innerWidth - 60, state.NAV_H + 10, 255, 255, 255, 0.25);
+    drawString('PAUSED', window.innerWidth, state.NAV_H + 10, 255, 255, 255, 0.25, 'right');
   }
 }
 

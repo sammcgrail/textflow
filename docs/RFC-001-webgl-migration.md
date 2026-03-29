@@ -15,7 +15,7 @@ Profiling across all 139 modes shows:
 
 ## Proposal
 
-Migrate textflow's rendering pipeline from Canvas 2D to **WebGL 2** (with WebGL 1 fallback), using a **font texture atlas + instanced quad rendering** approach.
+Migrate textflow's rendering pipeline from Canvas 2D to **WebGL 2** (with Canvas 2D fallback), using a **font texture atlas + instanced quad rendering** approach.
 
 ### Key Insight: Mode Files Don't Change
 
@@ -214,7 +214,7 @@ if (!gl) {
 | `src/index.html` | Modified — remove glow canvas (Phase 3) | ~2 changed |
 | **Total** | | **~460 lines** |
 
-**Zero changes to any of the 139 mode files.**
+**Minimal changes to mode files:** Video modes updated to use `drawString()` helper for PAUSED overlay text (replacing direct `ctx.fillText`), and `propfont` mode given a WebGL-compatible codepath using monospace density ramp.
 
 ## Risks & Mitigations
 
@@ -238,5 +238,5 @@ The [pretext](https://github.com/chenglou/pretext) reference implementation uses
 ## Open Questions
 
 1. **Should bloom intensity be configurable per-mode?** Currently each mode specifies `blur` and `color` in `glow.js`. The bloom shader can accept these same params.
-2. **WebGL 2 required or WebGL 1 sufficient?** Instanced rendering requires `ANGLE_instanced_arrays` extension on WebGL 1. WebGL 2 has it built-in. We could require WebGL 2 (98%+ browser support in 2026).
+2. **~~WebGL 2 required or WebGL 1 sufficient?~~** Resolved: WebGL 2 only. No WebGL 1 fallback — instancing is built-in, `gl.RGBA8` sized formats are available, and 98%+ browser support in 2026 makes WebGL 1 fallback unnecessary. Canvas 2D is the fallback for the rare cases where WebGL 2 is unavailable.
 3. **Should we add a "quality" toggle?** Low = skip bloom, Medium = 2-pass bloom, High = 4-pass bloom. Could help on very low-end mobile.
