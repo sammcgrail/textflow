@@ -39,7 +39,7 @@ function render() {
       drawChar(VA_RAMP[ri], x, y, br|0, bg|0, bb|0, Math.max(0.2, Math.min(1, lum*1.4)));
     }
   }
-  if (paused) { drawString('PAUSED', window.innerWidth - 60, state.NAV_H + 10, 255, 255, 255, 0.25); }
+  if (paused) { drawString('PAUSED', window.innerWidth, state.NAV_H + 10, 255, 255, 255, 0.25, 'right'); }
 }
 function attach() {
   state.canvas.addEventListener('click', function() {

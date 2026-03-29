@@ -302,7 +302,10 @@ export function beginFrame() {
 
 export function addChar(code, x, y, r, g, b, a) {
   if (code <= 32 || code > 126) return;
-  if (instanceCount >= MAX_INSTANCES) return;
+  if (instanceCount >= MAX_INSTANCES) {
+    // Auto-flush: submit current batch and start a new one
+    midFrameFlush();
+  }
   var i = instanceCount * FLOATS_PER_INSTANCE;
   var c4 = code * 4;
   instanceData[i]     = x;
@@ -316,6 +319,28 @@ export function addChar(code, x, y, r, g, b, a) {
   instanceData[i + 8] = b;
   instanceData[i + 9] = a;
   instanceCount++;
+}
+
+function midFrameFlush() {
+  if (!instanceCount || !sceneFBO) return;
+  // Draw current batch without finishing bloom — stay on scene FBO
+  gl.bindBuffer(gl.ARRAY_BUFFER, instanceVBO);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, instanceData, 0, instanceCount * FLOATS_PER_INSTANCE);
+
+  gl.useProgram(charProg);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
+  gl.uniform1i(cu_atlas, 0);
+
+  var cw = state.canvas.width;
+  var ch = state.canvas.height;
+  gl.uniform2f(cu_screenSize, cw, ch);
+  gl.uniform2f(cu_charSize, state.CHAR_W * state.dpr, state.CHAR_H * state.dpr);
+  gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
+
+  gl.bindVertexArray(charVAO);
+  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
+  instanceCount = 0;
 }
 
 export function flushFrame() {

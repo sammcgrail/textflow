@@ -176,8 +176,8 @@ if (!webglOK) {
   state.useWebGL = false;
 } else {
   console.log('WebGL 2 renderer active');
-  // Keep a 2D context reference for font measurement and edge cases
-  // (video mode PAUSED text, propfont mode)
+  // Keep a 2D context reference for font/text measurement
+  // (e.g. glyph metrics used by propfont mode and canvas.js resize)
   var measureCanvas = document.createElement('canvas');
   state.ctx = measureCanvas.getContext('2d');
 }
