@@ -175,6 +175,7 @@ import './modes/cat.js';
 import './modes/buttons.js';
 import './modes/handpose.js';
 import './modes/facemesh.js';
+import './modes/webcam.js';
 
 // ============================================================
 // INITIALIZATION
