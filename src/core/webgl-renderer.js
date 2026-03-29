@@ -11,7 +11,7 @@ var MAX_INSTANCES = 32768;
 var FLOATS_PER_INSTANCE = 10;
 var BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4; // 40 bytes
 var BLOOM_PASSES = 4;
-var BLOOM_SCALE = 0.25;
+var BLOOM_SCALE = 0.15;
 
 // ============================================================
 // MODULE STATE
@@ -82,8 +82,8 @@ out vec4 fragColor;\n\
 void main(){\n\
   vec4 t = texture(u_atlas, v_uv);\n\
   float raw = max(t.r, max(t.g, t.b));\n\
-  if(raw < 0.05) discard;\n\
-  float mask = smoothstep(0.1, 0.6, raw);\n\
+  if(raw < 0.15) discard;\n\
+  float mask = smoothstep(0.3, 0.7, raw);\n\
   fragColor = vec4(v_color.rgb, v_color.a * mask);\n\
 }';
 
@@ -434,7 +434,7 @@ function finishBloom() {
   // Parse tint from glow config color string
   var tint = parseGlowColor(g.color);
   gl.uniform3f(bu_tint, tint[0], tint[1], tint[2]);
-  gl.uniform1f(bu_intensity, tint[3] * 1.5); // reduced from 2.5 for crisper text
+  gl.uniform1f(bu_intensity, tint[3] * 0.6); // heavily reduced for crisp text
 
   gl.bindVertexArray(bloomVAO);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
