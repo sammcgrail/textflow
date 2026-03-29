@@ -3,25 +3,31 @@ import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-var fernPts, fernMax;
-function initFern() { fernPts = []; fernMax = 0; }
+var fernPts, fernMax, fernOx, fernOy, fernScale;
+function initFern() {
+  fernPts = []; fernMax = 0;
+  fernOx = state.COLS * 0.5;
+  fernOy = state.ROWS - 2;
+  fernScale = Math.min(state.COLS * 0.15, state.ROWS * 0.08);
+}
 function renderFern() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
   var ar = state.CHAR_W / state.CHAR_H;
   if (!fernPts) initFern();
   var t = state.time;
-  // Barnsley fern IFS
-  var target = Math.min(15000, ((t * 500) | 0));
-  var ox = W * 0.5, oy = H - 2;
-  var scale = Math.min(W * 0.15, H * 0.08);
   if (pointer.clicked && state.currentMode === 'fern') {
     pointer.clicked = false;
     fernPts = []; fernMax = 0;
-    ox = pointer.gx; oy = pointer.gy;
+    fernOx = pointer.gx;
+    fernOy = pointer.gy;
   } else if (pointer.down && state.currentMode === 'fern') {
-    scale = 2 + (pointer.gy / H) * H * 0.15;
+    fernScale = 2 + (pointer.gy / H) * H * 0.15;
+    // Re-generate with new scale
+    fernPts = []; fernMax = 0;
   }
+  // Barnsley fern IFS
+  var target = Math.min(15000, ((t * 500) | 0));
   while (fernMax < target) {
     fernMax++;
     var x = 0, y = 0;
@@ -34,8 +40,8 @@ function renderFern() {
       else { nx = -0.15 * x + 0.28 * y; ny = 0.26 * x + 0.24 * y + 0.44; }
       x = nx; y = ny;
     }
-    var px = (ox + x * scale) | 0;
-    var py = (oy - y * scale * ar) | 0;
+    var px = (fernOx + x * fernScale) | 0;
+    var py = (fernOy - y * fernScale * ar) | 0;
     if (px >= 0 && px < W && py >= 0 && py < H) {
       fernPts.push({ x: px, y: py, age: fernMax });
     }
@@ -50,8 +56,8 @@ function renderFern() {
   }
   // Pot/base
   for (var dx = -3; dx <= 3; dx++) {
-    var px = (ox + dx) | 0;
-    if (px >= 0 && px < W && oy < H) drawCharHSL('U', px, Math.min(oy + 1, H - 1), 20, 40, 12);
+    var px = (fernOx + dx) | 0;
+    if (px >= 0 && px < W && fernOy < H) drawCharHSL('U', px, Math.min(fernOy + 1, H - 1), 20, 40, 12);
   }
 }
 registerMode('fern', { init: initFern, render: renderFern });
