@@ -24,7 +24,7 @@ var kawaseProg = null;
 var blendProg = null;
 
 // Char program uniforms
-var cu_atlas, cu_screenSize, cu_charSize, cu_navH;
+var cu_atlas, cu_screenSize, cu_charSize, cu_navH, cu_gamma;
 
 // Kawase program uniforms
 var ku_src, ku_texelSize, ku_iteration;
@@ -76,14 +76,15 @@ void main(){\n\
 var CHAR_FS = '#version 300 es\n\
 precision highp float;\n\
 uniform sampler2D u_atlas;\n\
+uniform float u_gamma;\n\
 in vec2 v_uv;\n\
 in vec4 v_color;\n\
 out vec4 fragColor;\n\
 void main(){\n\
   vec4 t = texture(u_atlas, v_uv);\n\
   float raw = max(t.r, max(t.g, t.b));\n\
-  if(raw < 0.15) discard;\n\
-  float mask = smoothstep(0.3, 0.7, raw);\n\
+  if(raw < 0.05) discard;\n\
+  float mask = pow(raw, u_gamma);\n\
   fragColor = vec4(v_color.rgb, v_color.a * mask);\n\
 }';
 
@@ -160,6 +161,7 @@ export function initWebGL() {
   cu_screenSize = gl.getUniformLocation(charProg, 'u_screenSize');
   cu_charSize = gl.getUniformLocation(charProg, 'u_charSize');
   cu_navH = gl.getUniformLocation(charProg, 'u_navH');
+  cu_gamma = gl.getUniformLocation(charProg, 'u_gamma');
 
   // Kawase uniforms
   ku_src = gl.getUniformLocation(kawaseProg, 'u_src');
@@ -343,6 +345,9 @@ function midFrameFlush() {
   gl.uniform2f(cu_screenSize, cw, ch);
   gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
+  // Gamma correction: higher gamma = thinner text. DPR 1 needs more thinning.
+  var gamma = state.dpr <= 1 ? 1.6 : (state.dpr < 2 ? 1.4 : 1.2);
+  gl.uniform1f(cu_gamma, gamma);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
@@ -371,6 +376,8 @@ export function flushFrame() {
   gl.uniform2f(cu_screenSize, cw, ch);
   gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
+  var gamma = state.dpr <= 1 ? 1.6 : (state.dpr < 2 ? 1.4 : 1.2);
+  gl.uniform1f(cu_gamma, gamma);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
