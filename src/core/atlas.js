@@ -75,7 +75,11 @@ export function buildAtlas(gl) {
   ac.width = tw;
   ac.height = th;
   var actx = ac.getContext('2d', { willReadFrequently: true });
-  actx.clearRect(0, 0, tw, th);
+  // Opaque black background — avoids premultiplied alpha issues and
+  // enables better anti-aliasing from the browser's font rasterizer.
+  // max(r,g,b) naturally returns 0 for black pixels.
+  actx.fillStyle = '#000';
+  actx.fillRect(0, 0, tw, th);
   actx.font = fontStr;
   actx.textBaseline = 'top';
   actx.fillStyle = '#fff';
