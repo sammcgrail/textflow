@@ -126,6 +126,27 @@ import './modes/cityscape.js';
 import './modes/ocean.js';
 import './modes/piano.js';
 import './modes/clock.js';
+import './modes/blackhole.js';
+import './modes/fireflies.js';
+import './modes/vinyl.js';
+import './modes/jellyfish.js';
+import './modes/campfire.js';
+import './modes/roots.js';
+import './modes/lightning.js';
+import './modes/fern.js';
+import './modes/waveform.js';
+import './modes/neuron.js';
+import './modes/hourglass.js';
+import './modes/volcano.js';
+import './modes/sonar.js';
+import './modes/drops.js';
+import './modes/tiles.js';
+import './modes/mushroom.js';
+import './modes/cascade.js';
+import './modes/northern.js';
+import './modes/tidal.js';
+import './modes/comet.js';
+import './modes/circuit2.js';
 
 // ============================================================
 // INITIALIZATION

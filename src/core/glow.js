@@ -115,7 +115,28 @@ export var glows = {
   cityscape: { color: 'rgba(255,200,100,0.25)', blur: 12 },
   ocean: { color: 'rgba(50,150,255,0.35)', blur: 14 },
   piano: { color: 'rgba(200,150,255,0.3)', blur: 12 },
-  clock: { color: 'rgba(100,255,200,0.3)', blur: 10 }
+  clock: { color: 'rgba(100,255,200,0.3)', blur: 10 },
+  blackhole: { color: 'rgba(150,100,255,0.4)', blur: 18 },
+  fireflies: { color: 'rgba(255,220,50,0.3)', blur: 12 },
+  vinyl: { color: 'rgba(200,200,200,0.2)', blur: 8 },
+  jellyfish: { color: 'rgba(100,180,255,0.35)', blur: 14 },
+  campfire: { color: 'rgba(255,120,30,0.4)', blur: 14 },
+  roots: { color: 'rgba(100,180,60,0.3)', blur: 10 },
+  lightning: { color: 'rgba(180,200,255,0.4)', blur: 16 },
+  fern: { color: 'rgba(80,200,80,0.3)', blur: 10 },
+  waveform: { color: 'rgba(100,200,255,0.3)', blur: 12 },
+  neuron: { color: 'rgba(150,100,255,0.35)', blur: 14 },
+  hourglass: { color: 'rgba(220,180,100,0.3)', blur: 10 },
+  volcano: { color: 'rgba(255,80,30,0.4)', blur: 16 },
+  sonar: { color: 'rgba(0,255,100,0.35)', blur: 12 },
+  drops: { color: 'rgba(80,160,255,0.35)', blur: 14 },
+  tiles: { color: 'rgba(200,150,255,0.3)', blur: 10 },
+  mushroom: { color: 'rgba(200,100,255,0.3)', blur: 12 },
+  cascade: { color: 'rgba(255,200,100,0.35)', blur: 12 },
+  northern: { color: 'rgba(100,255,180,0.35)', blur: 18 },
+  tidal: { color: 'rgba(80,160,255,0.3)', blur: 12 },
+  comet: { color: 'rgba(200,180,255,0.35)', blur: 16 },
+  circuit2: { color: 'rgba(0,255,150,0.3)', blur: 10 }
 };
 
 var glowCanvas = null;
