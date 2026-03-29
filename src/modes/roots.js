@@ -3,77 +3,86 @@ import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-var rtBranches, rtStep;
+var rtGrid, rtBranches, rtStep;
 function initRoots() {
   var W = state.COLS, H = state.ROWS;
-  rtBranches = [{ x: W / 2, y: 2, dx: 0, dy: 1, life: 1, hue: 30, depth: 0 }];
+  rtGrid = new Uint8Array(W * H);
+  rtBranches = [];
   rtStep = 0;
+  for (var i = 0; i < 5; i++) {
+    var sx = ((i + 0.5) / 5) * W;
+    rtBranches.push({ x: sx, y: 3, dx: 0, dy: 1, life: 1, hue: 30 + i * 25, depth: 0 });
+  }
 }
 function renderRoots() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
-  if (!rtBranches) initRoots();
+  if (!rtGrid || rtGrid.length !== W * H) initRoots();
   var t = state.time;
   if (pointer.clicked && state.currentMode === 'roots') {
     pointer.clicked = false;
-    rtBranches.push({ x: pointer.gx, y: pointer.gy, dx: 0, dy: 1, life: 1, hue: 80 + Math.random() * 60, depth: 0 });
+    rtBranches.push({ x: pointer.gx, y: pointer.gy, dx: 0, dy: 1, life: 1, hue: (Math.random() * 100 + 20) | 0, depth: 0 });
   } else if (pointer.down && state.currentMode === 'roots') {
-    // Add nutrients - grow faster near pointer
     for (var i = 0; i < rtBranches.length; i++) {
       var b = rtBranches[i];
       if (!b.settled) {
         var dx = pointer.gx - b.x, dy = pointer.gy - b.y;
-        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) b.life = Math.min(1, b.life + 0.02);
+        if (Math.abs(dx) < 15 && Math.abs(dy) < 10) { b.life = Math.min(1, b.life + 0.03); b.dx += dx * 0.01; }
       }
     }
   }
-  // Soil layer background
+  // Surface/grass
+  for (var x = 0; x < W; x++) {
+    drawCharHSL('~', x, 2, 120, 50, 12);
+    drawCharHSL('"', x, 1, 120, 60, 10);
+    if (Math.sin(x * 0.5) > 0 && x % 3 === 0) drawCharHSL('Y', x, 0, 120, 40, 8);
+  }
+  // Soil texture
   for (var y = 3; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var n = Math.sin(x * 0.2 + y * 0.3) * 0.3 + Math.sin(x * 0.5 - y * 0.1) * 0.2;
-      if (n > 0.1) drawCharHSL('.', x, y, 30, 15, 3);
+      var n = Math.sin(x * 0.15 + y * 0.25) * 0.3 + Math.sin(x * 0.4 - y * 0.1 + 2) * 0.2;
+      if (n > 0.05 && rtGrid[y * W + x] === 0) drawCharHSL('.', x, y, 30, 15, 4);
     }
   }
-  // Surface
-  for (var x = 0; x < W; x++) {
-    drawCharHSL('~', x, 2, 120, 40, 10);
-    drawCharHSL('"', x, 1, 120, 50, 8);
-  }
   // Grow roots
-  var curStep = (t * 15) | 0;
-  while (rtStep < curStep && rtStep < curStep + 3) {
+  var curStep = (t * 25) | 0;
+  while (rtStep < curStep && rtStep < curStep + 5) {
     rtStep++;
     var newBranches = [];
     for (var i = 0; i < rtBranches.length; i++) {
       var b = rtBranches[i];
       if (b.settled) continue;
-      b.x += b.dx + (Math.random() - 0.5) * 1.5;
-      b.y += b.dy * 0.5;
-      b.dx += (Math.random() - 0.5) * 0.3;
-      b.dx *= 0.9;
-      b.life -= 0.005;
-      if (b.x < 0 || b.x >= W || b.y >= H || b.life <= 0) { b.settled = true; continue; }
-      // Branch
-      if (Math.random() < 0.03 && b.depth < 6 && rtBranches.length + newBranches.length < 500) {
-        newBranches.push({ x: b.x, y: b.y, dx: (Math.random() - 0.5) * 2, dy: 0.5 + Math.random() * 0.5, life: b.life * 0.7, hue: b.hue + (Math.random() - 0.5) * 20, depth: b.depth + 1 });
+      b.x += b.dx + (Math.random() - 0.5) * 1.8;
+      b.y += b.dy * 0.6;
+      b.dx += (Math.random() - 0.5) * 0.4;
+      b.dx *= 0.85;
+      b.life -= 0.003;
+      var px = b.x | 0, py = b.y | 0;
+      if (px < 0 || px >= W || py >= H || b.life <= 0) { b.settled = true; continue; }
+      if (py >= 0 && py < H) rtGrid[py * W + px] = ((b.hue / 25) | 0) + 1;
+      if (Math.random() < 0.06 && b.depth < 7 && rtBranches.length + newBranches.length < 800) {
+        newBranches.push({ x: b.x, y: b.y, dx: (Math.random() - 0.5) * 2.5, dy: 0.4 + Math.random() * 0.6, life: b.life * 0.7, hue: b.hue + (Math.random() - 0.5) * 15, depth: b.depth + 1 });
       }
     }
     for (var i = 0; i < newBranches.length; i++) rtBranches.push(newBranches[i]);
   }
-  // Draw roots
-  for (var i = 0; i < rtBranches.length; i++) {
-    var b = rtBranches[i];
-    var px = b.x | 0, py = b.y | 0;
-    if (px >= 0 && px < W && py >= 0 && py < H) {
-      var thick = b.depth < 2 ? '#' : b.depth < 4 ? '|' : ':';
-      drawCharHSL(thick, px, py, b.hue, 40, (8 + b.life * 20) | 0);
+  // Draw roots from grid
+  for (var y = 3; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var v = rtGrid[y * W + x];
+      if (v > 0) {
+        var n = 0;
+        for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+          var nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < W && ny >= 0 && ny < H && rtGrid[ny * W + nx] > 0) n++;
+        }
+        var thick = n > 5 ? '#' : n > 3 ? '|' : n > 1 ? ':' : '.';
+        drawCharHSL(thick, x, y, 25 + v * 15, 45, (8 + n * 3) | 0);
+      }
     }
   }
-  // Reset if saturated
-  if (rtBranches.length > 400) {
-    var active = 0;
-    for (var i = 0; i < rtBranches.length; i++) if (!rtBranches[i].settled) active++;
-    if (active < 3) initRoots();
-  }
+  var active = 0;
+  for (var i = 0; i < rtBranches.length; i++) if (!rtBranches[i].settled) active++;
+  if (active < 2 && rtStep > 200) initRoots();
 }
 registerMode('roots', { init: initRoots, render: renderRoots });

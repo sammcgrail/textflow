@@ -5,6 +5,16 @@ import { state } from '../core/state.js';
 
 var cmComets;
 function initComet() { cmComets = []; }
+function makeComet() {
+  var W = state.COLS, H = state.ROWS;
+  var side = (Math.random() * 4) | 0;
+  var sx, sy, vx, vy;
+  if (side === 0) { sx = -5; sy = Math.random() * H * 0.5; vx = 0.8 + Math.random() * 0.5; vy = 0.2 + Math.random() * 0.4; }
+  else if (side === 1) { sx = W + 5; sy = Math.random() * H * 0.5; vx = -0.8 - Math.random() * 0.5; vy = 0.2 + Math.random() * 0.4; }
+  else if (side === 2) { sx = Math.random() * W; sy = -5; vx = (Math.random() - 0.5) * 0.8; vy = 0.5 + Math.random() * 0.5; }
+  else { sx = Math.random() * W; sy = H + 5; vx = (Math.random() - 0.5) * 0.8; vy = -0.5 - Math.random() * 0.5; }
+  return { x: sx, y: sy, vx: vx, vy: vy, size: 2 + Math.random() * 2, hue: [180, 200, 50, 150, 280][(Math.random() * 5) | 0], trail: [] };
+}
 function renderComet() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
@@ -12,62 +22,61 @@ function renderComet() {
   var t = state.time;
   if (pointer.clicked && state.currentMode === 'comet') {
     pointer.clicked = false;
-    cmComets.push({ x: pointer.gx, y: pointer.gy, vx: (Math.random() - 0.5) * 3, vy: (Math.random() - 0.5) * 2, size: 2 + Math.random() * 2, hue: (Math.random() * 360) | 0, trail: [] });
+    var c = makeComet();
+    c.x = pointer.gx; c.y = pointer.gy;
+    c.vx = (Math.random() - 0.5) * 2; c.vy = (Math.random() - 0.5) * 1.5;
+    c.size = 3;
+    cmComets.push(c);
   } else if (pointer.down && state.currentMode === 'comet') {
-    // Gravity toward pointer
     for (var i = 0; i < cmComets.length; i++) {
       var c = cmComets[i];
       var dx = pointer.gx - c.x, dy = pointer.gy - c.y;
       var d = Math.sqrt(dx * dx + dy * dy) + 1;
-      c.vx += dx / d * 0.3;
-      c.vy += dy / d * 0.3;
+      c.vx += dx / d * 0.2;
+      c.vy += dy / d * 0.2;
     }
   }
-  // Stars background
-  for (var i = 0; i < 80; i++) {
+  // Stars background — denser
+  for (var i = 0; i < 150; i++) {
     var sx = (Math.sin(i * 13.7) * 0.5 + 0.5) * W;
     var sy = (Math.sin(i * 7.3 + 3) * 0.5 + 0.5) * H;
     var px = sx | 0, py = sy | 0;
-    if (px >= 0 && px < W && py >= 0 && py < H) drawCharHSL('.', px, py, 60, 10, 4 + Math.sin(t + i) * 2);
+    var tw = Math.sin(t * 0.8 + i * 1.3) * 0.5 + 0.5;
+    if (px >= 0 && px < W && py >= 0 && py < H) drawCharHSL(tw > 0.7 ? '+' : '.', px, py, 60, 10, (3 + tw * 6) | 0);
   }
-  // Auto-spawn comets
-  if (cmComets.length < 3 && Math.random() < 0.02) {
-    var side = (Math.random() * 4) | 0;
-    var sx, sy, vx, vy;
-    if (side === 0) { sx = 0; sy = Math.random() * H; vx = 1 + Math.random(); vy = (Math.random() - 0.5) * 1; }
-    else if (side === 1) { sx = W; sy = Math.random() * H; vx = -1 - Math.random(); vy = (Math.random() - 0.5) * 1; }
-    else if (side === 2) { sx = Math.random() * W; sy = 0; vx = (Math.random() - 0.5) * 1; vy = 1 + Math.random(); }
-    else { sx = Math.random() * W; sy = H; vx = (Math.random() - 0.5) * 1; vy = -1 - Math.random(); }
-    cmComets.push({ x: sx, y: sy, vx: vx, vy: vy, size: 1.5 + Math.random() * 2, hue: (Math.random() * 360) | 0, trail: [] });
-  }
+  // Auto-spawn
+  while (cmComets.length < 3) cmComets.push(makeComet());
+  if (Math.random() < 0.01) cmComets.push(makeComet());
   for (var i = cmComets.length - 1; i >= 0; i--) {
     var c = cmComets[i];
     c.trail.push({ x: c.x, y: c.y });
-    if (c.trail.length > 40) c.trail.shift();
-    c.x += c.vx * 0.5; c.y += c.vy * 0.5;
-    // Remove if way off screen
-    if (c.x < -20 || c.x > W + 20 || c.y < -20 || c.y > H + 20) { cmComets.splice(i, 1); continue; }
-    // Draw trail
+    if (c.trail.length > 60) c.trail.shift();
+    c.x += c.vx * 0.4; c.y += c.vy * 0.4;
+    if (c.x < -30 || c.x > W + 30 || c.y < -30 || c.y > H + 30) { cmComets.splice(i, 1); continue; }
+    // Draw trail — long and fading
     for (var j = 0; j < c.trail.length; j++) {
       var tr = c.trail[j];
       var frac = j / c.trail.length;
       var px = tr.x | 0, py = tr.y | 0;
       if (px >= 0 && px < W && py >= 0 && py < H) {
-        var bright = frac * 25;
-        drawCharHSL(frac > 0.7 ? '*' : frac > 0.3 ? '-' : '.', px, py, (c.hue + (1 - frac) * 30) % 360, 60, bright | 0);
+        var bright = frac * frac * 30;
+        var ch = frac > 0.8 ? '*' : frac > 0.5 ? ':' : frac > 0.2 ? '-' : '.';
+        drawCharHSL(ch, px, py, (c.hue + (1 - frac) * 40) % 360, 55, bright | 0);
       }
     }
-    // Draw head
+    // Draw coma (fuzzy glow around head)
     var px = c.x | 0, py = c.y | 0;
-    if (px >= 0 && px < W && py >= 0 && py < H) {
-      drawCharHSL('@', px, py, c.hue, 80, 50);
-      // Coma glow
-      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
-        var gx = px + dx, gy = py + dy;
-        if (gx >= 0 && gx < W && gy >= 0 && gy < H && (dx !== 0 || dy !== 0)) drawCharHSL('*', gx, gy, c.hue, 60, 20);
+    for (var dy = -2; dy <= 2; dy++) for (var dx = -3; dx <= 3; dx++) {
+      var gx = px + dx, gy = py + dy;
+      var d = Math.sqrt(dx * dx + dy * dy * 4);
+      if (gx >= 0 && gx < W && gy >= 0 && gy < H && d < 3.5) {
+        var bright = (1 - d / 3.5) * 35;
+        drawCharHSL(d < 1 ? '#' : d < 2 ? '*' : '.', gx, gy, c.hue, 50, bright | 0);
       }
     }
+    // Bright head
+    if (px >= 0 && px < W && py >= 0 && py < H) drawCharHSL('@', px, py, c.hue, 80, 55);
   }
-  if (cmComets.length > 10) cmComets.splice(0, cmComets.length - 10);
+  if (cmComets.length > 8) cmComets.splice(0, cmComets.length - 8);
 }
 registerMode('comet', { init: initComet, render: renderComet });
