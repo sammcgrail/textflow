@@ -306,6 +306,19 @@ function rebuildFBOs() {
 export function resizeWebGL() {
   if (!gl) return;
   buildAtlas(gl);
+  // Sync state.CHAR_W/H with actual WebGL glyph dimensions so DOM overlays
+  // (cat, buttons) align pixel-perfectly with WebGL-rendered text.
+  // Without this, Math.ceil in atlas vs raw measureText in canvas.js diverge
+  // cumulatively across columns, especially on HiDPI/Retina displays.
+  if (glyphW > 0 && glyphH > 0) {
+    var dpr = state.dpr || 1;
+    state.CHAR_W = glyphW / dpr;
+    state.CHAR_H = glyphH / dpr;
+    var w = window.innerWidth;
+    var h = window.innerHeight - 14; // INFO_BAR_H
+    state.COLS = Math.floor(w / state.CHAR_W);
+    state.ROWS = Math.floor((h - state.NAV_H) / state.CHAR_H);
+  }
   rebuildFBOs();
 }
 
