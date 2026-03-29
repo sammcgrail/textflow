@@ -17,7 +17,7 @@ function initRain() {
       chars: []
     };
     for (var j = 0; j < d.len; j++) {
-      d.chars.push(String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96)));
+      d.chars.push('!@#$%^&*()_+-=[]{}|;:<>?/~0123456789abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 62)));
     }
     drops.push(d);
   }
@@ -54,7 +54,7 @@ function renderRain() {
       d.speed = 0.3 + Math.random() * 0.8;
     }
     if (Math.random() < 0.08) {
-      d.chars[Math.floor(Math.random() * d.len)] = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
+      d.chars[Math.floor(Math.random() * d.len)] = '!@#$%^&*()_+-=[]{}|;:<>?/~0123456789abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 62));
     }
     for (var j = 0; j < d.len; j++) {
       var ty = (d.y - j) | 0;

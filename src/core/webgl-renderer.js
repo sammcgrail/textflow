@@ -1,6 +1,6 @@
 // WebGL 2 Renderer — instanced quad rendering + Kawase bloom
 import { state } from './state.js';
-import { atlasTexture, uvs, buildAtlas } from './atlas.js';
+import { atlasTexture, uvs, buildAtlas, charSlot } from './atlas.js';
 import { glows } from './glow.js';
 
 // ============================================================
@@ -301,13 +301,15 @@ export function beginFrame() {
 }
 
 export function addChar(code, x, y, r, g, b, a) {
-  if (code <= 32 || code > 126) return;
+  // Remap char code to atlas slot (handles ASCII + extended Unicode)
+  var slot = charSlot(code);
+  if (slot <= 32) return;
   if (instanceCount >= MAX_INSTANCES) {
     // Auto-flush: submit current batch and start a new one
     midFrameFlush();
   }
   var i = instanceCount * FLOATS_PER_INSTANCE;
-  var c4 = code * 4;
+  var c4 = slot * 4;
   instanceData[i]     = x;
   instanceData[i + 1] = y;
   instanceData[i + 2] = uvs[c4];
