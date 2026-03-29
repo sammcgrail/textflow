@@ -327,29 +327,47 @@ function renderFacepass() {
         var ch = RAMP_DENSE[ci];
 
         if (maskVal === 2) {
-          // Eyes — brighter, cooler
-          drawChar(ch, x, y, Math.min(255, r + 40), Math.min(255, g + 60), Math.min(255, b + 80), Math.min(1, lum * 1.6));
+          // Eyes — morphing characters cycling through symbols
+          var eyeChars = '@0Oo.oO0@*+#%&';
+          var eyeIdx = Math.floor(t * 6 + x * 0.5) % eyeChars.length;
+          var eyeCh = eyeChars[eyeIdx];
+          var eyeHue = (t * 80 + x * 5) % 360;
+          drawCharHSL(eyeCh, x, y, eyeHue, 90, 50 + lum * 25);
         } else if (maskVal === 3) {
-          // Mouth — warmer tint
-          drawChar(ch, x, y, Math.min(255, r + 50), g, Math.max(0, b - 20), Math.min(1, lum * 1.4));
+          // Mouth — morphing characters
+          var mouthChars = '~=-_.:;|/\\(){}[]<>';
+          var mouthIdx = Math.floor(t * 8 + x * 0.3) % mouthChars.length;
+          var mouthCh = mouthChars[mouthIdx];
+          var mouthHue = (t * 60 + 30) % 360;
+          drawCharHSL(mouthCh, x, y, mouthHue, 85, 45 + lum * 25);
         } else {
-          // General face — natural webcam color
-          var alpha = Math.max(0.3, Math.min(1, lum * 1.5));
-          drawChar(ch, x, y, r, g, b, alpha);
+          // General face — clear webcam passthrough (brighter, fuller alpha)
+          if (lum < 0.02) continue;
+          var alpha = Math.max(0.5, Math.min(1, lum * 1.8));
+          drawChar(ch, x, y, Math.min(255, r + 20), Math.min(255, g + 20), Math.min(255, b + 20), alpha);
         }
 
       } else {
-        // OUTSIDE FACE — dark ambient text
-        var ambientHue = (t * 8 + y * 1.5 + x * 0.5) % 360;
-        var ambientChar = ((x * 7 + y * 13 + Math.floor(t * 2)) % 94) + 33;
-        var ach = String.fromCharCode(ambientChar);
+        // OUTSIDE FACE — wild flowing text
+        var ambientHue = (t * 40 + y * 3 + x * 2 + Math.sin(t * 2 + x * 0.1) * 60) % 360;
 
-        // Dim flowing characters
-        var ambientBright = 8 + 4 * Math.sin(t * 0.5 + x * 0.3 + y * 0.2);
+        // Fast-cycling characters — mix of symbols, letters, digits
+        var charPool = '01!@#$%^&*(){}[]|/\\<>~`+=:;ABCDEFabcdef░▒▓█▄▀■□●○◆◇';
+        var charIdx = Math.floor(t * 12 + x * 0.7 + y * 1.3 + Math.sin(t * 3 + x * 0.2 + y * 0.15) * 8) % charPool.length;
+        var ach = charPool[Math.abs(charIdx) % charPool.length];
 
-        // Near face: slightly brighter
+        // Pulsing brightness with multiple waves
+        var wave1 = Math.sin(t * 1.5 + x * 0.15 + y * 0.1);
+        var wave2 = Math.sin(t * 2.3 - x * 0.08 + y * 0.2);
+        var wave3 = Math.sin(t * 0.7 + (x + y) * 0.05);
+        var ambientBright = 10 + 8 * wave1 + 6 * wave2 + 4 * wave3;
+
+        // Occasional bright flashes
+        if (Math.random() < 0.008) ambientBright += 25;
+
+        // Near face: strong glow halo
         if (hasMask) {
-          for (var dd = 1; dd <= 3; dd++) {
+          for (var dd = 1; dd <= 6; dd++) {
             var found = false;
             for (var ddy = -dd; ddy <= dd && !found; ddy++) {
               var ny = y + ddy;
@@ -358,7 +376,8 @@ function renderFacepass() {
                 if (Math.abs(ddx) !== dd && Math.abs(ddy) !== dd) continue;
                 var nx = x + ddx;
                 if (nx >= 0 && nx < W && faceMask[ny * W + nx]) {
-                  ambientBright += (4 - dd) * 6;
+                  ambientBright += (7 - dd) * 5;
+                  ambientHue = (ambientHue + (7 - dd) * 15) % 360;
                   found = true;
                 }
               }
@@ -367,13 +386,18 @@ function renderFacepass() {
           }
         }
 
-        // Glitch on ambient too
-        if (glitch && glitch.type === 'corrupt' && Math.random() < 0.2) {
-          ambientBright += 20;
+        // Glitch on ambient — more intense
+        if (glitch && glitch.type === 'corrupt' && Math.random() < 0.35) {
+          ambientBright += 30;
           ambientHue = (ambientHue + 180) % 360;
+          ach = String.fromCharCode(33 + Math.floor(Math.random() * 94));
+        }
+        if (glitch && glitch.type === 'shift') {
+          ambientBright += 10;
         }
 
-        drawCharHSL(ach, x, y, ambientHue, 30, Math.min(30, ambientBright));
+        var sat = 50 + 20 * Math.sin(t + x * 0.1);
+        drawCharHSL(ach, x, y, ambientHue, sat, Math.min(40, ambientBright));
       }
     }
   }
