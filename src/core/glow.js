@@ -155,7 +155,12 @@ export var glows = {
   facemirror: { color: 'rgba(180,200,255,0.35)', blur: 12 },
   handfire: { color: 'rgba(255,100,30,0.4)', blur: 16 },
   handlaser: { color: 'rgba(100,255,200,0.4)', blur: 18 },
-  handgravity: { color: 'rgba(150,100,255,0.35)', blur: 14 }
+  handgravity: { color: 'rgba(150,100,255,0.35)', blur: 14 },
+  threeterrain: { color: 'rgba(100,200,100,0.35)', blur: 14 },
+  threetunnel: { color: 'rgba(255,100,255,0.4)', blur: 18 },
+  threeparticles: { color: 'rgba(200,150,255,0.4)', blur: 16 },
+  threeshapes: { color: 'rgba(150,255,200,0.35)', blur: 14 },
+  threefacecube: { color: 'rgba(150,180,255,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;
