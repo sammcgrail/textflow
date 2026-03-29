@@ -63,7 +63,7 @@ function computeCatSize() {
   // Pixel-based aspect ratio calculation
   var pixW = catGridW * state.CHAR_W;
   var pixH = pixW * catAspect;
-  catGridH = Math.floor(pixH / state.CHAR_H) - 1;
+  catGridH = Math.floor(pixH / state.CHAR_H);
   if (catGridH < 3) catGridH = 3;
 }
 
