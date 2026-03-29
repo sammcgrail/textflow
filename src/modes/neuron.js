@@ -3,106 +3,110 @@ import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-var nnNodes, nnPulses;
+var nnNodes, nnPulses, nnEdges;
 function initNeuron() {
-  nnNodes = []; nnPulses = [];
+  nnNodes = []; nnPulses = []; nnEdges = [];
   var W = state.COLS, H = state.ROWS;
-  for (var i = 0; i < 30; i++) {
-    nnNodes.push({ x: (Math.random() * W) | 0, y: (Math.random() * H) | 0, connections: [] });
+  var count = Math.min(25, Math.max(12, ((W * H) / 200) | 0));
+  for (var i = 0; i < count; i++) {
+    nnNodes.push({ x: (Math.random() * (W - 4) + 2) | 0, y: (Math.random() * (H - 4) + 2) | 0 });
   }
-  // Connect nearby nodes
   for (var i = 0; i < nnNodes.length; i++) {
-    for (var j = i + 1; j < nnNodes.length; j++) {
+    var conns = 0;
+    for (var j = 0; j < nnNodes.length; j++) {
+      if (i === j) continue;
       var dx = nnNodes[i].x - nnNodes[j].x, dy = nnNodes[i].y - nnNodes[j].y;
       var d = Math.sqrt(dx * dx + dy * dy);
-      if (d < Math.max(W, H) * 0.3) {
-        nnNodes[i].connections.push(j);
-        nnNodes[j].connections.push(i);
-      }
+      if (d < Math.max(W, H) * 0.35 && conns < 4) { nnEdges.push({ from: i, to: j }); conns++; }
     }
-    // Limit connections
-    if (nnNodes[i].connections.length > 5) nnNodes[i].connections.length = 5;
   }
 }
 function renderNeuron() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
-  if (!nnNodes) initNeuron();
+  if (!nnNodes || !nnEdges) initNeuron();
   var t = state.time;
   if (pointer.clicked && state.currentMode === 'neuron') {
     pointer.clicked = false;
-    // Fire nearest neuron
     var best = -1, bestD = 999;
     for (var i = 0; i < nnNodes.length; i++) {
       var dx = nnNodes[i].x - pointer.gx, dy = nnNodes[i].y - pointer.gy;
       var d = Math.sqrt(dx * dx + dy * dy);
       if (d < bestD) { bestD = d; best = i; }
     }
-    if (best >= 0) {
-      for (var c = 0; c < nnNodes[best].connections.length; c++) {
-        nnPulses.push({ from: best, to: nnNodes[best].connections[c], t: 0, hue: 180 });
-      }
+    if (best >= 0) for (var e = 0; e < nnEdges.length; e++) {
+      if (nnEdges[e].from === best) nnPulses.push({ edge: e, t: 0, hue: 60, bright: 1 });
     }
   } else if (pointer.down && state.currentMode === 'neuron') {
-    // Continuous firing near pointer
     for (var i = 0; i < nnNodes.length; i++) {
       var dx = nnNodes[i].x - pointer.gx, dy = nnNodes[i].y - pointer.gy;
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 5 && Math.random() < 0.05) {
-        for (var c = 0; c < nnNodes[i].connections.length; c++) {
-          nnPulses.push({ from: i, to: nnNodes[i].connections[c], t: 0, hue: 50 });
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 6 && Math.random() < 0.06) {
+        for (var e = 0; e < nnEdges.length; e++) {
+          if (nnEdges[e].from === i) nnPulses.push({ edge: e, t: 0, hue: 30, bright: 0.8 });
         }
       }
     }
   }
-  // Random firing
-  if (Math.random() < 0.03) {
+  if (Math.random() < 0.04) {
     var idx = (Math.random() * nnNodes.length) | 0;
-    for (var c = 0; c < nnNodes[idx].connections.length; c++) {
-      nnPulses.push({ from: idx, to: nnNodes[idx].connections[c], t: 0, hue: 280 });
+    for (var e = 0; e < nnEdges.length; e++) {
+      if (nnEdges[e].from === idx) nnPulses.push({ edge: e, t: 0, hue: 200 + Math.random() * 100, bright: 0.7 });
     }
   }
-  // Draw connections
-  for (var i = 0; i < nnNodes.length; i++) {
-    var n = nnNodes[i];
-    for (var c = 0; c < n.connections.length; c++) {
-      var j = n.connections[c];
-      if (j <= i) continue;
-      var m = nnNodes[j];
-      var steps = Math.max(Math.abs(m.x - n.x), Math.abs(m.y - n.y));
-      for (var s = 0; s <= steps; s += 2) {
-        var frac = s / (steps || 1);
-        var px = (n.x + (m.x - n.x) * frac) | 0;
-        var py = (n.y + (m.y - n.y) * frac) | 0;
-        if (px >= 0 && px < W && py >= 0 && py < H) drawCharHSL('.', px, py, 200, 20, 5);
+  // Draw edges
+  for (var e = 0; e < nnEdges.length; e++) {
+    var a = nnNodes[nnEdges[e].from], b = nnNodes[nnEdges[e].to];
+    var dx = b.x - a.x, dy = b.y - a.y;
+    var steps = Math.max(Math.abs(dx), Math.abs(dy));
+    if (steps === 0) continue;
+    for (var s = 0; s <= steps; s++) {
+      var frac = s / steps;
+      var px = (a.x + dx * frac) | 0, py = (a.y + dy * frac) | 0;
+      if (px >= 0 && px < W && py >= 0 && py < H) {
+        var ch = Math.abs(dx) > Math.abs(dy) ? '-' : '|';
+        if (Math.abs(dx) > 2 && Math.abs(dy) > 2) ch = (dx > 0) === (dy > 0) ? '\\' : '/';
+        drawCharHSL(ch, px, py, 200, 25, 6);
       }
     }
   }
-  // Update and draw pulses
+  // Pulses
   for (var i = nnPulses.length - 1; i >= 0; i--) {
     var p = nnPulses[i];
-    p.t += 0.03;
+    p.t += 0.04;
     if (p.t > 1) {
-      // Cascade
-      var target = nnNodes[p.to];
-      if (Math.random() < 0.3) {
-        for (var c = 0; c < target.connections.length; c++) {
-          if (target.connections[c] !== p.from) nnPulses.push({ from: p.to, to: target.connections[c], t: 0, hue: (p.hue + 30) % 360 });
+      var targetNode = nnEdges[p.edge].to;
+      if (Math.random() < 0.5) {
+        for (var e = 0; e < nnEdges.length; e++) {
+          if (nnEdges[e].from === targetNode && nnEdges[e].to !== nnEdges[p.edge].from) nnPulses.push({ edge: e, t: 0, hue: (p.hue + 40) % 360, bright: p.bright * 0.7 });
         }
       }
       nnPulses.splice(i, 1); continue;
     }
-    var a = nnNodes[p.from], b = nnNodes[p.to];
-    var px = (a.x + (b.x - a.x) * p.t) | 0;
-    var py = (a.y + (b.y - a.y) * p.t) | 0;
+    var a = nnNodes[nnEdges[p.edge].from], b = nnNodes[nnEdges[p.edge].to];
+    var px = (a.x + (b.x - a.x) * p.t) | 0, py = (a.y + (b.y - a.y) * p.t) | 0;
     if (px >= 0 && px < W && py >= 0 && py < H) {
-      drawCharHSL('*', px, py, p.hue, 80, 45);
+      drawCharHSL('*', px, py, p.hue | 0, 80, (p.bright * 50) | 0);
+      for (var tr = 1; tr <= 3; tr++) {
+        var tt = p.t - tr * 0.05;
+        if (tt >= 0) {
+          var tx = (a.x + (b.x - a.x) * tt) | 0, ty = (a.y + (b.y - a.y) * tt) | 0;
+          if (tx >= 0 && tx < W && ty >= 0 && ty < H) drawCharHSL('.', tx, ty, p.hue | 0, 60, (p.bright * 20 / (tr + 1)) | 0);
+        }
+      }
     }
   }
-  if (nnPulses.length > 300) nnPulses.splice(0, nnPulses.length - 300);
-  // Draw nodes
+  if (nnPulses.length > 200) nnPulses.splice(0, nnPulses.length - 200);
+  // Nodes on top
   for (var i = 0; i < nnNodes.length; i++) {
     var n = nnNodes[i];
-    if (n.x >= 0 && n.x < W && n.y >= 0 && n.y < H) drawCharHSL('O', n.x, n.y, 200, 60, 20);
+    if (n.x >= 0 && n.x < W && n.y >= 0 && n.y < H) {
+      drawCharHSL('O', n.x, n.y, 180, 60, 25);
+      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        var gx = n.x + dx, gy = n.y + dy;
+        if (gx >= 0 && gx < W && gy >= 0 && gy < H) drawCharHSL('o', gx, gy, 200, 40, 10);
+      }
+    }
   }
 }
 registerMode('neuron', { init: initNeuron, render: renderNeuron });
