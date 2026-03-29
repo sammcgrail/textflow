@@ -58,9 +58,9 @@ export function buildAtlas(gl) {
   // Use 'M' width as cell width (monospace)
   var cw = Math.ceil(measure.measureText('M').width);
   var ch = Math.ceil(renderSize * 1.25);
-  // Pad 1px to avoid bleeding
-  var pw = cw + 2;
-  var ph = ch + 2;
+  // Pad 4px to avoid UV bleeding (underline artifacts)
+  var pw = cw + 8;
+  var ph = ch + 8;
   glyphW = cw;
   glyphH = ch;
 
@@ -92,19 +92,21 @@ export function buildAtlas(gl) {
     var g = allGlyphs[i];
     var col = i % ATLAS_COLS;
     var row = (i / ATLAS_COLS) | 0;
-    var px = col * pw + 1; // +1 for padding
-    var py = row * ph + 1;
+    var px = col * pw + 4; // +4 for padding
+    var py = row * ph + 4;
 
     if (g.code > 32) { // don't render space
       actx.fillText(String.fromCharCode(g.code), px, py);
     }
 
-    // UV coordinates (normalized 0-1)
+    // UV coordinates (normalized 0-1) with half-texel inset to prevent boundary sampling
     var idx = g.slot * 4;
-    uvs[idx]     = px / tw;           // u0
-    uvs[idx + 1] = (px + cw) / tw;    // u1
-    uvs[idx + 2] = py / th;           // v0
-    uvs[idx + 3] = (py + ch) / th;    // v1
+    var htU = 0.5 / tw;
+    var htV = 0.5 / th;
+    uvs[idx]     = px / tw + htU;           // u0
+    uvs[idx + 1] = (px + cw) / tw - htU;    // u1
+    uvs[idx + 2] = py / th + htV;           // v0
+    uvs[idx + 3] = (py + ch) / th - htV;    // v1
   }
 
   // Upload to WebGL texture

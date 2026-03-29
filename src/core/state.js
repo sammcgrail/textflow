@@ -9,7 +9,7 @@ export const state = {
   CHAR_W: 0,
   CHAR_H: 0,
   FONT_SIZE: 0,
-  NAV_H: 36,
+  NAV_H: 28,
   dpr: 1,
   isMobile: false,
   buttons: null,
