@@ -144,7 +144,8 @@ export var glows = {
   vidfireworks: { color: 'rgba(255,150,50,0.4)', blur: 18 },
   handpose: { color: 'rgba(150,200,255,0.35)', blur: 14 },
   facemesh: { color: 'rgba(200,150,255,0.35)', blur: 14 },
-  webcam: { color: 'rgba(200,200,255,0.3)', blur: 10 }
+  webcam: { color: 'rgba(200,200,255,0.3)', blur: 10 },
+  facepass: { color: 'rgba(180,200,255,0.35)', blur: 12 }
 };
 
 var glowCanvas = null;
