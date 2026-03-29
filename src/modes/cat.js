@@ -8,6 +8,7 @@ var catLoaded = false;
 var catNatW = 1, catNatH = 1;
 
 var catGX = 0, catGY = 0;
+var catTargetGX = 0, catTargetGY = 0; // smooth interpolation targets
 var catGridW = 0, catGridH = 0;
 var dragging = false;
 var dragOffX = 0, dragOffY = 0;
@@ -40,7 +41,7 @@ function ensureCatImg() {
   catImg.style.pointerEvents = 'none';
   catImg.style.display = 'none';
   catImg.style.borderRadius = '6px';
-  catImg.style.border = '3px solid #0a0a0f';
+  catImg.style.border = '5px solid #0a0a0f';
   catImg.style.boxSizing = 'border-box';
   catImg.style.objectFit = 'cover';
   catImg.draggable = false;
@@ -65,6 +66,8 @@ function initCat() {
   computeCatSize();
   catGX = Math.floor(state.COLS / 2 - catGridW / 2);
   catGY = Math.floor(state.ROWS / 2 - catGridH / 2);
+  catTargetGX = catGX;
+  catTargetGY = catGY;
   hasDragged = false;
 }
 
@@ -112,15 +115,23 @@ function renderCat() {
 
   computeCatSize();
 
+  // Smooth interpolation toward target
+  var lerp = 0.15;
+  catGX += (catTargetGX - catGX) * lerp;
+  catGY += (catTargetGY - catGY) * lerp;
+
   if (catImg) {
     catImg.style.display = (state.currentMode === 'cat' && catLoaded) ? 'block' : 'none';
   }
   positionCatImg();
 
-  var cLeft = catGX;
-  var cRight = catGX + catGridW;
-  var cTop = catGY;
-  var cBottom = catGY + catGridH;
+  // Snap to grid for text exclusion
+  var snapGX = Math.round(catGX);
+  var snapGY = Math.round(catGY);
+  var cLeft = snapGX;
+  var cRight = snapGX + catGridW;
+  var cTop = snapGY;
+  var cBottom = snapGY + catGridH;
 
   var ci = Math.floor(t * 2) % loremText.length;
   var hintAlpha = getHintAlpha(t);
@@ -175,18 +186,18 @@ function renderCat() {
         bright = 20 + hintAlpha * 50;
       } else {
         hue = (y * 3 + x * 0.5 + t * 15) % 360;
-        bright = 20 + nd * 50;
-        sat = 35 + nd * 45;
+        bright = 10 + nd * 25;
+        sat = 20 + nd * 30;
 
         if (rowInCat) {
           var el = Math.abs(x - cLeft);
           var er = Math.abs(x - (cRight - 1));
           var ed = Math.min(el, er);
-          if (ed < 4) { bright += (4 - ed) * 5; hue = (hue + 25) % 360; }
+          if (ed < 3) { bright += (3 - ed) * 4; hue = (hue + 20) % 360; }
         }
       }
 
-      drawCharHSL(ch, x, y, hue, Math.min(90, sat), Math.min(70, bright));
+      drawCharHSL(ch, x, y, hue, Math.min(70, sat), Math.min(50, bright));
     }
   }
 }
@@ -221,8 +232,8 @@ function attachCat() {
     e.preventDefault();
     var mx = e.clientX / state.CHAR_W;
     var my = (e.clientY - state.NAV_H) / state.CHAR_H;
-    catGX = Math.max(0, Math.min(state.COLS - catGridW, Math.round(mx - dragOffX)));
-    catGY = Math.max(0, Math.min(state.ROWS - catGridH, Math.round(my - dragOffY)));
+    catTargetGX = Math.max(0, Math.min(state.COLS - catGridW, mx - dragOffX));
+    catTargetGY = Math.max(0, Math.min(state.ROWS - catGridH, my - dragOffY));
   });
 
   state.canvas.addEventListener('pointerup', function(e) {
