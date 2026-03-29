@@ -192,6 +192,7 @@ import './modes/threetunnel.js';
 import './modes/threeparticles.js';
 import './modes/threeshapes.js';
 import './modes/threefacecube.js';
+import './modes/textcube.js';
 
 // ============================================================
 // INITIALIZATION
