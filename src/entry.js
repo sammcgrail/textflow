@@ -12,6 +12,7 @@ import { initLoop, loop, switchMode, scrollNavToMode } from './core/loop.js';
 import { getModeFromPath, getRandomMode } from './core/router.js';
 import { getMode, getRenderers } from './core/registry.js';
 import { initWebGL } from './core/webgl-renderer.js';
+import { loadMsdfAtlas } from './core/atlas.js';
 
 // Import all modes — each self-registers via registerMode()
 import './modes/lava.js';
@@ -227,8 +228,8 @@ navBtnsEl.addEventListener('wheel', function(e) {
   navBtnsEl.scrollLeft += e.deltaY || e.deltaX;
 }, { passive: false });
 
-// Wait for font to load before starting
-document.fonts.ready.then(function() {
+// Wait for font + MSDF atlas to load before starting
+Promise.all([document.fonts.ready, state.useWebGL ? loadMsdfAtlas() : Promise.resolve()]).then(function() {
   resize();
   var startMode = getModeFromPath();
   switchMode(startMode);
