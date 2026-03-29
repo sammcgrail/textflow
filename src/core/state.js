@@ -13,4 +13,6 @@ export const state = {
   dpr: 1,
   isMobile: false,
   buttons: null,
+  gl: null,
+  useWebGL: false,
 };

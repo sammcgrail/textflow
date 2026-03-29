@@ -2,6 +2,7 @@ import { state } from './state.js';
 import { getRenderers, getMode } from './registry.js';
 import { applyGlow } from './glow.js';
 import { updateURL } from './router.js';
+import { beginFrame, flushFrame } from './webgl-renderer.js';
 
 var lastTime = 0;
 var fpsFrames = 0;
@@ -31,9 +32,20 @@ export function loop(ts) {
   if (dt > 0.1) dt = 0.016;
   lastTime = ts;
   state.time += dt;
+
+  if (state.useWebGL) {
+    beginFrame();
+  }
+
   var renderers = getRenderers();
   renderers[state.currentMode]();
-  applyGlow();
+
+  if (state.useWebGL) {
+    flushFrame(); // single draw call + bloom
+  } else {
+    applyGlow(); // Canvas 2D CSS blur fallback
+  }
+
   drawFPS();
   requestAnimationFrame(loop);
 }
@@ -51,7 +63,6 @@ export function scrollNavToMode(mode, instant) {
   var container = document.querySelector('.nav-buttons');
   var btn = container.querySelector('button[data-mode="' + mode + '"]');
   if (!btn) return;
-  // Always center the active button in the visible scroll area
   var containerWidth = container.clientWidth;
   var btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
   var scrollTarget = btnCenter - containerWidth / 2;

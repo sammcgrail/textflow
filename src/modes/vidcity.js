@@ -1,4 +1,4 @@
-import { clearCanvas, drawChar } from '../core/draw.js';
+import { clearCanvas, drawChar, drawString } from '../core/draw.js';
 import { drawFancyLoading } from '../core/loading.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
@@ -40,7 +40,7 @@ function render() {
       drawChar(VA_RAMP[ri], x, y, br|0, bg|0, bb|0, Math.max(0.2, Math.min(1, lum*1.5)));
     }
   }
-  if (paused) { state.ctx.fillStyle='rgba(255,255,255,0.25)'; state.ctx.font='9px "JetBrains Mono",monospace'; state.ctx.textAlign='right'; state.ctx.fillText('PAUSED',window.innerWidth-10,state.NAV_H+10); state.ctx.textAlign='left'; state.ctx.font=state.FONT_SIZE+'px "JetBrains Mono",monospace'; }
+  if (paused) { drawString('PAUSED', window.innerWidth, state.NAV_H + 10, 255, 255, 255, 0.25, 'right'); }
 }
 function attach() {
   state.canvas.addEventListener('click', function() {
