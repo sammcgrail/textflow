@@ -64,6 +64,8 @@ out vec4 v_color;\n\
 void main(){\n\
   float px = a_pos.x * u_charSize.x + a_quad.x * u_charSize.x;\n\
   float py = u_navH + a_pos.y * u_charSize.y + a_quad.y * u_charSize.y;\n\
+  px = floor(px + 0.5);\n\
+  py = floor(py + 0.5);\n\
   float cx = (px / u_screenSize.x) * 2.0 - 1.0;\n\
   float cy = 1.0 - (py / u_screenSize.y) * 2.0;\n\
   gl_Position = vec4(cx, cy, 0.0, 1.0);\n\
