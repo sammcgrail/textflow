@@ -1,19 +1,18 @@
-import { clearCanvas, drawCharHSL } from '../core/draw.js';
+import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-// Cat mode — draggable cat image with DOM-reflow-style text wrapping
-var catImg = null; // DOM img element, positioned absolutely
+// Cat mode — draggable cat with text reflow + fading "MOVE THE CAT" hint
+var catImg = null;
 var catLoaded = false;
 var catNatW = 1, catNatH = 1;
 
-// Cat position in grid coords (top-left corner)
 var catGX = 0, catGY = 0;
 var catGridW = 0, catGridH = 0;
 var dragging = false;
 var dragOffX = 0, dragOffY = 0;
+var hasDragged = false; // stop showing hint after first drag
 
-// The flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog. ' +
   'Pack my box with five dozen liquor jugs. ' +
   'How vexingly quick daft zebras jump. ' +
@@ -28,6 +27,10 @@ var loremText = 'The quick brown fox jumps over the lazy dog. ' +
   'Jackdaws love my big sphinx of quartz. ' +
   'The jay, pig, fox, zebra, and my wolves quack. ';
 
+var hintText = 'MOVE THE CAT';
+var hintInterval = 6; // seconds between hints
+var hintDuration = 3; // seconds hint is visible
+
 function ensureCatImg() {
   if (catImg) return;
   catImg = document.createElement('img');
@@ -36,8 +39,8 @@ function ensureCatImg() {
   catImg.style.zIndex = '10';
   catImg.style.pointerEvents = 'none';
   catImg.style.display = 'none';
-  catImg.style.imageRendering = 'auto';
-  catImg.style.borderRadius = '8px';
+  catImg.style.borderRadius = '6px';
+  catImg.style.objectFit = 'cover';
   catImg.draggable = false;
   document.body.appendChild(catImg);
   catImg.onload = function() {
@@ -48,11 +51,10 @@ function ensureCatImg() {
 }
 
 function computeCatSize() {
-  // Target width in grid cells — bigger on desktop
   catGridW = state.isMobile ? 12 : 20;
-  // Compute height preserving image aspect, accounting for cell aspect
-  var cellAspect = state.CHAR_W / state.CHAR_H;
-  catGridH = Math.round(catGridW * cellAspect * (catNatH / catNatW));
+  var pixW = catGridW * state.CHAR_W;
+  var pixH = pixW * (catNatH / catNatW);
+  catGridH = Math.round(pixH / state.CHAR_H);
   if (catGridH < 4) catGridH = 4;
 }
 
@@ -61,19 +63,44 @@ function initCat() {
   computeCatSize();
   catGX = Math.floor(state.COLS / 2 - catGridW / 2);
   catGY = Math.floor(state.ROWS / 2 - catGridH / 2);
+  hasDragged = false;
 }
 
 function positionCatImg() {
   if (!catImg) return;
-  // Convert grid position to pixel position matching the canvas
   var px = catGX * state.CHAR_W;
   var py = state.NAV_H + catGY * state.CHAR_H;
   var pw = catGridW * state.CHAR_W;
   var ph = catGridH * state.CHAR_H;
-  catImg.style.left = px + 'px';
-  catImg.style.top = py + 'px';
-  catImg.style.width = pw + 'px';
-  catImg.style.height = ph + 'px';
+  catImg.style.left = Math.round(px) + 'px';
+  catImg.style.top = Math.round(py) + 'px';
+  catImg.style.width = Math.round(pw) + 'px';
+  catImg.style.height = Math.round(ph) + 'px';
+}
+
+// Compute hint fade alpha for current time
+function getHintAlpha(t) {
+  if (hasDragged) return 0;
+  var cycle = t % (hintInterval + hintDuration);
+  if (cycle < hintDuration) {
+    // Fade in for 0.5s, hold, fade out for 0.5s
+    if (cycle < 0.5) return cycle / 0.5;
+    if (cycle > hintDuration - 0.5) return (hintDuration - cycle) / 0.5;
+    return 1;
+  }
+  return 0;
+}
+
+// Check if a position in the text stream should show hint text
+function getHintChar(streamPos, W, t) {
+  // Place hint text roughly in the middle of the visible text
+  // Find a position that's roughly center-ish
+  var hintStartPos = Math.floor(W * Math.floor(state.ROWS * 0.3)) + Math.floor(W / 2 - hintText.length / 2);
+  var offset = streamPos - hintStartPos;
+  if (offset >= 0 && offset < hintText.length) {
+    return hintText[offset];
+  }
+  return null;
 }
 
 function renderCat() {
@@ -83,63 +110,95 @@ function renderCat() {
 
   computeCatSize();
 
-  // Show/hide cat image
   if (catImg) {
     catImg.style.display = (state.currentMode === 'cat' && catLoaded) ? 'block' : 'none';
   }
   positionCatImg();
 
-  // Cat bounding box with padding for text exclusion
   var pad = 1;
   var cLeft = catGX - pad;
   var cRight = catGX + catGridW + pad;
   var cTop = catGY - pad;
   var cBottom = catGY + catGridH + pad;
 
-  // DOM-style reflow: text stream skips cat cells without advancing index
   var ci = Math.floor(t * 2) % loremText.length;
+  var hintAlpha = getHintAlpha(t);
+
+  // Track stream position for hint placement
+  var streamPos = 0;
+  // Pre-compute hint row/col in non-cat area
+  var hintRow = -1, hintColStart = -1;
+  if (hintAlpha > 0) {
+    // Find a good row for the hint — above or below the cat
+    var candidateRow = catGY - 3;
+    if (candidateRow < 2) candidateRow = catGY + catGridH + 2;
+    if (candidateRow >= 0 && candidateRow < H) {
+      hintRow = candidateRow;
+      hintColStart = Math.floor(W / 2 - hintText.length / 2);
+    }
+  }
 
   for (var y = 0; y < H; y++) {
     var rowInCat = (y >= cTop && y < cBottom);
 
     for (var x = 0; x < W; x++) {
       if (rowInCat && x >= cLeft && x < cRight) {
-        continue; // skip without advancing text
+        continue;
       }
 
       var ch = loremText[ci % loremText.length];
       ci++;
+
+      // Check if this cell should show hint text instead
+      var isHint = false;
+      if (hintAlpha > 0 && y === hintRow && x >= hintColStart && x < hintColStart + hintText.length) {
+        var hi = x - hintColStart;
+        ch = hintText[hi];
+        isHint = true;
+      }
 
       if (ch === ' ') continue;
 
       var cdx = x - (catGX + catGridW / 2);
       var cdy = y - (catGY + catGridH / 2);
       var cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-      var maxDist = Math.sqrt(W * W + H * H) * 0.5;
-      var normDist = cdist / maxDist;
+      var maxD = Math.sqrt(W * W + H * H) * 0.5;
+      var nd = cdist / maxD;
 
-      var hue = (y * 3 + x * 0.5 + t * 15) % 360;
-      var bright = 20 + normDist * 50;
-      var sat = 35 + normDist * 45;
+      var hue, bright, sat;
 
-      // Edge glow near cat boundary
-      if (rowInCat) {
-        var edgeL = Math.abs(x - cLeft);
-        var edgeR = Math.abs(x - (cRight - 1));
-        var edgeDist = Math.min(edgeL, edgeR);
-        if (edgeDist < 4) {
-          bright += (4 - edgeDist) * 6;
-          hue = (hue + 30) % 360;
+      if (isHint) {
+        // Hint: bright white/gold, fading
+        hue = 45;
+        sat = 30;
+        bright = 20 + hintAlpha * 50;
+      } else {
+        hue = (y * 3 + x * 0.5 + t * 15) % 360;
+        bright = 20 + nd * 50;
+        sat = 35 + nd * 45;
+
+        if (rowInCat) {
+          var el = Math.abs(x - cLeft);
+          var er = Math.abs(x - (cRight - 1));
+          var ed = Math.min(el, er);
+          if (ed < 4) { bright += (4 - ed) * 5; hue = (hue + 25) % 360; }
         }
       }
 
-      drawCharHSL(ch, x, y, hue, Math.min(90, sat), Math.min(65, bright));
+      drawCharHSL(ch, x, y, hue, Math.min(90, sat), Math.min(70, bright));
     }
   }
 }
 
 function attachCat() {
   ensureCatImg();
+
+  // Hide cat when switching to another mode
+  function watchMode() {
+    if (catImg) catImg.style.display = (state.currentMode === 'cat' && catLoaded) ? 'block' : 'none';
+    requestAnimationFrame(watchMode);
+  }
+  requestAnimationFrame(watchMode);
 
   state.canvas.addEventListener('pointerdown', function(e) {
     if (state.currentMode !== 'cat') return;
@@ -148,12 +207,11 @@ function attachCat() {
 
     if (mx >= catGX && mx < catGX + catGridW && my >= catGY && my < catGY + catGridH) {
       dragging = true;
+      hasDragged = true;
       dragOffX = mx - catGX;
       dragOffY = my - catGY;
       e.preventDefault();
-      if (state.canvas.setPointerCapture) {
-        state.canvas.setPointerCapture(e.pointerId);
-      }
+      if (state.canvas.setPointerCapture) state.canvas.setPointerCapture(e.pointerId);
     }
   });
 
@@ -162,7 +220,6 @@ function attachCat() {
     e.preventDefault();
     var mx = e.clientX / state.CHAR_W;
     var my = (e.clientY - state.NAV_H) / state.CHAR_H;
-
     catGX = Math.max(0, Math.min(state.COLS - catGridW, Math.round(mx - dragOffX)));
     catGY = Math.max(0, Math.min(state.ROWS - catGridH, Math.round(my - dragOffY)));
   });
@@ -172,9 +229,7 @@ function attachCat() {
     try { state.canvas.releasePointerCapture(e.pointerId); } catch(ex) {}
   });
 
-  state.canvas.addEventListener('pointercancel', function() {
-    dragging = false;
-  });
+  state.canvas.addEventListener('pointercancel', function() { dragging = false; });
 }
 
 registerMode('cat', { init: initCat, render: renderCat, attach: attachCat });
