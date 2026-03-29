@@ -43,6 +43,16 @@ var flashes = [];
 // Particle characters
 var ORBIT_CHARS = '.:-=+*#%@$&';
 
+// Hand skeleton connections (21 MediaPipe landmarks)
+var HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [0,9],[9,10],[10,11],[11,12],
+  [0,13],[13,14],[14,15],[15,16],
+  [0,17],[17,18],[18,19],[19,20],
+  [5,9],[9,13],[13,17]
+];
+
 function initHandgravity() {
   loading = true;
   loadError = null;
@@ -126,7 +136,9 @@ function updateSmoothedHands() {
   var W = state.COLS, H = state.ROWS;
 
   while (smoothHands.length < hands.length) {
-    smoothHands.push({ cx: W * 0.5, cy: H * 0.5 });
+    var lmArr = [];
+    for (var li = 0; li < 21; li++) lmArr.push({ x: W * 0.5, y: H * 0.5 });
+    smoothHands.push({ cx: W * 0.5, cy: H * 0.5, landmarks: lmArr });
   }
 
   for (var hi = 0; hi < hands.length; hi++) {
@@ -141,6 +153,14 @@ function updateSmoothedHands() {
     var sh = smoothHands[hi];
     sh.cx = sh.cx * 0.4 + pcx * 0.6;
     sh.cy = sh.cy * 0.4 + pcy * 0.6;
+
+    // Store full landmarks for skeleton overlay
+    for (var li = 0; li < 21; li++) {
+      var tx = (1 - lm[li].x) * W;
+      var ty = lm[li].y * H;
+      sh.landmarks[li].x = sh.landmarks[li].x * 0.4 + tx * 0.6;
+      sh.landmarks[li].y = sh.landmarks[li].y * 0.4 + ty * 0.6;
+    }
   }
 }
 
@@ -387,6 +407,51 @@ function renderHandgravity() {
     // Center flash
     if (f.x >= 0 && f.x < W && f.y >= 0 && f.y < H) {
       drawCharHSL('#', f.x, f.y, f.hue, 100, fBright + 10);
+    }
+  }
+
+  // Draw hand skeleton overlay — purple/violet theme
+  for (var hi3 = 0; hi3 < numWells; hi3++) {
+    var sh3 = smoothHands[hi3];
+    if (!sh3.landmarks) continue;
+
+    // Skeleton lines — deep purple
+    for (var ci = 0; ci < HAND_CONNECTIONS.length; ci++) {
+      var ca = sh3.landmarks[HAND_CONNECTIONS[ci][0]];
+      var cb = sh3.landmarks[HAND_CONNECTIONS[ci][1]];
+      var ldx = cb.x - ca.x, ldy = cb.y - ca.y;
+      var llen = Math.sqrt(ldx * ldx + ldy * ldy);
+      var lsteps = Math.max(1, Math.ceil(llen * 1.5));
+      for (var ls = 0; ls <= lsteps; ls++) {
+        var lt2 = ls / lsteps;
+        var lx2 = Math.round(ca.x + ldx * lt2);
+        var ly2 = Math.round(ca.y + ldy * lt2);
+        if (lx2 < 0 || lx2 >= W || ly2 < 0 || ly2 >= H) continue;
+        var absLdx = Math.abs(ldx), absLdy = Math.abs(ldy);
+        var lch;
+        if (absLdx > absLdy * 2) lch = '-';
+        else if (absLdy > absLdx * 2) lch = '|';
+        else if (ldx * ldy > 0) lch = '\\';
+        else lch = '/';
+        drawCharHSL(lch, lx2, ly2, 270, 80, 50);
+      }
+    }
+
+    // Joint nodes — bright violet/magenta
+    for (var ji = 0; ji < 21; ji++) {
+      var jx = Math.round(sh3.landmarks[ji].x);
+      var jy = Math.round(sh3.landmarks[ji].y);
+      if (jx >= 0 && jx < W && jy >= 0 && jy < H) {
+        drawCharHSL('@', jx, jy, 285, 100, 65);
+      }
+      for (var jdy = -1; jdy <= 1; jdy += 2) {
+        for (var jdx = -1; jdx <= 1; jdx += 2) {
+          var njx = jx + jdx, njy = jy + jdy;
+          if (njx >= 0 && njx < W && njy >= 0 && njy < H) {
+            drawCharHSL('#', njx, njy, 260, 85, 55);
+          }
+        }
+      }
     }
   }
 

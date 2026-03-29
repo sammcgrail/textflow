@@ -38,6 +38,16 @@ var FINGER_PAIRS = [
 // Neon colors per finger (hue)
 var FINGER_HUES = [0, 120, 200, 280, 50]; // red, green, blue, purple, yellow
 
+// Hand skeleton connections (21 MediaPipe landmarks)
+var HAND_CONNECTIONS = [
+  [0,1],[1,2],[2,3],[3,4],
+  [0,5],[5,6],[6,7],[7,8],
+  [0,9],[9,10],[10,11],[11,12],
+  [0,13],[13,14],[14,15],[15,16],
+  [0,17],[17,18],[18,19],[19,20],
+  [5,9],[9,13],[13,17]
+];
+
 // Impact sparks
 var MAX_SPARKS = 100;
 var sparks = [];
@@ -337,6 +347,50 @@ function renderHandlaser() {
       var ty2 = Math.round(tip2.y);
       if (tx2 >= 0 && tx2 < W && ty2 >= 0 && ty2 < H) {
         drawCharHSL('@', tx2, ty2, FINGER_HUES[fi2], 100, 65);
+      }
+    }
+  }
+
+  // Draw hand skeleton overlay — neon cyan/magenta
+  for (var hi3 = 0; hi3 < hands.length && hi3 < smoothHands.length; hi3++) {
+    var sh3 = smoothHands[hi3];
+
+    // Skeleton lines — neon cyan
+    for (var ci = 0; ci < HAND_CONNECTIONS.length; ci++) {
+      var ca = sh3.landmarks[HAND_CONNECTIONS[ci][0]];
+      var cb = sh3.landmarks[HAND_CONNECTIONS[ci][1]];
+      var ldx = cb.x - ca.x, ldy = cb.y - ca.y;
+      var llen = Math.sqrt(ldx * ldx + ldy * ldy);
+      var lsteps = Math.max(1, Math.ceil(llen * 1.5));
+      for (var ls = 0; ls <= lsteps; ls++) {
+        var lt = ls / lsteps;
+        var lx2 = Math.round(ca.x + ldx * lt);
+        var ly2 = Math.round(ca.y + ldy * lt);
+        if (lx2 < 0 || lx2 >= W || ly2 < 0 || ly2 >= H) continue;
+        var absLdx = Math.abs(ldx), absLdy = Math.abs(ldy);
+        var lch;
+        if (absLdx > absLdy * 2) lch = '-';
+        else if (absLdy > absLdx * 2) lch = '|';
+        else if (ldx * ldy > 0) lch = '\\';
+        else lch = '/';
+        drawCharHSL(lch, lx2, ly2, 180, 100, 50);
+      }
+    }
+
+    // Joint nodes — bright neon magenta
+    for (var ji = 0; ji < 21; ji++) {
+      var jx = Math.round(sh3.landmarks[ji].x);
+      var jy = Math.round(sh3.landmarks[ji].y);
+      if (jx >= 0 && jx < W && jy >= 0 && jy < H) {
+        drawCharHSL('@', jx, jy, 300, 100, 65);
+      }
+      for (var jdy = -1; jdy <= 1; jdy += 2) {
+        for (var jdx = -1; jdx <= 1; jdx += 2) {
+          var njx = jx + jdx, njy = jy + jdy;
+          if (njx >= 0 && njx < W && njy >= 0 && njy < H) {
+            drawCharHSL('#', njx, njy, 290, 90, 55);
+          }
+        }
       }
     }
   }
