@@ -165,6 +165,8 @@ function updateGlowCSS(blur) {
 
 var glowFrame = 0;
 export function applyGlow() {
+  // WebGL uses bloom shader — skip CSS glow entirely
+  if (state.useWebGL) return;
   glowFrame++;
   // Throttle: update glow every 2nd frame (drawImage + CSS blur is expensive)
   if (glowFrame & 1) return;

@@ -1,4 +1,4 @@
-import { clearCanvas } from '../core/draw.js';
+import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
@@ -142,23 +142,34 @@ function renderPropfont() {
   // Decay
   for (var i = 0; i < sz; i++) propDens[i] *= 0.985;
 
-  // Render using proportional font palette
+  // Render
+  var DENSITY_RAMP = ' .`-:;=+*#%@$';
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var b = propDens[y * W + x];
       if (b < 0.02) continue;
       b = Math.min(1, b);
-      var m = propFindBest(b);
-      // Set the specific proportional font for this character
-      state.ctx.font = m.font;
       var hue = (220 + b * 60 + state.time * 15) % 360;
-      var alpha = Math.max(0.15, Math.min(1, b * 1.5));
-      state.ctx.fillStyle = 'hsla(' + (hue | 0) + ',50%,' + (20 + b * 45 | 0) + '%,' + alpha.toFixed(2) + ')';
-      state.ctx.fillText(m.char, x * state.CHAR_W, state.NAV_H + y * state.CHAR_H);
+      var light = 20 + b * 45;
+      if (state.useWebGL) {
+        // WebGL path: use monospace density ramp
+        var ri = Math.min(DENSITY_RAMP.length - 1, (b * DENSITY_RAMP.length) | 0);
+        var ch = DENSITY_RAMP[ri];
+        if (ch !== ' ') drawCharHSL(ch, x, y, hue, 50, light);
+      } else {
+        // Canvas 2D path: use proportional font palette
+        var m = propFindBest(b);
+        state.ctx.font = m.font;
+        var alpha = Math.max(0.15, Math.min(1, b * 1.5));
+        state.ctx.fillStyle = 'hsla(' + (hue | 0) + ',50%,' + (light | 0) + '%,' + alpha.toFixed(2) + ')';
+        state.ctx.fillText(m.char, x * state.CHAR_W, state.NAV_H + y * state.CHAR_H);
+      }
     }
   }
-  // Restore monospace font for other modes
-  state.ctx.font = state.FONT_SIZE + 'px "JetBrains Mono", monospace';
+  // Restore monospace font for Canvas 2D fallback
+  if (!state.useWebGL) {
+    state.ctx.font = state.FONT_SIZE + 'px "JetBrains Mono", monospace';
+  }
 }
 
 registerMode('propfont', {
