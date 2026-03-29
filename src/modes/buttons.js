@@ -74,11 +74,11 @@ function buildLaunchButton(elem) {
   btn.style.border = 'none';
   btn.style.color = '#f06';
   btn.style.fontFamily = '"JetBrains Mono", monospace';
-  btn.style.fontSize = '14px';
+  btn.style.fontSize = '11px';
   btn.style.fontWeight = 'bold';
   btn.style.cursor = 'pointer';
-  btn.style.padding = '4px 12px';
-  btn.style.letterSpacing = '2px';
+  btn.style.padding = '2px 4px';
+  btn.style.letterSpacing = '1px';
   btn.style.width = '100%';
   btn.style.height = '100%';
   btn.addEventListener('click', function(e) {
@@ -206,7 +206,7 @@ function buildBadge(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.borderRadius = '20px';
+  el.style.borderRadius = '6px';
   el.style.border = '7px solid #0a0a0f';
   el.style.boxShadow = '0 0 4px #ff033';
   el.style.cursor = 'pointer';
