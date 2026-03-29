@@ -115,11 +115,10 @@ function renderCat() {
   }
   positionCatImg();
 
-  var pad = 1;
-  var cLeft = catGX - pad;
-  var cRight = catGX + catGridW + pad;
-  var cTop = catGY - pad;
-  var cBottom = catGY + catGridH + pad;
+  var cLeft = catGX;
+  var cRight = catGX + catGridW;
+  var cTop = catGY;
+  var cBottom = catGY + catGridH;
 
   var ci = Math.floor(t * 2) % loremText.length;
   var hintAlpha = getHintAlpha(t);
