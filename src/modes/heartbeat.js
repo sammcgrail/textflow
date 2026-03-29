@@ -1,13 +1,21 @@
 import { clearCanvas, drawCharHSL } from '../core/draw.js';
+import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
+var hbSpeed = 2;
 function renderHeartbeat() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
   var midY = H / 2;
-  var t = state.time * 2;
-  // Draw multiple ECG traces
+  // Click changes heart rate
+  if (pointer.clicked && state.currentMode === 'heartbeat') {
+    pointer.clicked = false;
+    hbSpeed = 1 + (pointer.gx / W) * 5;
+  } else if (pointer.down && state.currentMode === 'heartbeat') {
+    hbSpeed = 1 + (pointer.gx / W) * 5;
+  }
+  var t = state.time * hbSpeed;
   for (var trace = 0; trace < 3; trace++) {
     var yOff = midY + (trace - 1) * (H * 0.3);
     var hue = trace === 0 ? 120 : trace === 1 ? 0 : 60;
@@ -28,8 +36,7 @@ function renderHeartbeat() {
       }
     }
   }
-  // BPM display
-  var bpm = (72 + Math.sin(state.time * 0.3) * 8) | 0;
+  var bpm = (hbSpeed * 36) | 0;
   var bpmStr = bpm + ' BPM';
   for (var i = 0; i < bpmStr.length; i++) {
     drawCharHSL(bpmStr[i], W - bpmStr.length - 2 + i, 2, 0, 90, 45);
