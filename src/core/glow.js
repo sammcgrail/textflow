@@ -163,7 +163,11 @@ function updateGlowCSS(blur) {
   }
 }
 
+var glowFrame = 0;
 export function applyGlow() {
+  glowFrame++;
+  // Throttle: update glow every 2nd frame (drawImage + CSS blur is expensive)
+  if (glowFrame & 1) return;
   var g = glows[state.currentMode];
   updateGlowCSS(g.blur);
   var gw = (state.canvas.width * GLOW_SCALE) | 0;
