@@ -360,11 +360,11 @@ function renderButtons() {
   var t = state.time;
   var speed = 0.3 + sliderVal * 3.0; // slider controls text scroll speed
 
-  // Half-cell snap
+  // Snap to integer grid — keeps DOM overlay and exclusion zone perfectly aligned
   for (var i = 0; i < elements.length; i++) {
     var e = elements[i];
-    e.gx = Math.round(e.targetGX * 2) / 2;
-    e.gy = Math.round(e.targetGY * 2) / 2;
+    e.gx = Math.round(e.targetGX);
+    e.gy = Math.round(e.targetGY);
   }
 
   // Show/hide elements
@@ -385,10 +385,10 @@ function renderButtons() {
   for (var z = 0; z < elements.length; z++) {
     var ez = elements[z];
     zones.push({
-      left: Math.ceil(ez.gx),
-      right: Math.floor(ez.gx + ez.gw),
-      top: Math.ceil(ez.gy),
-      bottom: Math.floor(ez.gy + ez.gh),
+      left: ez.gx,
+      right: ez.gx + ez.gw,
+      top: ez.gy,
+      bottom: ez.gy + ez.gh,
       cx: ez.gx + ez.gw / 2,
       cy: ez.gy + ez.gh / 2
     });
