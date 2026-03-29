@@ -173,6 +173,7 @@ import './modes/vidgyro.js';
 import './modes/vidstars.js';
 import './modes/cat.js';
 import './modes/buttons.js';
+import './modes/handpose.js';
 
 // ============================================================
 // INITIALIZATION
