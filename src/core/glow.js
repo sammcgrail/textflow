@@ -17,7 +17,7 @@ export var glows = {
   fold:   { color: 'rgba(255,140,0,0.35)', blur: 12 },
   copper: { color: 'rgba(255,200,100,0.3)', blur: 10 },
   glitch: { color: 'rgba(255,0,255,0.3)', blur: 8 },
-  flock:  { color: 'rgba(255,200,50,0.3)', blur: 10 },
+  flock:  { color: 'rgba(100,120,200,0.3)', blur: 12 },
   roto:   { color: 'rgba(200,100,255,0.3)', blur: 12 },
   erosion:{ color: 'rgba(200,180,140,0.25)', blur: 8 },
   gravity:{ color: 'rgba(100,200,255,0.35)', blur: 14 },
