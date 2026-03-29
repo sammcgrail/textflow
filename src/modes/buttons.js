@@ -37,23 +37,44 @@ function makeElement(id, gx, gy, gw, gh, label) {
   return { id: id, gx: gx, gy: gy, targetGX: gx, targetGY: gy, gw: gw, gh: gh, label: label, el: null };
 }
 
+// Win95 3D border helpers
+var WIN95_BG = '#c0c0c0';
+var WIN95_LIGHT = '#ffffff';
+var WIN95_MID = '#808080';
+var WIN95_DARK = '#404040';
+var WIN95_TEXT = '#000000';
+
+function win95Raised(el) {
+  el.style.borderTop = '2px solid ' + WIN95_LIGHT;
+  el.style.borderLeft = '2px solid ' + WIN95_LIGHT;
+  el.style.borderBottom = '2px solid ' + WIN95_DARK;
+  el.style.borderRight = '2px solid ' + WIN95_DARK;
+}
+
+function win95Sunken(el) {
+  el.style.borderTop = '2px solid ' + WIN95_DARK;
+  el.style.borderLeft = '2px solid ' + WIN95_DARK;
+  el.style.borderBottom = '2px solid ' + WIN95_LIGHT;
+  el.style.borderRight = '2px solid ' + WIN95_LIGHT;
+}
+
 function createDOMElement(elem) {
   var el = document.createElement('div');
   el.style.position = 'fixed';
   el.style.zIndex = '10';
   el.style.pointerEvents = 'auto';
-  el.style.background = '#0a0a0f';
-  el.style.borderRadius = '6px';
-  el.style.border = '7px solid #0a0a0f';
+  el.style.background = WIN95_BG;
+  el.style.borderRadius = '0';
   el.style.boxSizing = 'border-box';
-  el.style.fontFamily = '"JetBrains Mono", monospace';
-  el.style.fontSize = '13px';
-  el.style.color = '#ccc';
+  el.style.fontFamily = '"MS Sans Serif", "Segoe UI", "JetBrains Mono", sans-serif';
+  el.style.fontSize = '12px';
+  el.style.color = WIN95_TEXT;
   el.style.display = 'none';
   el.style.overflow = 'hidden';
   el.style.userSelect = 'none';
   el.style.cursor = 'grab';
   el.style.padding = '0';
+  win95Raised(el);
   el.dataset.btnId = elem.id;
   document.body.appendChild(el);
   elem.el = el;
@@ -65,26 +86,23 @@ function buildLaunchButton(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.border = '7px solid #0a0a0f';
-  el.style.boxShadow = '0 0 8px #f06, inset 0 0 4px #f06';
-  el.style.transition = 'box-shadow 0.15s';
+  win95Raised(el);
   var btn = document.createElement('button');
-  btn.textContent = 'LAUNCH';
-  btn.style.background = 'transparent';
+  btn.textContent = 'Launch';
+  btn.style.background = WIN95_BG;
   btn.style.border = 'none';
-  btn.style.color = '#f06';
-  btn.style.fontFamily = '"JetBrains Mono", monospace';
-  btn.style.fontSize = '11px';
+  btn.style.color = WIN95_TEXT;
+  btn.style.fontFamily = '"MS Sans Serif", "Segoe UI", sans-serif';
+  btn.style.fontSize = '12px';
   btn.style.fontWeight = 'bold';
   btn.style.cursor = 'pointer';
-  btn.style.padding = '2px 4px';
-  btn.style.letterSpacing = '1px';
+  btn.style.padding = '2px 6px';
   btn.style.width = '100%';
   btn.style.height = '100%';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
-    el.style.boxShadow = '0 0 20px #f06, inset 0 0 10px #f06';
-    setTimeout(function() { el.style.boxShadow = '0 0 8px #f06, inset 0 0 4px #f06'; }, 300);
+    win95Sunken(el);
+    setTimeout(function() { win95Raised(el); }, 200);
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 30);
   });
   el.appendChild(btn);
@@ -95,25 +113,25 @@ function buildTextInput(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.border = '7px solid #0a0a0f';
-  el.style.boxShadow = '0 0 4px #0af33';
+  el.style.padding = '3px';
+  win95Raised(el);
   var inp = document.createElement('input');
   inp.type = 'text';
-  inp.placeholder = 'type here...';
-  inp.style.background = 'transparent';
-  inp.style.border = 'none';
-  inp.style.color = '#0af';
-  inp.style.fontFamily = '"JetBrains Mono", monospace';
+  inp.placeholder = 'Type here...';
+  inp.style.background = '#fff';
+  inp.style.color = WIN95_TEXT;
+  inp.style.fontFamily = '"MS Sans Serif", "Segoe UI", sans-serif';
   inp.style.fontSize = '12px';
   inp.style.outline = 'none';
   inp.style.width = '90%';
   inp.style.padding = '2px 4px';
+  inp.style.borderTop = '2px solid ' + WIN95_DARK;
+  inp.style.borderLeft = '2px solid ' + WIN95_DARK;
+  inp.style.borderBottom = '2px solid ' + WIN95_LIGHT;
+  inp.style.borderRight = '2px solid ' + WIN95_LIGHT;
+  inp.style.boxSizing = 'border-box';
   inp.addEventListener('focus', function() {
-    el.style.boxShadow = '0 0 12px #0af, inset 0 0 6px #0af';
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 20);
-  });
-  inp.addEventListener('blur', function() {
-    el.style.boxShadow = '0 0 4px #0af33';
   });
   inp.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
   el.appendChild(inp);
@@ -124,47 +142,39 @@ function buildToggle(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.gap = '6px';
-  el.style.border = '7px solid #0a0a0f';
+  el.style.gap = '8px';
+  win95Raised(el);
+
+  var checkbox = document.createElement('div');
+  checkbox.style.width = '13px';
+  checkbox.style.height = '13px';
+  checkbox.style.background = '#fff';
+  checkbox.style.flexShrink = '0';
+  checkbox.style.display = 'flex';
+  checkbox.style.alignItems = 'center';
+  checkbox.style.justifyContent = 'center';
+  checkbox.style.fontSize = '11px';
+  checkbox.style.fontWeight = 'bold';
+  checkbox.style.color = WIN95_TEXT;
+  checkbox.style.borderTop = '2px solid ' + WIN95_DARK;
+  checkbox.style.borderLeft = '2px solid ' + WIN95_DARK;
+  checkbox.style.borderBottom = '2px solid ' + WIN95_LIGHT;
+  checkbox.style.borderRight = '2px solid ' + WIN95_LIGHT;
+  checkbox.textContent = toggleOn ? '\u2713' : '';
 
   var label = document.createElement('span');
-  label.textContent = toggleOn ? 'ON' : 'OFF';
-  label.style.color = toggleOn ? '#0f6' : '#f60';
-  label.style.fontWeight = 'bold';
-  label.style.fontSize = '13px';
-  label.style.letterSpacing = '1px';
+  label.textContent = toggleOn ? 'Enabled' : 'Disabled';
+  label.style.color = WIN95_TEXT;
+  label.style.fontSize = '12px';
 
-  var track = document.createElement('div');
-  track.style.width = '28px';
-  track.style.height = '14px';
-  track.style.borderRadius = '7px';
-  track.style.background = toggleOn ? '#0f6' : '#333';
-  track.style.position = 'relative';
-  track.style.transition = 'background 0.2s';
-  track.style.flexShrink = '0';
-
-  var knob = document.createElement('div');
-  knob.style.width = '10px';
-  knob.style.height = '10px';
-  knob.style.borderRadius = '50%';
-  knob.style.background = '#fff';
-  knob.style.position = 'absolute';
-  knob.style.top = '2px';
-  knob.style.left = toggleOn ? '16px' : '2px';
-  knob.style.transition = 'left 0.2s';
-  track.appendChild(knob);
-
+  el.appendChild(checkbox);
   el.appendChild(label);
-  el.appendChild(track);
 
   el.addEventListener('click', function(e) {
     e.stopPropagation();
     toggleOn = !toggleOn;
-    label.textContent = toggleOn ? 'ON' : 'OFF';
-    label.style.color = toggleOn ? '#0f6' : '#f60';
-    track.style.background = toggleOn ? '#0f6' : '#333';
-    knob.style.left = toggleOn ? '16px' : '2px';
-    el.style.border = '7px solid #0a0a0f';
+    checkbox.textContent = toggleOn ? '\u2713' : '';
+    label.textContent = toggleOn ? 'Enabled' : 'Disabled';
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 15);
   });
 }
@@ -175,30 +185,37 @@ function buildSlider(elem) {
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
   el.style.gap = '6px';
-  el.style.border = '7px solid #0a0a0f';
   el.style.padding = '0 8px';
+  win95Raised(el);
 
   var lbl = document.createElement('span');
-  lbl.textContent = 'SPD';
-  lbl.style.color = '#a0f';
+  lbl.textContent = 'Speed:';
+  lbl.style.color = WIN95_TEXT;
   lbl.style.fontSize = '11px';
   lbl.style.flexShrink = '0';
+
+  var trackOuter = document.createElement('div');
+  trackOuter.style.flex = '1';
+  trackOuter.style.height = '20px';
+  trackOuter.style.display = 'flex';
+  trackOuter.style.alignItems = 'center';
 
   var range = document.createElement('input');
   range.type = 'range';
   range.min = '0';
   range.max = '100';
   range.value = '50';
-  range.style.width = '70%';
-  range.style.accentColor = '#a0f';
+  range.style.width = '100%';
+  range.style.accentColor = WIN95_MID;
   range.style.cursor = 'pointer';
   range.addEventListener('input', function() {
     sliderVal = range.value / 100;
   });
   range.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
 
+  trackOuter.appendChild(range);
   el.appendChild(lbl);
-  el.appendChild(range);
+  el.appendChild(trackOuter);
 }
 
 function buildBadge(elem) {
@@ -206,25 +223,38 @@ function buildBadge(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.borderRadius = '6px';
-  el.style.border = '7px solid #0a0a0f';
-  el.style.boxShadow = '0 0 4px #ff033';
+  el.style.gap = '6px';
   el.style.cursor = 'pointer';
+  win95Raised(el);
 
-  var span = document.createElement('span');
-  span.textContent = '0';
-  span.style.color = '#ff0';
-  span.style.fontWeight = 'bold';
-  span.style.fontSize = '14px';
+  var label = document.createElement('span');
+  label.textContent = 'Count:';
+  label.style.color = WIN95_TEXT;
+  label.style.fontSize = '12px';
 
-  el.appendChild(span);
+  var counter = document.createElement('div');
+  counter.style.background = '#fff';
+  counter.style.padding = '1px 8px';
+  counter.style.borderTop = '2px solid ' + WIN95_DARK;
+  counter.style.borderLeft = '2px solid ' + WIN95_DARK;
+  counter.style.borderBottom = '2px solid ' + WIN95_LIGHT;
+  counter.style.borderRight = '2px solid ' + WIN95_LIGHT;
+  counter.style.fontSize = '12px';
+  counter.style.fontWeight = 'bold';
+  counter.style.color = WIN95_TEXT;
+  counter.style.minWidth = '24px';
+  counter.style.textAlign = 'center';
+  counter.textContent = '0';
+
+  el.appendChild(label);
+  el.appendChild(counter);
 
   el.addEventListener('click', function(e) {
     e.stopPropagation();
     badgeCount++;
-    span.textContent = String(badgeCount);
-    el.style.boxShadow = '0 0 16px #ff0, inset 0 0 8px #ff0';
-    setTimeout(function() { el.style.boxShadow = '0 0 4px #ff033'; }, 250);
+    counter.textContent = String(badgeCount);
+    win95Sunken(el);
+    setTimeout(function() { win95Raised(el); }, 150);
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 12);
   });
 }
@@ -287,13 +317,13 @@ function positionElement(elem) {
   elem.el.style.height = Math.round(ph) + 'px';
 }
 
-// --- Border flicker ---
+// --- Subtle Win95 flicker ---
 function flickerBorders(t) {
   for (var i = 0; i < elements.length; i++) {
     var el = elements[i].el;
     if (!el) continue;
-    var flicker = 0.6 + 0.4 * Math.sin(t * 3 + i * 1.7);
-    el.style.opacity = String(flicker * 0.3 + 0.7);
+    var flicker = 0.85 + 0.15 * Math.sin(t * 2 + i * 1.7);
+    el.style.opacity = String(flicker);
   }
 }
 
