@@ -155,6 +155,22 @@ import './modes/vidlava.js';
 import './modes/vidcity.js';
 import './modes/vidocean.js';
 import './modes/vidfireworks.js';
+import './modes/rotozoomer.js';
+import './modes/rotowarp.js';
+import './modes/rotogrid.js';
+import './modes/rotoprism.js';
+import './modes/rotospiral.js';
+import './modes/rototunnel.js';
+import './modes/rotoplasma.js';
+import './modes/rotoflower.js';
+import './modes/rotocube.js';
+import './modes/rotoscroll.js';
+import './modes/rotodisk.js';
+import './modes/vidgears.js';
+import './modes/vidink.js';
+import './modes/vidaurora.js';
+import './modes/vidgyro.js';
+import './modes/vidstars.js';
 
 // ============================================================
 // INITIALIZATION
