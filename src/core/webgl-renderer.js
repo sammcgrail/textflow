@@ -1,6 +1,6 @@
 // WebGL 2 Renderer — instanced quad rendering + Kawase bloom
 import { state } from './state.js';
-import { atlasTexture, uvs, buildAtlas, charSlot } from './atlas.js';
+import { atlasTexture, uvs, buildAtlas, charSlot, glyphW, glyphH } from './atlas.js';
 import { glows } from './glow.js';
 
 // ============================================================
@@ -339,7 +339,7 @@ function midFrameFlush() {
   var cw = state.canvas.width;
   var ch = state.canvas.height;
   gl.uniform2f(cu_screenSize, cw, ch);
-  gl.uniform2f(cu_charSize, state.CHAR_W * state.dpr, state.CHAR_H * state.dpr);
+  gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
 
   gl.bindVertexArray(charVAO);
@@ -367,7 +367,7 @@ export function flushFrame() {
   var cw = state.canvas.width;
   var ch = state.canvas.height;
   gl.uniform2f(cu_screenSize, cw, ch);
-  gl.uniform2f(cu_charSize, state.CHAR_W * state.dpr, state.CHAR_H * state.dpr);
+  gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
 
   gl.bindVertexArray(charVAO);
