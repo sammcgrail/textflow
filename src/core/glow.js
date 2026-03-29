@@ -145,7 +145,8 @@ export var glows = {
   handpose: { color: 'rgba(150,200,255,0.35)', blur: 14 },
   facemesh: { color: 'rgba(200,150,255,0.35)', blur: 14 },
   webcam: { color: 'rgba(200,200,255,0.3)', blur: 10 },
-  facepass: { color: 'rgba(180,200,255,0.35)', blur: 12 }
+  facepass: { color: 'rgba(180,200,255,0.35)', blur: 12 },
+  headcube: { color: 'rgba(150,180,255,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;
