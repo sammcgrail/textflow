@@ -7,14 +7,14 @@ export function resize() {
   state.canvas.height = h * state.dpr;
   state.canvas.style.width = w + 'px';
   state.canvas.style.height = h + 'px';
-  state.ctx.scale(state.dpr, state.dpr);
+  state.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
 
   state.FONT_SIZE = Math.max(10, Math.min(16, w / 70));
   state.ctx.font = state.FONT_SIZE + 'px "JetBrains Mono", monospace';
+  state.ctx.textBaseline = 'top';
   state.CHAR_W = state.ctx.measureText('M').width;
   state.CHAR_H = state.FONT_SIZE * 1.25;
 
   state.COLS = Math.floor(w / state.CHAR_W);
   state.ROWS = Math.floor((h - state.NAV_H) / state.CHAR_H);
-
 }

@@ -162,7 +162,7 @@ document.addEventListener('selectstart', function(e) { e.preventDefault(); });
 
 // Initialize state
 state.canvas = document.getElementById('c');
-state.ctx = state.canvas.getContext('2d');
+state.ctx = state.canvas.getContext('2d', { alpha: false, desynchronized: true });
 state.buttons = document.querySelectorAll('nav button');
 state.dpr = window.devicePixelRatio || 1;
 state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
