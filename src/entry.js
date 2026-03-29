@@ -182,6 +182,9 @@ import './modes/camtrail.js';
 import './modes/camhalftone.js';
 import './modes/camdepth.js';
 import './modes/faceglitch.js';
+import './modes/handfire.js';
+import './modes/handlaser.js';
+import './modes/handgravity.js';
 import './modes/facepaint.js';
 import './modes/facemirror.js';
 

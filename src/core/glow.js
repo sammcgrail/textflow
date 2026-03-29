@@ -152,7 +152,10 @@ export var glows = {
   camdepth: { color: 'rgba(255,150,80,0.35)', blur: 14 },
   faceglitch: { color: 'rgba(255,0,200,0.4)', blur: 16 },
   facepaint: { color: 'rgba(200,100,255,0.4)', blur: 16 },
-  facemirror: { color: 'rgba(180,200,255,0.35)', blur: 12 }
+  facemirror: { color: 'rgba(180,200,255,0.35)', blur: 12 },
+  handfire: { color: 'rgba(255,100,30,0.4)', blur: 16 },
+  handlaser: { color: 'rgba(100,255,200,0.4)', blur: 18 },
+  handgravity: { color: 'rgba(150,100,255,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;

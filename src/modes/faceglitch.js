@@ -3,9 +3,9 @@ import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 import { RAMP_DENSE } from '../core/ramps.js';
 
-// Faceglitch mode — face area gets intense RGB channel splitting and data corruption
-// Glitch intensity increases with face movement speed
-// Occasional full-screen glitch bursts
+// Faceglitch mode — intense RGB channel splitting, glitch explosions,
+// scanline corruption, data moshing, and dark ambient background
+// Glitch intensity ramps with face movement velocity
 
 var CDN_URL = 'https://cdn.jsdelivr.net/npm/@svenflow/micro-facemesh@0.1.2/dist/index.js';
 
@@ -34,10 +34,28 @@ var prevFaceCenter = null;
 var faceVelocity = 0;
 var glitchIntensity = 0;
 
-// Full-screen glitch burst
-var burstTimer = 0;
-var burstActive = false;
-var burstDuration = 0;
+// Previous frame buffer for data moshing
+var prevFrameData = null;
+var moshMask = null; // which pixels are frozen
+var moshTimer = 0;
+var moshActive = false;
+var moshDuration = 0;
+
+// Explosion particles
+var MAX_PARTICLES = 200;
+var particles = [];
+
+// Face center in grid coords
+var faceCX = 0;
+var faceCY = 0;
+
+// Scanline corruption
+var scanlines = [];
+var scanlineTimer = 0;
+
+// Background data rain columns
+var rainColumns = [];
+var MAX_RAIN_COLS = 30;
 
 // Face silhouette
 var FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
@@ -53,8 +71,16 @@ function initFaceglitch() {
   prevFaceCenter = null;
   faceVelocity = 0;
   glitchIntensity = 0;
-  burstTimer = 0;
-  burstActive = false;
+  prevFrameData = null;
+  moshMask = null;
+  moshTimer = 0;
+  moshActive = false;
+  particles = [];
+  scanlines = [];
+  scanlineTimer = 0;
+  rainColumns = [];
+  faceCX = 0;
+  faceCY = 0;
 
   vidCanvas = document.createElement('canvas');
   vidCtx = vidCanvas.getContext('2d', { willReadFrequently: true });
@@ -129,6 +155,7 @@ function detectFaces() {
 }
 
 function updateVelocity() {
+  var W = state.COLS, H = state.ROWS;
   if (faces.length === 0) {
     faceVelocity *= 0.9;
     prevFaceCenter = null;
@@ -138,15 +165,16 @@ function updateVelocity() {
   var lm = faces[0].landmarks;
   if (!lm || lm.length < 468) return;
 
-  // Nose tip as face center (landmark 1)
   var cx = (1 - lm[1].x);
   var cy = lm[1].y;
+  faceCX = cx * W;
+  faceCY = cy * H;
 
   if (prevFaceCenter) {
     var dx = cx - prevFaceCenter.x;
     var dy = cy - prevFaceCenter.y;
     var speed = Math.sqrt(dx * dx + dy * dy);
-    faceVelocity = faceVelocity * 0.6 + speed * 0.4;
+    faceVelocity = faceVelocity * 0.5 + speed * 0.5;
   }
 
   prevFaceCenter = { x: cx, y: cy };
@@ -210,10 +238,153 @@ function fillPoly(pts, indices, val) {
   }
 }
 
+// --- Explosion particles ---
+function spawnExplosion(cx, cy, count) {
+  for (var i = 0; i < count; i++) {
+    var angle = Math.random() * 6.283;
+    var speed = 1 + Math.random() * 4;
+    var ch = String.fromCharCode(33 + Math.floor(Math.random() * 94));
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 0.5 + Math.random() * 1.0,
+      age: 0,
+      ch: ch,
+      hue: Math.random() * 360
+    });
+    if (particles.length > MAX_PARTICLES) particles.shift();
+  }
+}
+
+function updateParticles(dt) {
+  var alive = [];
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    p.age += dt;
+    if (p.age >= p.life) continue;
+    p.x += p.vx * dt * 15;
+    p.y += p.vy * dt * 15;
+    p.vx *= 0.97;
+    p.vy *= 0.97;
+    alive.push(p);
+  }
+  particles = alive;
+}
+
+function renderParticles(W, H) {
+  for (var i = 0; i < particles.length; i++) {
+    var p = particles[i];
+    var px = Math.round(p.x);
+    var py = Math.round(p.y);
+    if (px < 0 || px >= W || py < 0 || py >= H) continue;
+    var fade = 1 - p.age / p.life;
+    var bright = 30 + fade * 50;
+    drawCharHSL(p.ch, px, py, p.hue, 90, bright);
+  }
+}
+
+// --- Scanline corruption ---
+function updateScanlines(H, intensity) {
+  scanlineTimer += 0.016;
+  if (scanlineTimer > 0.05 + (1 - intensity) * 0.3) {
+    scanlineTimer = 0;
+    scanlines = [];
+    var numLines = Math.floor(intensity * 12) + 1;
+    for (var i = 0; i < numLines; i++) {
+      scanlines.push({
+        y: Math.floor(Math.random() * H),
+        shift: Math.floor((Math.random() - 0.5) * 15 * (1 + intensity * 4)),
+        height: 1 + Math.floor(Math.random() * 3),
+        invert: Math.random() < 0.3,
+        static_noise: Math.random() < 0.4
+      });
+    }
+  }
+}
+
+function getScanlineShift(y) {
+  for (var i = 0; i < scanlines.length; i++) {
+    var sl = scanlines[i];
+    if (y >= sl.y && y < sl.y + sl.height) return sl;
+  }
+  return null;
+}
+
+// --- Data moshing ---
+function updateMosh(intensity) {
+  moshTimer += 0.016;
+  if (!moshActive && Math.random() < 0.01 + intensity * 0.04) {
+    moshActive = true;
+    moshDuration = 0.1 + Math.random() * 0.4;
+    moshTimer = 0;
+    // Create random freeze mask
+    var W = state.COLS, H = state.ROWS;
+    if (!moshMask || moshMask.length !== W * H) {
+      moshMask = new Uint8Array(W * H);
+    }
+    moshMask.fill(0);
+    // Freeze random rectangular blocks of the face
+    var numBlocks = 2 + Math.floor(Math.random() * 5);
+    for (var b = 0; b < numBlocks; b++) {
+      var bx = Math.floor(Math.random() * W);
+      var by = Math.floor(Math.random() * H);
+      var bw = 3 + Math.floor(Math.random() * 12);
+      var bh = 2 + Math.floor(Math.random() * 8);
+      for (var y = by; y < by + bh && y < H; y++) {
+        for (var x = bx; x < bx + bw && x < W; x++) {
+          moshMask[y * W + x] = 1;
+        }
+      }
+    }
+  }
+  if (moshActive && moshTimer > moshDuration) {
+    moshActive = false;
+  }
+}
+
+// --- Background rain ---
+function updateRain(W, H, t) {
+  // Occasionally spawn new rain columns
+  if (rainColumns.length < MAX_RAIN_COLS && Math.random() < 0.03) {
+    rainColumns.push({
+      x: Math.floor(Math.random() * W),
+      y: 0,
+      speed: 0.5 + Math.random() * 2,
+      length: 3 + Math.floor(Math.random() * 10),
+      hue: 160 + Math.random() * 60
+    });
+  }
+  // Update
+  var alive = [];
+  for (var i = 0; i < rainColumns.length; i++) {
+    var col = rainColumns[i];
+    col.y += col.speed;
+    if (col.y - col.length < H) {
+      alive.push(col);
+    }
+  }
+  rainColumns = alive;
+}
+
+function renderRain(W, H, t) {
+  for (var i = 0; i < rainColumns.length; i++) {
+    var col = rainColumns[i];
+    for (var j = 0; j < col.length; j++) {
+      var ry = Math.floor(col.y) - j;
+      if (ry < 0 || ry >= H) continue;
+      var fade = 1 - j / col.length;
+      var ch = String.fromCharCode(33 + ((col.x * 13 + ry * 7 + Math.floor(t * 8)) % 94));
+      drawCharHSL(ch, col.x, ry, col.hue, 50, 5 + fade * 15);
+    }
+  }
+}
+
 function renderFaceglitch() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
   var t = state.time;
+  var dt = 0.016;
 
   if (loading || (!webcamReady && !webcamDenied)) {
     var msg = 'loading faceglitch...';
@@ -259,133 +430,156 @@ function renderFaceglitch() {
     faceMaskH = H;
   }
 
-  // Update glitch intensity based on face velocity
-  var targetGlitch = Math.min(1, faceVelocity * 15);
-  glitchIntensity = glitchIntensity * 0.85 + targetGlitch * 0.15;
+  // Update glitch intensity — ramp up with velocity, decay when still
+  var targetGlitch = Math.min(1, faceVelocity * 18);
+  glitchIntensity = glitchIntensity * 0.82 + targetGlitch * 0.18;
 
-  // Random burst trigger
-  burstTimer += 0.016;
-  if (!burstActive && Math.random() < 0.005 + glitchIntensity * 0.02) {
-    burstActive = true;
-    burstDuration = 0.1 + Math.random() * 0.25;
-    burstTimer = 0;
+  // Trigger explosion on high velocity
+  if (faceVelocity > 0.02 && Math.random() < faceVelocity * 5) {
+    spawnExplosion(faceCX, faceCY, Math.floor(5 + glitchIntensity * 20));
   }
-  if (burstActive && burstTimer > burstDuration) {
-    burstActive = false;
-  }
+
+  updateParticles(dt);
+  updateScanlines(H, glitchIntensity);
+  updateMosh(glitchIntensity);
+  updateRain(W, H, t);
 
   var hasMask = faceMask && faceMaskW === W && faceMaskH === H;
 
-  // RGB channel split offsets — scale with glitch intensity
-  var baseShift = 1 + glitchIntensity * 6;
-  var rOffX = Math.round(Math.sin(t * 3.7) * baseShift);
-  var rOffY = Math.round(Math.cos(t * 2.3) * baseShift * 0.3);
-  var bOffX = Math.round(Math.cos(t * 4.1) * baseShift);
-  var bOffY = Math.round(Math.sin(t * 1.9) * baseShift * 0.3);
+  // RGB channel split offsets — pulsing and velocity-reactive
+  var baseShift = 1 + glitchIntensity * 8;
+  var pulseShift = Math.sin(t * 5) * 2 * glitchIntensity;
+  var rOffX = Math.round(-(baseShift + pulseShift));
+  var bOffX = Math.round(baseShift + pulseShift);
+  var rOffY = Math.round(Math.sin(t * 3.1) * glitchIntensity * 2);
+  var bOffY = Math.round(Math.cos(t * 2.7) * glitchIntensity * 2);
 
-  // Corruption line params
-  var corruptLines = [];
-  var numCorruptLines = Math.floor(glitchIntensity * 8) + (burstActive ? 12 : 0);
-  for (var cl = 0; cl < numCorruptLines; cl++) {
-    corruptLines.push({
-      y: Math.floor(Math.random() * H),
-      shift: Math.floor((Math.random() - 0.5) * 10 * (1 + glitchIntensity * 3)),
-      corrupt: Math.random() < 0.4
-    });
-  }
+  // Interference bands
+  var bandPhase = t * 1.5;
+  var bandFreq = 0.06 + glitchIntensity * 0.04;
 
-  var corruptMap = {};
-  for (var ci2 = 0; ci2 < corruptLines.length; ci2++) {
-    corruptMap[corruptLines[ci2].y] = corruptLines[ci2];
-  }
+  // Render background first — dark with rain and interference
+  renderRain(W, H, t);
 
+  // Background interference bands
   for (var y = 0; y < H; y++) {
-    var lineCorrupt = corruptMap[y] || null;
+    var bandVal = Math.sin((y + bandPhase * 10) * bandFreq * Math.PI);
+    if (bandVal > 0.92) {
+      for (var x = 0; x < W; x++) {
+        if (Math.random() < 0.15) {
+          drawCharHSL('-', x, y, 200, 20, 4 + Math.random() * 6);
+        }
+      }
+    }
+  }
+
+  if (!imgData) return;
+
+  // Main rendering loop — face with RGB splitting, background ambient
+  for (var y = 0; y < H; y++) {
+    var sl = getScanlineShift(y);
 
     for (var x = 0; x < W; x++) {
       var idx = y * W + x;
       var inFace = hasMask && faceMask[idx] === 1;
 
-      if (inFace && imgData) {
-        // FACE AREA — RGB channel splitting
+      if (inFace) {
         var srcX = x;
-        if (lineCorrupt) srcX = Math.max(0, Math.min(W - 1, x + lineCorrupt.shift));
+        var scanShift = 0;
+        if (sl) {
+          scanShift = sl.shift;
+          srcX = Math.max(0, Math.min(W - 1, x + scanShift));
+        }
 
-        // Sample R from offset position
+        // Data moshing — show previous frame for frozen areas
+        if (moshActive && moshMask && moshMask[idx] && prevFrameData) {
+          var mpi = idx * 4;
+          var mr = prevFrameData[mpi];
+          var mg = prevFrameData[mpi + 1];
+          var mb = prevFrameData[mpi + 2];
+          var mlum = (0.299 * mr + 0.587 * mg + 0.114 * mb) / 255;
+          if (mlum > 0.03) {
+            var mci = Math.min(RAMP_DENSE.length - 1, (mlum * RAMP_DENSE.length) | 0);
+            // Tint frozen areas with a green/purple hue
+            var mhue = (t * 20 + x * 3) % 360;
+            drawCharHSL(RAMP_DENSE[mci], x, y, mhue, 70, 15 + mlum * 40);
+          }
+          continue;
+        }
+
+        // RED channel — shifted left
         var rxSrc = Math.max(0, Math.min(W - 1, srcX + rOffX));
         var rySrc = Math.max(0, Math.min(H - 1, y + rOffY));
         var rpi = (rySrc * W + rxSrc) * 4;
         var rVal = imgData[rpi];
 
-        // Sample G from center
+        // GREEN channel — center
         var gpi = (y * W + srcX) * 4;
         var gVal = imgData[gpi + 1];
 
-        // Sample B from opposite offset
+        // BLUE channel — shifted right
         var bxSrc = Math.max(0, Math.min(W - 1, srcX + bOffX));
         var bySrc = Math.max(0, Math.min(H - 1, y + bOffY));
         var bpi = (bySrc * W + bxSrc) * 4;
         var bVal = imgData[bpi + 2];
 
         var lum = (0.299 * rVal + 0.587 * gVal + 0.114 * bVal) / 255;
-        if (lum < 0.02 && !lineCorrupt) continue;
 
+        // Scanline corruption effects
         var ch;
         var cr = rVal, cg = gVal, cb = bVal;
 
-        // Data corruption on face
-        if (lineCorrupt && lineCorrupt.corrupt && Math.random() < 0.5) {
+        if (sl && sl.static_noise && Math.random() < 0.6) {
+          // Static noise on scanline
           ch = String.fromCharCode(33 + Math.floor(Math.random() * 94));
-          // Intense color for corrupted chars
-          if (Math.random() < 0.33) { cr = 255; cg = 0; cb = 0; }
-          else if (Math.random() < 0.5) { cr = 0; cg = 255; cb = 0; }
-          else { cr = 0; cg = 0; cb = 255; }
+          var noiseVal = Math.random() * 255;
+          cr = noiseVal;
+          cg = noiseVal;
+          cb = noiseVal;
+        } else if (sl && sl.invert) {
+          // Color inversion on scanline
+          cr = 255 - rVal;
+          cg = 255 - gVal;
+          cb = 255 - bVal;
+          lum = (0.299 * cr + 0.587 * cg + 0.114 * cb) / 255;
+          var ci = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
+          ch = RAMP_DENSE[ci];
         } else {
-          var ci3 = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
-          ch = RAMP_DENSE[ci3];
+          if (lum < 0.02 && !sl) continue;
+          var ci2 = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
+          ch = RAMP_DENSE[ci2];
         }
 
-        // Glitch-driven color intensity boost
-        var boost = 1 + glitchIntensity * 0.8;
+        if (ch === ' ') continue;
+
+        // Glitch intensity boost on colors
+        var boost = 1 + glitchIntensity * 1.2;
         cr = Math.min(255, (cr * boost) | 0);
         cg = Math.min(255, (cg * boost) | 0);
         cb = Math.min(255, (cb * boost) | 0);
 
-        var alpha = Math.max(0.4, Math.min(1, lum * 1.5 + glitchIntensity * 0.3));
+        var alpha = Math.max(0.4, Math.min(1, lum * 1.5 + glitchIntensity * 0.4));
         drawChar(ch, x, y, cr, cg, cb, alpha);
 
       } else {
-        // OUTSIDE FACE — calm dark ambient text
-        if (burstActive) {
-          // Full-screen burst — intense glitch everywhere
-          if (Math.random() < 0.3) {
-            var burstCh = String.fromCharCode(33 + Math.floor(Math.random() * 94));
-            var burstHue = (Math.random() * 360) | 0;
-            drawCharHSL(burstCh, x, y, burstHue, 90, 15 + Math.random() * 35);
-            continue;
-          }
-        }
-
-        // Quiet background
-        var bgWave = Math.sin(t * 0.5 + x * 0.08 + y * 0.06);
-        var bgBright = 3 + bgWave * 2;
-
-        if (bgBright < 2) continue;
-
-        // Subtle matrix-like falling chars
-        var fallSpeed = 1.5 + (x * 7 + 13) % 3;
-        var fallPos = ((t * fallSpeed + x * 2.3) % H);
-        var distFromFall = Math.abs(y - fallPos);
-        if (distFromFall > H / 2) distFromFall = H - distFromFall;
-
-        if (distFromFall < 3) {
-          var fallCh = String.fromCharCode(33 + ((x * 17 + y * 31 + Math.floor(t * 6)) % 94));
-          drawCharHSL(fallCh, x, y, 180, 30, 8 + (3 - distFromFall) * 4);
-        } else if (Math.random() < 0.02) {
-          drawCharHSL('.', x, y, 200, 20, 5);
+        // Outside face — sparse ambient
+        if (Math.random() < 0.005 + glitchIntensity * 0.01) {
+          var nch = String.fromCharCode(33 + Math.floor(Math.random() * 94));
+          drawCharHSL(nch, x, y, 200 + Math.random() * 40, 30, 3 + Math.random() * 5);
         }
       }
     }
+  }
+
+  // Render explosion particles on top
+  renderParticles(W, H);
+
+  // Store frame for data moshing
+  if (imgData) {
+    if (!prevFrameData || prevFrameData.length !== imgData.length) {
+      prevFrameData = new Uint8Array(imgData.length);
+    }
+    prevFrameData.set(imgData);
   }
 
   // Label
