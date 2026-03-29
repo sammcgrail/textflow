@@ -16,7 +16,10 @@ export var glyphH = 0;
 
 export function buildAtlas(gl) {
   var fontSize = state.FONT_SIZE;
-  var fontStr = fontSize + 'px "JetBrains Mono", monospace';
+  var dpr = state.dpr || 1;
+  // Render atlas at device pixel resolution for crisp text
+  var renderSize = fontSize * dpr;
+  var fontStr = renderSize + 'px "JetBrains Mono", monospace';
 
   // Measure glyph dimensions using a temp 2D canvas
   var measure = document.createElement('canvas').getContext('2d');
@@ -24,7 +27,7 @@ export function buildAtlas(gl) {
   measure.textBaseline = 'top';
   // Use 'M' width as cell width (monospace)
   var cw = Math.ceil(measure.measureText('M').width);
-  var ch = Math.ceil(fontSize * 1.25);
+  var ch = Math.ceil(renderSize * 1.25);
   // Pad 1px to avoid bleeding
   var pw = cw + 2;
   var ph = ch + 2;
