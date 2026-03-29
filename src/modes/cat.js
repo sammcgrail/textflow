@@ -117,13 +117,11 @@ function renderCat() {
   }
   positionCatImg();
 
-  // Integer grid snap for text exclusion
-  var snapGX = Math.round(catGX);
-  var snapGY = Math.round(catGY);
-  var cLeft = snapGX;
-  var cRight = snapGX + catGridW;
-  var cTop = snapGY;
-  var cBottom = snapGY + catGridH;
+  // Tight exclusion zone — ceil/floor to match DOM overlay exactly
+  var cLeft = Math.ceil(catGX);
+  var cRight = Math.floor(catGX + catGridW);
+  var cTop = Math.ceil(catGY);
+  var cBottom = Math.floor(catGY + catGridH);
 
   var ci = Math.floor(t * 2) % loremText.length;
   var hintAlpha = getHintAlpha(t);

@@ -380,15 +380,15 @@ function renderButtons() {
 
   flickerBorders(t);
 
-  // Pre-compute exclusion zones (integer snapped)
+  // Pre-compute exclusion zones — tight fit under DOM overlays
   var zones = [];
   for (var z = 0; z < elements.length; z++) {
     var ez = elements[z];
     zones.push({
-      left: Math.round(ez.gx),
-      right: Math.round(ez.gx) + ez.gw,
-      top: Math.round(ez.gy),
-      bottom: Math.round(ez.gy) + ez.gh,
+      left: Math.ceil(ez.gx),
+      right: Math.floor(ez.gx + ez.gw),
+      top: Math.ceil(ez.gy),
+      bottom: Math.floor(ez.gy + ez.gh),
       cx: ez.gx + ez.gw / 2,
       cy: ez.gy + ez.gh / 2
     });
