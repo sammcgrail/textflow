@@ -147,6 +147,11 @@ import './modes/northern.js';
 import './modes/tidal.js';
 import './modes/comet.js';
 import './modes/circuit2.js';
+import './modes/vidjellyfish.js';
+import './modes/vidlava.js';
+import './modes/vidcity.js';
+import './modes/vidocean.js';
+import './modes/vidfireworks.js';
 
 // ============================================================
 // INITIALIZATION

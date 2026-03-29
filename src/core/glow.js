@@ -136,7 +136,12 @@ export var glows = {
   northern: { color: 'rgba(100,255,180,0.35)', blur: 18 },
   tidal: { color: 'rgba(80,160,255,0.3)', blur: 12 },
   comet: { color: 'rgba(200,180,255,0.35)', blur: 16 },
-  circuit2: { color: 'rgba(0,255,150,0.3)', blur: 10 }
+  circuit2: { color: 'rgba(0,255,150,0.3)', blur: 10 },
+  vidjellyfish: { color: 'rgba(100,180,255,0.35)', blur: 16 },
+  vidlava: { color: 'rgba(255,100,30,0.4)', blur: 14 },
+  vidcity: { color: 'rgba(255,200,100,0.3)', blur: 12 },
+  vidocean: { color: 'rgba(50,150,255,0.35)', blur: 14 },
+  vidfireworks: { color: 'rgba(255,150,50,0.4)', blur: 18 }
 };
 
 var glowCanvas = null;
