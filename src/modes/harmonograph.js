@@ -8,6 +8,7 @@ function initHarmonograph() { hgTrail = []; }
 function renderHarmonograph() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
+  var ar = state.CHAR_W / state.CHAR_H;
   if (!hgTrail) initHarmonograph();
   var t = state.time;
   var f1 = 2.01, f2 = 3.0, f3 = 2.99, f4 = 2.0;
@@ -17,17 +18,16 @@ function renderHarmonograph() {
     f1 = 1.5 + pointer.gx / W * 3;
     f3 = 1.5 + pointer.gy / H * 3;
   }
-  // Add new points
   for (var i = 0; i < 5; i++) {
     var tt = t + i * 0.02;
     var x = Math.sin(tt * f1 + p1) * Math.exp(-d1 * tt * 2) + Math.sin(tt * f2 + p2) * Math.exp(-d2 * tt * 2);
     var y = Math.sin(tt * f3 + p3) * Math.exp(-d1 * tt * 2) + Math.sin(tt * f4 + p4) * Math.exp(-d2 * tt * 2);
+    // Apply aspect ratio correction — scale x wider since chars are narrow
     var gx = ((x * 0.45 + 0.5) * W) | 0;
-    var gy = ((y * 0.45 + 0.5) * H) | 0;
+    var gy = ((y * 0.45 * ar + 0.5) * H) | 0;
     if (gx >= 0 && gx < W && gy >= 0 && gy < H) hgTrail.push({ x: gx, y: gy, t: t });
   }
-  // Trim old trail
-  while (hgTrail.length > 2000) hgTrail.shift();
+  while (hgTrail.length > 3000) hgTrail.shift();
   for (var i = 0; i < hgTrail.length; i++) {
     var p = hgTrail[i];
     var age = t - p.t;

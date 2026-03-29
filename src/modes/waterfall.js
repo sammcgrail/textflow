@@ -13,38 +13,42 @@ function renderWaterfall() {
   if (pointer.down && state.currentMode === 'waterfall') {
     wfX += (pointer.gx - wfX) * 0.1;
   }
-  var fallX = wfX, fallW = 8;
-  var cliffY = H * 0.25;
+  var fallX = wfX | 0, fallW = Math.max(6, (W * 0.08) | 0);
+  var cliffY = (H * 0.2) | 0;
   var t = state.time;
-  for (var y = 0; y < H; y++) {
+  for (var y = 0; y <= cliffY; y++) {
     for (var x = 0; x < W; x++) {
-      if (y < cliffY && (x < fallX - fallW/2 || x > fallX + fallW/2)) {
-        var rock = Math.sin(x * 0.5 + y * 0.3) * 0.3 + 0.3;
-        if (rock > 0.2) {
-          var ri = (rock * (RAMP_DENSE.length - 1)) | 0;
-          drawCharHSL(RAMP_DENSE[ri], x, y, 30, 20, (10 + rock * 15) | 0);
-        }
-        continue;
-      }
-      if (x >= fallX - fallW/2 && x <= fallX + fallW/2 && y >= cliffY) {
-        var dist = Math.abs(x - fallX);
-        var flow = Math.sin(y * 0.5 - t * 8 + x * 0.3) * 0.5 + 0.5;
-        var fade = 1 - dist / (fallW / 2);
-        var v = flow * fade;
-        if (v > 0.1) drawCharHSL(v > 0.7 ? '|' : v > 0.4 ? ':' : '.', x, y, 200, 60, (20 + v * 40) | 0);
-      }
-      if (y > H * 0.75) {
-        var md = Math.abs(x - fallX);
-        if (md < fallW * 2) {
-          var mist = Math.sin(x * 0.2 + t * 2) * Math.sin(y * 0.3 - t) * (1 - md / (fallW * 2)) * (y - H * 0.75) / (H * 0.25);
-          if (mist > 0.2) drawCharHSL('.', x, y, 200, 30, (15 + mist * 20) | 0);
-        }
-      }
-      if (y > H * 0.85) {
-        var pool = Math.sin(x * 0.15 - t * 0.5 + y * 0.3) * 0.3 + 0.4;
-        if (pool > 0.3) drawCharHSL('~', x, y, 210, 50, (15 + pool * 20) | 0);
+      if (x > fallX - fallW/2 && x < fallX + fallW/2) continue;
+      var rock = Math.sin(x * 0.3 + y * 0.5) * 0.2 + Math.sin(x * 0.7 - y * 0.3) * 0.15 + 0.4;
+      if (rock > 0.25) {
+        var ri = Math.min(RAMP_DENSE.length - 1, (rock * (RAMP_DENSE.length - 1)) | 0);
+        drawCharHSL(RAMP_DENSE[ri], x, y, 25, 25, (8 + rock * 18) | 0);
       }
     }
+  }
+  for (var y = cliffY; y < H; y++) {
+    for (var x = (fallX - fallW/2) | 0; x <= (fallX + fallW/2) | 0; x++) {
+      if (x < 0 || x >= W) continue;
+      var dist = Math.abs(x - fallX) / (fallW / 2);
+      var flow = Math.sin(y * 0.4 - t * 10 + x * 0.5) * 0.5 + 0.5;
+      var v = flow * (1 - dist);
+      if (v > 0.1) drawCharHSL(v > 0.7 ? '|' : v > 0.4 ? ':' : '.', x, y, 200, 70, (15 + v * 45) | 0);
+    }
+  }
+  var splashY = (H * 0.8) | 0;
+  for (var y = splashY; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var md = Math.abs(x - fallX);
+      var maxSpread = fallW * 2 + (y - splashY) * 1.5;
+      if (md < maxSpread) {
+        var mist = Math.sin(x * 0.15 + t * 3) * Math.sin(y * 0.2 - t * 1.5) * (1 - md / maxSpread);
+        if (mist > 0.15) drawCharHSL(mist > 0.4 ? '~' : '.', x, y, 200, 40, (10 + mist * 25) | 0);
+      }
+    }
+  }
+  for (var x = 0; x < W; x++) {
+    var wave = Math.sin(x * 0.1 - t * 0.8) * 0.3 + 0.5;
+    drawCharHSL('~', x, H - 2, 210, 50, (12 + wave * 18) | 0);
   }
 }
 registerMode('waterfall', { init: initWaterfall, render: renderWaterfall });
