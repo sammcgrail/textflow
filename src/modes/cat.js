@@ -2,17 +2,21 @@ import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-// Cat mode — draggable cat with text reflow + fading "MOVE THE CAT" hint
+// Cat mode — draggable + resizable cat with text reflow
 var catImg = null;
 var catLoaded = false;
 var catNatW = 1, catNatH = 1;
+var catAspect = 1; // natH / natW
 
 var catGX = 0, catGY = 0;
-var catTargetGX = 0, catTargetGY = 0; // smooth interpolation targets
+var catTargetGX = 0, catTargetGY = 0;
 var catGridW = 0, catGridH = 0;
+var catBaseW = 0; // user-controlled width (resizable)
 var dragging = false;
+var resizing = false;
 var dragOffX = 0, dragOffY = 0;
-var hasDragged = false; // stop showing hint after first drag
+var resizeStartDist = 0, resizeStartW = 0;
+var hasDragged = false;
 
 var loremText = 'The quick brown fox jumps over the lazy dog. ' +
   'Pack my box with five dozen liquor jugs. ' +
@@ -29,8 +33,8 @@ var loremText = 'The quick brown fox jumps over the lazy dog. ' +
   'The jay, pig, fox, zebra, and my wolves quack. ';
 
 var hintText = 'MOVE THE CAT';
-var hintInterval = 6; // seconds between hints
-var hintDuration = 3; // seconds hint is visible
+var hintInterval = 6;
+var hintDuration = 3;
 
 function ensureCatImg() {
   if (catImg) return;
@@ -50,19 +54,22 @@ function ensureCatImg() {
     catLoaded = true;
     catNatW = catImg.naturalWidth || 1;
     catNatH = catImg.naturalHeight || 1;
+    catAspect = catNatH / catNatW;
   };
 }
 
 function computeCatSize() {
-  catGridW = state.isMobile ? 12 : 20;
+  catGridW = catBaseW;
+  // Pixel-based aspect ratio calculation
   var pixW = catGridW * state.CHAR_W;
-  var pixH = pixW * (catNatH / catNatW);
-  catGridH = Math.round(pixH / state.CHAR_H);
-  if (catGridH < 4) catGridH = 4;
+  var pixH = pixW * catAspect;
+  catGridH = Math.floor(pixH / state.CHAR_H);
+  if (catGridH < 3) catGridH = 3;
 }
 
 function initCat() {
   ensureCatImg();
+  catBaseW = state.isMobile ? 12 : 20;
   computeCatSize();
   catGX = Math.floor(state.COLS / 2 - catGridW / 2);
   catGY = Math.floor(state.ROWS / 2 - catGridH / 2);
@@ -83,29 +90,15 @@ function positionCatImg() {
   catImg.style.height = Math.round(ph) + 'px';
 }
 
-// Compute hint fade alpha for current time
 function getHintAlpha(t) {
   if (hasDragged) return 0;
   var cycle = t % (hintInterval + hintDuration);
   if (cycle < hintDuration) {
-    // Fade in for 0.5s, hold, fade out for 0.5s
     if (cycle < 0.5) return cycle / 0.5;
     if (cycle > hintDuration - 0.5) return (hintDuration - cycle) / 0.5;
     return 1;
   }
   return 0;
-}
-
-// Check if a position in the text stream should show hint text
-function getHintChar(streamPos, W, t) {
-  // Place hint text roughly in the middle of the visible text
-  // Find a position that's roughly center-ish
-  var hintStartPos = Math.floor(W * Math.floor(state.ROWS * 0.3)) + Math.floor(W / 2 - hintText.length / 2);
-  var offset = streamPos - hintStartPos;
-  if (offset >= 0 && offset < hintText.length) {
-    return hintText[offset];
-  }
-  return null;
 }
 
 function renderCat() {
@@ -115,7 +108,7 @@ function renderCat() {
 
   computeCatSize();
 
-  // Direct position from target (no lerp), half-cell snap for finer movement
+  // Half-cell snap for fine movement
   catGX = Math.round(catTargetGX * 2) / 2;
   catGY = Math.round(catTargetGY * 2) / 2;
 
@@ -124,7 +117,7 @@ function renderCat() {
   }
   positionCatImg();
 
-  // Snap to integer grid for text exclusion
+  // Integer grid snap for text exclusion
   var snapGX = Math.round(catGX);
   var snapGY = Math.round(catGY);
   var cLeft = snapGX;
@@ -135,16 +128,12 @@ function renderCat() {
   var ci = Math.floor(t * 2) % loremText.length;
   var hintAlpha = getHintAlpha(t);
 
-  // Track stream position for hint placement
-  var streamPos = 0;
-  // Pre-compute hint row/col in non-cat area
   var hintRow = -1, hintColStart = -1;
   if (hintAlpha > 0) {
-    // Find a good row for the hint — above or below the cat
     var candidateRow = catGY - 3;
     if (candidateRow < 2) candidateRow = catGY + catGridH + 2;
     if (candidateRow >= 0 && candidateRow < H) {
-      hintRow = candidateRow;
+      hintRow = Math.round(candidateRow);
       hintColStart = Math.floor(W / 2 - hintText.length / 2);
     }
   }
@@ -160,11 +149,9 @@ function renderCat() {
       var ch = loremText[ci % loremText.length];
       ci++;
 
-      // Check if this cell should show hint text instead
       var isHint = false;
       if (hintAlpha > 0 && y === hintRow && x >= hintColStart && x < hintColStart + hintText.length) {
-        var hi = x - hintColStart;
-        ch = hintText[hi];
+        ch = hintText[x - hintColStart];
         isHint = true;
       }
 
@@ -179,7 +166,6 @@ function renderCat() {
       var hue, bright, sat;
 
       if (isHint) {
-        // Hint: bright white/gold, fading
         hue = 45;
         sat = 30;
         bright = 20 + hintAlpha * 50;
@@ -211,6 +197,7 @@ function attachCat() {
   }
   requestAnimationFrame(watchMode);
 
+  // --- DRAG (single pointer) ---
   state.canvas.addEventListener('pointerdown', function(e) {
     if (state.currentMode !== 'cat') return;
     var mx = e.clientX / state.CHAR_W;
@@ -241,6 +228,65 @@ function attachCat() {
   });
 
   state.canvas.addEventListener('pointercancel', function() { dragging = false; });
+
+  // --- RESIZE: two-finger pinch (mobile) ---
+  var lastPinchDist = 0;
+  var pinchActive = false;
+
+  state.canvas.addEventListener('touchstart', function(e) {
+    if (state.currentMode !== 'cat') return;
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      dragging = false; // cancel drag when pinching
+      pinchActive = true;
+      var dx = e.touches[0].clientX - e.touches[1].clientX;
+      var dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastPinchDist = Math.sqrt(dx * dx + dy * dy);
+      resizeStartW = catBaseW;
+    }
+  }, { passive: false });
+
+  state.canvas.addEventListener('touchmove', function(e) {
+    if (state.currentMode !== 'cat' || !pinchActive || e.touches.length < 2) return;
+    e.preventDefault();
+    var dx = e.touches[0].clientX - e.touches[1].clientX;
+    var dy = e.touches[0].clientY - e.touches[1].clientY;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    var scale = dist / lastPinchDist;
+    var newW = Math.round(resizeStartW * scale);
+    newW = Math.max(4, Math.min(state.COLS - 2, newW));
+    catBaseW = newW;
+    hasDragged = true;
+  }, { passive: false });
+
+  state.canvas.addEventListener('touchend', function(e) {
+    if (e.touches.length < 2) {
+      pinchActive = false;
+    }
+  });
+
+  // --- RESIZE: scroll wheel (desktop) ---
+  state.canvas.addEventListener('wheel', function(e) {
+    if (state.currentMode !== 'cat') return;
+    // Only resize when pointer is over the cat
+    var mx = e.clientX / state.CHAR_W;
+    var my = (e.clientY - state.NAV_H) / state.CHAR_H;
+    if (mx >= catGX && mx < catGX + catGridW && my >= catGY && my < catGY + catGridH) {
+      e.preventDefault();
+      e.stopPropagation();
+      var delta = e.deltaY > 0 ? -1 : 1;
+      var newW = catBaseW + delta;
+      newW = Math.max(4, Math.min(state.COLS - 2, newW));
+      // Re-center: keep cat center stable
+      var oldCenterX = catTargetGX + catGridW / 2;
+      var oldCenterY = catTargetGY + catGridH / 2;
+      catBaseW = newW;
+      computeCatSize();
+      catTargetGX = Math.max(0, Math.min(state.COLS - catGridW, oldCenterX - catGridW / 2));
+      catTargetGY = Math.max(0, Math.min(state.ROWS - catGridH, oldCenterY - catGridH / 2));
+      hasDragged = true;
+    }
+  }, { passive: false });
 }
 
 registerMode('cat', { init: initCat, render: renderCat, attach: attachCat });
