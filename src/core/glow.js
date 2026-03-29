@@ -146,7 +146,13 @@ export var glows = {
   facemesh: { color: 'rgba(200,150,255,0.35)', blur: 14 },
   webcam: { color: 'rgba(200,200,255,0.3)', blur: 10 },
   facepass: { color: 'rgba(180,200,255,0.35)', blur: 12 },
-  headcube: { color: 'rgba(150,180,255,0.35)', blur: 14 }
+  headcube: { color: 'rgba(150,180,255,0.35)', blur: 14 },
+  camtrail: { color: 'rgba(200,100,255,0.35)', blur: 14 },
+  camhalftone: { color: 'rgba(0,255,100,0.3)', blur: 10 },
+  camdepth: { color: 'rgba(255,150,80,0.35)', blur: 14 },
+  faceglitch: { color: 'rgba(255,0,200,0.4)', blur: 16 },
+  facepaint: { color: 'rgba(200,100,255,0.4)', blur: 16 },
+  facemirror: { color: 'rgba(180,200,255,0.35)', blur: 12 }
 };
 
 var glowCanvas = null;
