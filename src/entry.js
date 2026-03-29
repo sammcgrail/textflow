@@ -178,6 +178,12 @@ import './modes/facemesh.js';
 import './modes/webcam.js';
 import './modes/facepass.js';
 import './modes/headcube.js';
+import './modes/camtrail.js';
+import './modes/camhalftone.js';
+import './modes/camdepth.js';
+import './modes/faceglitch.js';
+import './modes/facepaint.js';
+import './modes/facemirror.js';
 
 // ============================================================
 // INITIALIZATION
