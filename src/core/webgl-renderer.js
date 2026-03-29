@@ -1,15 +1,15 @@
 // WebGL 2 Renderer — instanced quad rendering + Kawase bloom
 import { state } from './state.js';
-import { atlasTexture, uvs, buildAtlas, charSlot, glyphW, glyphH } from './atlas.js';
+import { atlasTexture, uvs, buildAtlas, charSlot, glyphW, glyphH, msdfPxRange, glyphOffsets } from './atlas.js';
 import { glows } from './glow.js';
 
 // ============================================================
 // CONSTANTS
 // ============================================================
 var MAX_INSTANCES = 32768;
-// Per instance: x, y, u0, u1, v0, v1, r, g, b, a = 10 floats
-var FLOATS_PER_INSTANCE = 10;
-var BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4; // 40 bytes
+// Per instance: x, y, u0, u1, v0, v1, r, g, b, a, qOffX, qOffY, qScaleX, qScaleY = 14 floats
+var FLOATS_PER_INSTANCE = 14;
+var BYTES_PER_INSTANCE = FLOATS_PER_INSTANCE * 4; // 56 bytes
 var BLOOM_PASSES = 4;
 var BLOOM_SCALE = 0.15;
 
@@ -24,7 +24,7 @@ var kawaseProg = null;
 var blendProg = null;
 
 // Char program uniforms
-var cu_atlas, cu_screenSize, cu_charSize, cu_navH, cu_gamma;
+var cu_atlas, cu_screenSize, cu_charSize, cu_navH, cu_pxRange, cu_weightOffset;
 
 // Kawase program uniforms
 var ku_src, ku_texelSize, ku_iteration;
@@ -56,14 +56,17 @@ layout(location=0) in vec2 a_quad;\n\
 layout(location=1) in vec2 a_pos;\n\
 layout(location=2) in vec4 a_uv;\n\
 layout(location=3) in vec4 a_color;\n\
+layout(location=4) in vec4 a_quadRect;\n\
 uniform vec2 u_screenSize;\n\
 uniform vec2 u_charSize;\n\
 uniform float u_navH;\n\
 out vec2 v_uv;\n\
 out vec4 v_color;\n\
 void main(){\n\
-  float px = a_pos.x * u_charSize.x + a_quad.x * u_charSize.x;\n\
-  float py = u_navH + a_pos.y * u_charSize.y + a_quad.y * u_charSize.y;\n\
+  float qx = a_quadRect.x + a_quad.x * a_quadRect.z;\n\
+  float qy = a_quadRect.y + a_quad.y * a_quadRect.w;\n\
+  float px = a_pos.x * u_charSize.x + qx * u_charSize.x;\n\
+  float py = u_navH + a_pos.y * u_charSize.y + qy * u_charSize.y;\n\
   px = floor(px + 0.5);\n\
   py = floor(py + 0.5);\n\
   float cx = (px / u_screenSize.x) * 2.0 - 1.0;\n\
@@ -76,16 +79,24 @@ void main(){\n\
 var CHAR_FS = '#version 300 es\n\
 precision highp float;\n\
 uniform sampler2D u_atlas;\n\
-uniform float u_gamma;\n\
+uniform float u_pxRange;\n\
+uniform float u_weightOffset;\n\
 in vec2 v_uv;\n\
 in vec4 v_color;\n\
 out vec4 fragColor;\n\
+float median(float r, float g, float b){\n\
+  return max(min(r,g), min(max(r,g), b));\n\
+}\n\
 void main(){\n\
-  vec4 t = texture(u_atlas, v_uv);\n\
-  float raw = max(t.r, max(t.g, t.b));\n\
-  if(raw < 0.05) discard;\n\
-  float mask = pow(raw, u_gamma);\n\
-  fragColor = vec4(v_color.rgb, v_color.a * mask);\n\
+  vec3 msd = texture(u_atlas, v_uv).rgb;\n\
+  float sd = median(msd.r, msd.g, msd.b);\n\
+  vec2 unitRange = vec2(u_pxRange) / vec2(textureSize(u_atlas, 0));\n\
+  vec2 screenTexSize = vec2(1.0) / fwidth(v_uv);\n\
+  float screenPxRange = max(0.5 * dot(unitRange, screenTexSize), 1.0);\n\
+  float screenPxDist = screenPxRange * (sd - 0.5 + u_weightOffset);\n\
+  float alpha = clamp(screenPxDist + 0.5, 0.0, 1.0);\n\
+  if(alpha < 0.01) discard;\n\
+  fragColor = vec4(v_color.rgb, v_color.a * alpha);\n\
 }';
 
 var FULLSCREEN_VS = '#version 300 es\n\
@@ -161,7 +172,8 @@ export function initWebGL() {
   cu_screenSize = gl.getUniformLocation(charProg, 'u_screenSize');
   cu_charSize = gl.getUniformLocation(charProg, 'u_charSize');
   cu_navH = gl.getUniformLocation(charProg, 'u_navH');
-  cu_gamma = gl.getUniformLocation(charProg, 'u_gamma');
+  cu_pxRange = gl.getUniformLocation(charProg, 'u_pxRange');
+  cu_weightOffset = gl.getUniformLocation(charProg, 'u_weightOffset');
 
   // Kawase uniforms
   ku_src = gl.getUniformLocation(kawaseProg, 'u_src');
@@ -218,6 +230,11 @@ function createCharVAO() {
   gl.enableVertexAttribArray(3);
   gl.vertexAttribPointer(3, 4, gl.FLOAT, false, BYTES_PER_INSTANCE, 24);
   gl.vertexAttribDivisor(3, 1);
+
+  // a_quadRect: offsetX, offsetY, scaleX, scaleY — offset 40
+  gl.enableVertexAttribArray(4);
+  gl.vertexAttribPointer(4, 4, gl.FLOAT, false, BYTES_PER_INSTANCE, 40);
+  gl.vertexAttribDivisor(4, 1);
 
   gl.bindVertexArray(null);
 }
@@ -326,6 +343,10 @@ export function addChar(code, x, y, r, g, b, a) {
   instanceData[i + 7] = g;
   instanceData[i + 8] = b;
   instanceData[i + 9] = a;
+  instanceData[i + 10] = glyphOffsets[c4];     // quad offsetX
+  instanceData[i + 11] = glyphOffsets[c4 + 1]; // quad offsetY
+  instanceData[i + 12] = glyphOffsets[c4 + 2]; // quad scaleX
+  instanceData[i + 13] = glyphOffsets[c4 + 3]; // quad scaleY
   instanceCount++;
 }
 
@@ -345,9 +366,9 @@ function midFrameFlush() {
   gl.uniform2f(cu_screenSize, cw, ch);
   gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
-  // Gamma correction: higher gamma = thinner text. DPR 1 needs more thinning.
-  var gamma = state.dpr <= 1 ? 1.6 : (state.dpr < 2 ? 1.4 : 1.2);
-  gl.uniform1f(cu_gamma, gamma);
+  // MSDF uniforms — pxRange from atlas metadata, weightOffset for thickness tuning
+  gl.uniform1f(cu_pxRange, msdfPxRange);
+  gl.uniform1f(cu_weightOffset, 0.0);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
@@ -376,8 +397,8 @@ export function flushFrame() {
   gl.uniform2f(cu_screenSize, cw, ch);
   gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
-  var gamma = state.dpr <= 1 ? 1.6 : (state.dpr < 2 ? 1.4 : 1.2);
-  gl.uniform1f(cu_gamma, gamma);
+  gl.uniform1f(cu_pxRange, msdfPxRange);
+  gl.uniform1f(cu_weightOffset, 0.0);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
