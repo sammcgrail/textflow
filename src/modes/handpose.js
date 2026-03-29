@@ -190,7 +190,8 @@ function updateHandMask() {
 
     if (pts.length < 21) continue;
 
-    // Draw thick lines along hand connections to create mask
+    // Fill hand shape first (value 1)
+    // Draw thick lines along hand connections
     for (var c = 0; c < HAND_CONNECTIONS.length; c++) {
       var a = pts[HAND_CONNECTIONS[c][0]];
       var b = pts[HAND_CONNECTIONS[c][1]];
@@ -202,15 +203,53 @@ function updateHandMask() {
       fillCircle(pts[li].x, pts[li].y, 2.0);
     }
 
-    // Fill palm area (polygon from outline landmarks)
+    // Fill palm area
     var palmPts = [];
     for (var oi = 0; oi < HAND_OUTLINE.length; oi++) {
       palmPts.push(pts[HAND_OUTLINE[oi]]);
     }
     fillPolygon(palmPts);
 
-    // Also fill finger segments thicker
+    // Fill finger segments thicker
     fillFingerSegments(pts);
+
+    // Now overlay skeleton lines (value 2) and joint nodes (value 3)
+    for (var sc = 0; sc < HAND_CONNECTIONS.length; sc++) {
+      var sa = pts[HAND_CONNECTIONS[sc][0]];
+      var sb = pts[HAND_CONNECTIONS[sc][1]];
+      drawSkeletonLine(sa.x, sa.y, sb.x, sb.y);
+    }
+    for (var ji = 0; ji < pts.length; ji++) {
+      markJoint(pts[ji].x, pts[ji].y);
+    }
+  }
+}
+
+function drawSkeletonLine(x0, y0, x1, y1) {
+  var W = handMaskW;
+  var dx = x1 - x0, dy = y1 - y0;
+  var len = Math.sqrt(dx * dx + dy * dy);
+  var steps = Math.max(1, Math.ceil(len * 1.5));
+  for (var s = 0; s <= steps; s++) {
+    var t = s / steps;
+    var cx = Math.round(x0 + dx * t);
+    var cy = Math.round(y0 + dy * t);
+    if (cx >= 0 && cx < handMaskW && cy >= 0 && cy < handMaskH) {
+      handMask[cy * W + cx] = 2;
+    }
+  }
+}
+
+function markJoint(cx, cy) {
+  var W = handMaskW, H = handMaskH;
+  var ix = Math.round(cx), iy = Math.round(cy);
+  for (var dy = -1; dy <= 1; dy++) {
+    for (var dx = -1; dx <= 1; dx++) {
+      var nx = ix + dx, ny = iy + dy;
+      if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+        handMask[ny * W + nx] = 3;
+      }
+    }
   }
 }
 
@@ -373,8 +412,23 @@ function renderFlowingText(W, H, t, imgData) {
       var isHand = hasMask && handMask[idx];
 
       if (isHand) {
-        // Hand area: show hand outline glow
-        // Check if we're on the edge of the hand mask
+        var maskVal = handMask[idx];
+
+        if (maskVal === 3) {
+          // Joint node — bright dot
+          var jointHue = (t * 60 + x * 5 + y * 3) % 360;
+          drawCharHSL('@', x, y, jointHue, 90, 60);
+          continue;
+        }
+
+        if (maskVal === 2) {
+          // Skeleton line — thin connecting line
+          var lineHue = (t * 40 + x * 3 + y * 2) % 360;
+          drawCharHSL('-', x, y, lineHue, 70, 45);
+          continue;
+        }
+
+        // Hand fill area (maskVal === 1): check edge
         var isEdge = false;
         if (x > 0 && !handMask[idx - 1]) isEdge = true;
         else if (x < W - 1 && !handMask[idx + 1]) isEdge = true;
@@ -382,11 +436,9 @@ function renderFlowingText(W, H, t, imgData) {
         else if (y < H - 1 && !handMask[idx + W]) isEdge = true;
 
         if (isEdge) {
-          // Glowing hand outline
           var edgeHue = (t * 30 + x * 2 + y * 3) % 360;
           drawCharHSL('|', x, y, edgeHue, 80, 55);
         }
-        // Inside hand: leave empty (text wraps around)
         continue;
       }
 
