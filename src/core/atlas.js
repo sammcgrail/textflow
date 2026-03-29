@@ -5,7 +5,7 @@ var FIRST_CHAR = 32;   // space
 var LAST_CHAR = 126;   // tilde
 var ASCII_COUNT = LAST_CHAR - FIRST_CHAR + 1; // 95 glyphs
 
-// Extra Unicode glyphs used by modes (dial, typewriter, vhs, rain3d, oscilloscope)
+// Extra Unicode glyphs used by modes (dial, typewriter, vhs, rain3d, oscilloscope, hexlife)
 var EXTRA_GLYPHS = [
   0x2588, // █ (typewriter cursor, dial bars)
   0x2591, // ░ (dial empty bars)
@@ -14,6 +14,8 @@ var EXTRA_GLYPHS = [
   0x00B7, // · (rain3d, oscilloscope grid)
   0x25B2, // ▲ (dial needle up)
   0x25BC, // ▼ (dial needle down)
+  0x2B21, // ⬡ (hexlife white hexagon)
+  0x2B22, // ⬢ (hexlife black hexagon)
 ];
 var EXTRA_SLOT_START = 127;
 
