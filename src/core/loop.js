@@ -51,16 +51,10 @@ export function scrollNavToMode(mode, instant) {
   var container = document.querySelector('.nav-buttons');
   var btn = container.querySelector('button[data-mode="' + mode + '"]');
   if (!btn) return;
-  var cRect = container.getBoundingClientRect();
-  var bRect = btn.getBoundingClientRect();
-  // Check visibility with margin so buttons aren't cramped against edges
-  var margin = 8;
-  if (bRect.left >= cRect.left + margin && bRect.right <= cRect.right - margin) return;
-  // Off left side or random mode → place button near left with padding
-  if (bRect.left < cRect.left + margin) {
-    container.scrollTo({ left: Math.max(0, btn.offsetLeft - 12), behavior: instant ? 'instant' : 'smooth' });
-  } else {
-    // Off right side → scroll just enough to show it on the right with padding
-    container.scrollTo({ left: btn.offsetLeft + btn.offsetWidth - container.clientWidth + 12, behavior: instant ? 'instant' : 'smooth' });
-  }
+  // Always center the active button in the visible scroll area
+  var containerWidth = container.clientWidth;
+  var btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
+  var scrollTarget = btnCenter - containerWidth / 2;
+  scrollTarget = Math.max(0, Math.min(scrollTarget, container.scrollWidth - containerWidth));
+  container.scrollTo({ left: scrollTarget, behavior: instant ? 'instant' : 'smooth' });
 }
