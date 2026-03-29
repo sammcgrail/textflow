@@ -187,6 +187,11 @@ import './modes/handlaser.js';
 import './modes/handgravity.js';
 import './modes/facepaint.js';
 import './modes/facemirror.js';
+import './modes/threeterrain.js';
+import './modes/threetunnel.js';
+import './modes/threeparticles.js';
+import './modes/threeshapes.js';
+import './modes/threefacecube.js';
 
 // ============================================================
 // INITIALIZATION
