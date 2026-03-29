@@ -1,9 +1,11 @@
 import { state } from './state.js';
 import { resizeWebGL } from './webgl-renderer.js';
 
+var INFO_BAR_H = 16; // bottom info bar height in CSS px
+
 export function resize() {
   var w = window.innerWidth;
-  var h = window.innerHeight;
+  var h = window.innerHeight - INFO_BAR_H;
   state.canvas.width = w * state.dpr;
   state.canvas.height = h * state.dpr;
   state.canvas.style.width = w + 'px';

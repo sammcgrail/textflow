@@ -6,12 +6,13 @@ import { state } from '../core/state.js';
 
 var mandelCx, mandelCy, mandelZoom, mandelIter, mandelImage, mandelW, mandelH, mandelDirty;
 function initMandel() {
-  mandelW = state.COLS; mandelH = state.ROWS;
   mandelCx = -0.5; mandelCy = 0;
   mandelZoom = 3.0;
-  mandelImage = new Float32Array(mandelW * mandelH);
-  mandelDirty = true;
   mandelIter = 0;
+  // Force fresh buffer allocation on first render frame
+  mandelW = 0; mandelH = 0;
+  mandelImage = null;
+  mandelDirty = true;
 }
 // initMandel(); — called via registerMode
 function mandelCompute() {
@@ -47,7 +48,11 @@ function mandelCompute() {
 function renderMandel() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
-  if (mandelW !== W || mandelH !== H) initMandel();
+  if (mandelW !== W || mandelH !== H) {
+    mandelW = W; mandelH = H;
+    mandelImage = new Float32Array(W * H);
+    mandelDirty = true;
+  }
   // Click sets center and zooms in
   if (pointer.clicked && state.currentMode === 'mandel') {
     pointer.clicked = false;

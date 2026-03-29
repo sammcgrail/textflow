@@ -108,8 +108,8 @@ nav button.active {
 canvas {
   display: block;
   width: 100%;
-  height: 100%;
-  height: 100dvh;
+  height: calc(100% - 16px);
+  height: calc(100dvh - 16px);
   will-change: transform;
   contain: strict;
 }
@@ -129,26 +129,25 @@ canvas {
 
 /* === Overlays === */
 
-#fps {
-  position: fixed;
-  bottom: 2px;
-  left: 6px;
-  z-index: 200;
+#info-bar {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  background: #0a0a0f;
   font-family: 'JetBrains Mono', monospace;
   font-size: 8px;
-  color: rgba(255,255,255,0.6);
   pointer-events: none;
+  flex-shrink: 0;
+}
+
+#fps {
+  color: rgba(255,255,255,0.6);
 }
 
 #version {
-  position: fixed;
-  bottom: 2px;
-  right: 6px;
-  z-index: 200;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 8px;
   color: rgba(255,255,255,0.35);
-  pointer-events: none;
 }
 
 /* === Animations === */
