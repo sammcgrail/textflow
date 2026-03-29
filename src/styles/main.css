@@ -45,7 +45,7 @@ nav {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
@@ -64,7 +64,7 @@ nav .logo {
   color: rgba(255, 255, 255, 0.4);
   text-transform: uppercase;
   flex-shrink: 0;
-  padding: 0.25rem 0.75rem;
+  padding: 0.4rem 0.75rem;
   background: rgba(10, 10, 15, 0.95);
   z-index: 2;
   position: relative;
