@@ -44,7 +44,7 @@ function createDOMElement(elem) {
   el.style.pointerEvents = 'auto';
   el.style.background = '#0a0a0f';
   el.style.borderRadius = '6px';
-  el.style.border = '1px solid #333';
+  el.style.border = '7px solid #0a0a0f';
   el.style.boxSizing = 'border-box';
   el.style.fontFamily = '"JetBrains Mono", monospace';
   el.style.fontSize = '13px';
@@ -65,7 +65,7 @@ function buildLaunchButton(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.border = '1px solid #f06';
+  el.style.border = '7px solid #0a0a0f';
   el.style.boxShadow = '0 0 8px #f06, inset 0 0 4px #f06';
   el.style.transition = 'box-shadow 0.15s';
   var btn = document.createElement('button');
@@ -95,7 +95,7 @@ function buildTextInput(elem) {
   el.style.display = 'flex';
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
-  el.style.border = '1px solid #0af';
+  el.style.border = '7px solid #0a0a0f';
   el.style.boxShadow = '0 0 4px #0af33';
   var inp = document.createElement('input');
   inp.type = 'text';
@@ -125,7 +125,7 @@ function buildToggle(elem) {
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
   el.style.gap = '6px';
-  el.style.border = '1px solid ' + (toggleOn ? '#0f6' : '#f60');
+  el.style.border = '7px solid #0a0a0f';
 
   var label = document.createElement('span');
   label.textContent = toggleOn ? 'ON' : 'OFF';
@@ -164,7 +164,7 @@ function buildToggle(elem) {
     label.style.color = toggleOn ? '#0f6' : '#f60';
     track.style.background = toggleOn ? '#0f6' : '#333';
     knob.style.left = toggleOn ? '16px' : '2px';
-    el.style.border = '1px solid ' + (toggleOn ? '#0f6' : '#f60');
+    el.style.border = '7px solid #0a0a0f';
     addRipple(elem.gx + elem.gw / 2, elem.gy + elem.gh / 2, 15);
   });
 }
@@ -175,7 +175,7 @@ function buildSlider(elem) {
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
   el.style.gap = '6px';
-  el.style.border = '1px solid #a0f';
+  el.style.border = '7px solid #0a0a0f';
   el.style.padding = '0 8px';
 
   var lbl = document.createElement('span');
@@ -207,7 +207,7 @@ function buildBadge(elem) {
   el.style.alignItems = 'center';
   el.style.justifyContent = 'center';
   el.style.borderRadius = '20px';
-  el.style.border = '1px solid #ff0';
+  el.style.border = '7px solid #0a0a0f';
   el.style.boxShadow = '0 0 4px #ff033';
   el.style.cursor = 'pointer';
 
@@ -303,14 +303,14 @@ function initButtons() {
   var mobile = state.isMobile;
 
   // Define element sizes
-  var bw = mobile ? 10 : 14;
-  var bh = mobile ? 3 : 3;
+  var bw = mobile ? 14 : 20;
+  var bh = mobile ? 4 : 4;
 
   // Spread elements across the grid
   var cx = Math.floor(W / 2);
   var cy = Math.floor(H / 2);
-  var spacingX = mobile ? 12 : 18;
-  var spacingY = mobile ? 5 : 6;
+  var spacingX = mobile ? 16 : 24;
+  var spacingY = mobile ? 6 : 7;
 
   // Remove old DOM elements
   for (var i = 0; i < elements.length; i++) {
