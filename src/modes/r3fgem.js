@@ -604,7 +604,12 @@ function initR3fgem() {
   var existing = document.querySelector('[data-mode-overlay="r3fgem"]');
   if (existing) {
     overlayEl = existing;
-    if (!renderer) return; // Vite/React build — R3FGem.jsx handles 3D rendering
+    if (!renderer) {
+      // Vite/React build — R3FGem.jsx handles 3D rendering.
+      // Re-show overlay in case doSwitch hid it (e.g. re-switching to same mode).
+      existing.style.display = 'block';
+      return;
+    }
   }
 
   // In Vite/React build, R3FGem.jsx handles 3D rendering via React Three Fiber.
