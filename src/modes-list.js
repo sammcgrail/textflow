@@ -1,5 +1,8 @@
-// Auto-extracted from src/index.html — ordered list of all modes with display labels
-// id = data-mode attribute, label = button text
+// Static ordered list of all modes with display labels.
+// This is intentionally NOT derived from the registry at runtime because
+// with code-splitting, only core modes are registered eagerly — the full
+// nav bar needs all 178 entries before lazy groups load.
+// When adding a new mode: add it here AND in the appropriate group file.
 export const MODES = [
   { id: "lava", label: "lava" },
   { id: "rain", label: "rain" },
