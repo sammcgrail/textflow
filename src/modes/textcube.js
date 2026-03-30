@@ -26,6 +26,14 @@ var lastDragX = 0;
 var lastDragY = 0;
 var autoRotate = true;
 
+// Position state (right-click / two-finger drag)
+var cubeOffX = 0;
+var cubeOffY = 0;
+var moving = false;
+var lastMoveX = 0;
+var lastMoveY = 0;
+var touchCount = 0;
+
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog ' +
   'Pack my box with five dozen liquor jugs ' +
@@ -44,7 +52,10 @@ function initTextcube() {
   rotVX = 0;
   rotVY = 0;
   dragging = false;
+  moving = false;
   autoRotate = true;
+  cubeOffX = 0;
+  cubeOffY = 0;
   cubeMask = null;
 
   if (!threeLoaded && !THREE) {
@@ -58,6 +69,39 @@ function initTextcube() {
   } else if (THREE) {
     setupScene();
   }
+}
+
+function createRoundedBox(w, h, d, r, segs) {
+  // Create a rounded box by extruding a rounded rect shape and combining faces
+  // Simpler approach: use capsule-like SDF or just use a sphere-modified box
+  // Easiest: BufferGeometry from a Box with chamfered edges
+  var shape = new THREE.Shape();
+  var hw = w / 2 - r;
+  var hh = h / 2 - r;
+  shape.moveTo(-hw, -h / 2);
+  shape.lineTo(hw, -h / 2);
+  shape.quadraticCurveTo(w / 2, -h / 2, w / 2, -hh);
+  shape.lineTo(w / 2, hh);
+  shape.quadraticCurveTo(w / 2, h / 2, hw, h / 2);
+  shape.lineTo(-hw, h / 2);
+  shape.quadraticCurveTo(-w / 2, h / 2, -w / 2, hh);
+  shape.lineTo(-w / 2, -hh);
+  shape.quadraticCurveTo(-w / 2, -h / 2, -hw, -h / 2);
+
+  var extrudeSettings = {
+    depth: d,
+    bevelEnabled: true,
+    bevelThickness: r,
+    bevelSize: r,
+    bevelOffset: -r,
+    bevelSegments: segs,
+    curveSegments: segs
+  };
+  var geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+  // Center the geometry (extrude goes from 0 to depth)
+  geo.translate(0, 0, -d / 2);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 function setupScene() {
@@ -101,8 +145,11 @@ function setupScene() {
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
   camera.position.z = 5;
 
-  // Cube — solid with visible edges
-  var geo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
+  // Cube with rounded edges using RoundedBoxGeometry approach
+  // Use a standard box but with bevel via custom geometry
+  var radius = 0.2;
+  var size = 1.8;
+  var geo = createRoundedBox(size, size, size, radius, 4);
 
   // Main cube — glossy visible material
   var mat = new THREE.MeshPhongMaterial({
@@ -115,9 +162,9 @@ function setupScene() {
   cube = new THREE.Mesh(geo, mat);
   scene.add(cube);
 
-  // Bright edge lines
-  var edgeGeo = new THREE.EdgesGeometry(geo);
-  var edgeMat = new THREE.LineBasicMaterial({ color: 0xaaccff, linewidth: 2 });
+  // Bright edge lines on rounded box
+  var edgeGeo = new THREE.EdgesGeometry(geo, 40);
+  var edgeMat = new THREE.LineBasicMaterial({ color: 0xaaccff });
   var edges = new THREE.LineSegments(edgeGeo, edgeMat);
   cube.add(edges);
 
@@ -140,46 +187,114 @@ function setupScene() {
 
 function attachTextcube() {
   var c = state.canvas;
-  c.addEventListener('mousedown', onPointerDown);
-  window.addEventListener('mousemove', onPointerMove);
-  window.addEventListener('mouseup', onPointerUp);
-  c.addEventListener('touchstart', onPointerDown, { passive: false });
-  window.addEventListener('touchmove', onPointerMove, { passive: false });
-  window.addEventListener('touchend', onPointerUp);
+  c.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  c.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  c.addEventListener('touchstart', onTouchStart, { passive: false });
+  window.addEventListener('touchmove', onTouchMove, { passive: false });
+  window.addEventListener('touchend', onTouchEnd);
 }
 
-function onPointerDown(e) {
-  dragging = true;
-  autoRotate = false;
-  var coords = getPointerCoords(e);
-  lastDragX = coords.x;
-  lastDragY = coords.y;
+function onMouseDown(e) {
   e.preventDefault();
-}
-
-function onPointerMove(e) {
-  if (!dragging) return;
-  var coords = getPointerCoords(e);
-  var dx = coords.x - lastDragX;
-  var dy = coords.y - lastDragY;
-  rotY += dx * 0.008;
-  rotX += dy * 0.008;
-  rotVY = dx * 0.003;
-  rotVX = dy * 0.003;
-  lastDragX = coords.x;
-  lastDragY = coords.y;
-  e.preventDefault();
-}
-
-function onPointerUp() {
-  dragging = false;
-}
-
-function getPointerCoords(e) {
-  if (e.touches && e.touches.length > 0) {
-    return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.button === 2) {
+    // Right-click: move cube
+    moving = true;
+    lastMoveX = e.clientX;
+    lastMoveY = e.clientY;
+  } else {
+    // Left-click: rotate cube
+    dragging = true;
+    autoRotate = false;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
   }
-  return { x: e.clientX, y: e.clientY };
+}
+
+function onMouseMove(e) {
+  if (dragging) {
+    var dx = e.clientX - lastDragX;
+    var dy = e.clientY - lastDragY;
+    rotY += dx * 0.008;
+    rotX += dy * 0.008;
+    rotVY = dx * 0.003;
+    rotVX = dy * 0.003;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+    e.preventDefault();
+  }
+  if (moving) {
+    var dx = e.clientX - lastMoveX;
+    var dy = e.clientY - lastMoveY;
+    cubeOffX += dx * 0.01;
+    cubeOffY -= dy * 0.01;
+    lastMoveX = e.clientX;
+    lastMoveY = e.clientY;
+    e.preventDefault();
+  }
+}
+
+function onMouseUp(e) {
+  if (e.button === 2) {
+    moving = false;
+  } else {
+    dragging = false;
+  }
+}
+
+function onTouchStart(e) {
+  e.preventDefault();
+  touchCount = e.touches.length;
+  if (touchCount >= 2) {
+    // Two-finger: move cube
+    moving = true;
+    dragging = false;
+    var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    lastMoveX = mx;
+    lastMoveY = my;
+  } else {
+    // One finger: rotate
+    dragging = true;
+    autoRotate = false;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (e.touches.length >= 2 && moving) {
+    var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    cubeOffX += (mx - lastMoveX) * 0.01;
+    cubeOffY -= (my - lastMoveY) * 0.01;
+    lastMoveX = mx;
+    lastMoveY = my;
+  } else if (dragging && e.touches.length === 1) {
+    var dx = e.touches[0].clientX - lastDragX;
+    var dy = e.touches[0].clientY - lastDragY;
+    rotY += dx * 0.008;
+    rotX += dy * 0.008;
+    rotVY = dx * 0.003;
+    rotVX = dy * 0.003;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length === 0) {
+    dragging = false;
+    moving = false;
+    touchCount = 0;
+  } else if (e.touches.length === 1) {
+    moving = false;
+    dragging = true;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
 }
 
 function renderTextcube() {
@@ -217,9 +332,11 @@ function renderTextcube() {
     }
   }
 
-  // Apply rotation to cube
+  // Apply rotation and position to cube
   cube.rotation.x = rotX;
   cube.rotation.y = rotY;
+  cube.position.x = cubeOffX;
+  cube.position.y = cubeOffY;
 
   // Size the overlay to match the main canvas exactly
   var mainCanvas = state.canvas;
@@ -243,24 +360,34 @@ function renderTextcube() {
   // Render the 3D cube
   renderer.render(scene, camera);
 
-  // Read the rendered frame to build a mask at character grid resolution
-  // Use a small mask canvas to sample at grid resolution
-  maskCanvas.width = W;
-  maskCanvas.height = H;
-  maskCtx.clearRect(0, 0, W, H);
-  maskCtx.drawImage(overlayCanvas, 0, 0, W, H);
-  var imgData = maskCtx.getImageData(0, 0, W, H);
+  // Read the rendered frame at higher resolution for accurate masking
+  // Sample at 4x grid resolution and check if ANY sub-pixel hits the cube
+  var sampleScale = 4;
+  var sW = W * sampleScale;
+  var sH = H * sampleScale;
+  maskCanvas.width = sW;
+  maskCanvas.height = sH;
+  maskCtx.clearRect(0, 0, sW, sH);
+  maskCtx.drawImage(overlayCanvas, 0, 0, sW, sH);
+  var imgData = maskCtx.getImageData(0, 0, sW, sH);
   var pixels = imgData.data;
 
   if (!cubeMask || cubeMask.length !== W * H) {
     cubeMask = new Uint8Array(W * H);
   }
 
-  // Build mask — cell is "cube" if alpha > 20
+  // Build mask — cell is "cube" if ANY sub-pixel has alpha > 10
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var pi = (y * W + x) * 4;
-      cubeMask[y * W + x] = pixels[pi + 3] > 20 ? 1 : 0;
+      var hit = 0;
+      for (var sy = 0; sy < sampleScale; sy++) {
+        for (var sx = 0; sx < sampleScale; sx++) {
+          var pi = ((y * sampleScale + sy) * sW + (x * sampleScale + sx)) * 4;
+          if (pixels[pi + 3] > 10) { hit = 1; break; }
+        }
+        if (hit) break;
+      }
+      cubeMask[y * W + x] = hit;
     }
   }
 
@@ -279,50 +406,53 @@ function renderTextcube() {
         continue;
       }
 
-      // Check proximity to cube for edge-hugging glow
+      // Check proximity to cube for buffer zone and glow
       var nearCube = 0;
-      for (var dy = -2; dy <= 2; dy++) {
-        for (var dx = -2; dx <= 2; dx++) {
+      var bufferDist = 4;
+      for (var dy = -bufferDist; dy <= bufferDist; dy++) {
+        for (var dx = -bufferDist; dx <= bufferDist; dx++) {
           if (dx === 0 && dy === 0) continue;
           var nx = x + dx, ny = y + dy;
           if (nx >= 0 && nx < W && ny >= 0 && ny < H && cubeMask[ny * W + nx]) {
             var dist = Math.sqrt(dx * dx + dy * dy);
-            nearCube = Math.max(nearCube, 1 - dist / 3);
+            nearCube = Math.max(nearCube, 1 - dist / (bufferDist + 1));
           }
         }
       }
+
+      // Skip cells too close to cube (buffer zone)
+      if (nearCube > 0.7) continue;
 
       // Text character from flowing stream
       var ci = (textOffset + textIdx) % loremText.length;
       textIdx++;
       var ch = loremText[ci];
       if (ch === ' ') {
-        // Still draw space near cube as glow
         if (nearCube > 0.3) {
-          var glowHue = (t * 30 + x * 2 + y) % 360;
-          drawCharHSL('.', x, y, glowHue, 60, 10 + nearCube * 35);
+          var glowHue = (t * 40 + x * 3 + y * 2) % 360;
+          drawCharHSL('.', x, y, glowHue, 70, 15 + nearCube * 30);
         }
         continue;
       }
 
-      // Base text color — dim flowing rainbow
-      var hue = (t * 15 + y * 2 + x * 0.5) % 360;
-      var sat = 35 + Math.sin(t * 0.5 + y * 0.1) * 15;
-      var lum = 10 + Math.sin(t * 0.8 + x * 0.15 + y * 0.1) * 4;
+      // Bright colorful flowing text
+      var hue = (t * 25 + y * 3 + x * 1.5 + Math.sin(t * 1.5 + x * 0.08) * 40) % 360;
+      var sat = 60 + Math.sin(t * 0.7 + y * 0.15) * 20;
+      var lum = 18 + Math.sin(t * 1.2 + x * 0.12 + y * 0.08) * 8;
 
-      // Near cube — text gets brighter and more saturated (glow effect)
+      // Near cube — text gets much brighter with intense glow
       if (nearCube > 0) {
-        lum += nearCube * 30;
-        sat += nearCube * 25;
-        hue = (hue + nearCube * 60) % 360; // shift hue toward blue near cube
+        lum += nearCube * 35;
+        sat += nearCube * 20;
+        hue = (hue + nearCube * 80) % 360;
       }
 
-      drawCharHSL(ch, x, y, hue, Math.min(80, sat), Math.min(50, lum));
+      drawCharHSL(ch, x, y, hue, Math.min(90, sat), Math.min(55, lum));
     }
   }
 
   // Label
-  var label = '[textcube] drag to rotate';
+  var label = '[textcube] drag:rotate  right-click:move';
   var lx = Math.floor((W - label.length) / 2);
   for (var li = 0; li < label.length; li++) {
     if (!cubeMask[(H - 1) * W + lx + li]) {

@@ -3,6 +3,7 @@ import { getRenderers, getMode } from './registry.js';
 import { applyGlow } from './glow.js';
 import { updateURL } from './router.js';
 import { beginFrame, flushFrame } from './webgl-renderer.js';
+import { pointer } from './pointer.js';
 
 var lastTime = 0;
 var fpsFrames = 0;
@@ -53,6 +54,9 @@ export function loop(ts) {
 export function switchMode(mode) {
   state.currentMode = mode;
   state.time = 0;
+  // Clear stale pointer state so clicks don't bleed between modes
+  pointer.clicked = false;
+  pointer.down = false;
   updateURL(mode);
   state.buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
   var m = getMode(mode);
