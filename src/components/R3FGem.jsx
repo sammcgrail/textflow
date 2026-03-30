@@ -1,24 +1,27 @@
 // R3FGem — React Three Fiber rendered crystalline gem overlay
-// This is the first mode that uses R3F declaratively (not raw three.js)
+// Reads interaction state (rotation, position, scale) from gemState
+// exported by ../modes/r3fgem.js
 
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { gemState } from '../modes/r3fgem.js';
 
-function Crystal({ time }) {
+function Crystal() {
   const groupRef = useRef();
   const innerRef = useRef();
 
-  // Create icosahedron geometry variants
   const mainGeo = useMemo(() => new THREE.IcosahedronGeometry(1.2, 1), []);
   const innerGeo = useMemo(() => new THREE.IcosahedronGeometry(0.6, 0), []);
 
-
   useFrame((_, delta) => {
     if (groupRef.current) {
-      groupRef.current.rotation.x += delta * 0.3;
-      groupRef.current.rotation.y += delta * 0.5;
-      groupRef.current.rotation.z += delta * 0.1;
+      // Apply shared interaction state from r3fgem.js
+      groupRef.current.rotation.x = gemState.rotX;
+      groupRef.current.rotation.y = gemState.rotY;
+      groupRef.current.position.x = gemState.offX;
+      groupRef.current.position.y = gemState.offY;
+      groupRef.current.scale.setScalar(gemState.scale);
     }
     if (innerRef.current) {
       innerRef.current.rotation.x -= delta * 0.8;

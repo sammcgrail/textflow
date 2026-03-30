@@ -1,6 +1,7 @@
 // r3fgem — Crystalline gem with flowing ASCII background
 // In the Vite/React build, the gem is rendered by R3FGem.jsx.
 // In the legacy esbuild build, we render it with raw three.js here.
+// Interaction state is exported for R3FGem.jsx to read.
 
 import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
@@ -13,6 +14,22 @@ var gemText = 'CRYSTAL LATTICE REFRACTION PRISM FACET BRILLIANCE CLARITY CUT CAR
   'LUMINESCENCE IRIDESCENT CHROMATIC SPECTRAL DIFFRACTION WAVELENGTH PHOTON ' +
   'SYMMETRY HEXAGONAL TETRAGONAL ORTHORHOMBIC MONOCLINIC TRIGONAL CUBIC ';
 
+// === Exported interaction state (shared with R3FGem.jsx) ===
+export var gemState = {
+  rotX: 0.4,
+  rotY: 0.6,
+  rotZ: 0,
+  rotVX: 0,
+  rotVY: 0,
+  offX: 0,
+  offY: 0,
+  scale: 1.0,
+  dragging: false,
+  moving: false,
+  autoRotate: true,
+};
+
+// === Private state ===
 var overlayEl = null;
 var renderer = null;
 var scene = null;
@@ -24,28 +41,173 @@ var particleData = [];
 var dummy = new THREE.Object3D();
 var clock = new THREE.Clock();
 
+var lastDragX = 0, lastDragY = 0;
+var lastMoveX = 0, lastMoveY = 0;
+var touchCount = 0;
+var pinchDist = 0;
+
+// === Interaction handlers ===
+function onMouseDown(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  e.preventDefault();
+  if (e.button === 2) {
+    gemState.moving = true;
+    lastMoveX = e.clientX;
+    lastMoveY = e.clientY;
+  } else {
+    gemState.dragging = true;
+    gemState.autoRotate = false;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+  }
+}
+
+function onMouseMove(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  if (gemState.dragging) {
+    var dx = e.clientX - lastDragX;
+    var dy = e.clientY - lastDragY;
+    gemState.rotY += dx * 0.008;
+    gemState.rotX += dy * 0.008;
+    gemState.rotVY = dx * 0.003;
+    gemState.rotVX = dy * 0.003;
+    lastDragX = e.clientX;
+    lastDragY = e.clientY;
+    e.preventDefault();
+  }
+  if (gemState.moving) {
+    var dx = e.clientX - lastMoveX;
+    var dy = e.clientY - lastMoveY;
+    var vh = window.innerHeight || 800;
+    var vw = window.innerWidth || 1200;
+    var worldH = 2 * 5 * Math.tan(22.5 * Math.PI / 180);
+    var worldW = worldH * (vw / vh);
+    gemState.offX += dx * (worldW / vw);
+    gemState.offY -= dy * (worldH / vh);
+    lastMoveX = e.clientX;
+    lastMoveY = e.clientY;
+    e.preventDefault();
+  }
+}
+
+function onMouseUp(e) {
+  if (e.button === 2) {
+    gemState.moving = false;
+  } else {
+    gemState.dragging = false;
+  }
+}
+
+function onWheel(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  e.preventDefault();
+  var delta = e.deltaY > 0 ? -0.05 : 0.05;
+  gemState.scale = Math.max(0.3, Math.min(3.0, gemState.scale + delta));
+}
+
+function onTouchStart(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  if (e.target && e.target.closest && e.target.closest('nav')) return;
+  e.preventDefault();
+  touchCount = e.touches.length;
+  if (touchCount >= 2) {
+    gemState.moving = true;
+    gemState.dragging = false;
+    var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    lastMoveX = mx;
+    lastMoveY = my;
+    pinchDist = Math.sqrt(
+      Math.pow(e.touches[1].clientX - e.touches[0].clientX, 2) +
+      Math.pow(e.touches[1].clientY - e.touches[0].clientY, 2)
+    );
+  } else {
+    gemState.dragging = true;
+    gemState.autoRotate = false;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
+}
+
+function onTouchMove(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  if (!gemState.dragging && !gemState.moving) return;
+  e.preventDefault();
+  if (e.touches.length >= 2 && gemState.moving) {
+    var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    var vh = window.innerHeight || 800;
+    var vw = window.innerWidth || 1200;
+    var worldH = 2 * 5 * Math.tan(22.5 * Math.PI / 180);
+    var worldW = worldH * (vw / vh);
+    gemState.offX += (mx - lastMoveX) * (worldW / vw);
+    gemState.offY -= (my - lastMoveY) * (worldH / vh);
+    lastMoveX = mx;
+    lastMoveY = my;
+    var newDist = Math.sqrt(
+      Math.pow(e.touches[1].clientX - e.touches[0].clientX, 2) +
+      Math.pow(e.touches[1].clientY - e.touches[0].clientY, 2)
+    );
+    if (pinchDist > 0) {
+      var scaleFactor = newDist / pinchDist;
+      gemState.scale = Math.max(0.3, Math.min(3.0, gemState.scale * scaleFactor));
+    }
+    pinchDist = newDist;
+  } else if (gemState.dragging && e.touches.length === 1) {
+    var dx = e.touches[0].clientX - lastDragX;
+    var dy = e.touches[0].clientY - lastDragY;
+    gemState.rotY += dx * 0.008;
+    gemState.rotX += dy * 0.008;
+    gemState.rotVY = dx * 0.003;
+    gemState.rotVX = dy * 0.003;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
+}
+
+function onTouchEnd(e) {
+  if (state.currentMode !== 'r3fgem') return;
+  if (e.touches.length === 0) {
+    gemState.dragging = false;
+    gemState.moving = false;
+    touchCount = 0;
+  } else if (e.touches.length === 1) {
+    gemState.moving = false;
+    gemState.dragging = true;
+    lastDragX = e.touches[0].clientX;
+    lastDragY = e.touches[0].clientY;
+  }
+}
+
+function attachR3fgem() {
+  var c = state.canvas;
+  c.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+  c.addEventListener('wheel', onWheel, { passive: false });
+  c.addEventListener('touchstart', onTouchStart, { passive: false });
+  window.addEventListener('touchmove', onTouchMove, { passive: false });
+  window.addEventListener('touchend', onTouchEnd);
+}
+
+// === Scene creation (legacy build only) ===
 function createGemScene() {
-  // Create overlay container
   overlayEl = document.createElement('div');
   overlayEl.setAttribute('data-mode-overlay', 'r3fgem');
   overlayEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;';
   document.body.appendChild(overlayEl);
 
-  // Three.js renderer
   renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: false });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setClearColor(0x000000, 0);
   overlayEl.appendChild(renderer.domElement);
 
-  // Scene + camera
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.set(0, 0, 5);
 
-  // Lighting
-  var ambient = new THREE.AmbientLight(0x667799, 0.8);
-  scene.add(ambient);
+  scene.add(new THREE.AmbientLight(0x667799, 0.8));
   var dir1 = new THREE.DirectionalLight(0xffffff, 2);
   dir1.position.set(3, 4, 5);
   scene.add(dir1);
@@ -56,36 +218,31 @@ function createGemScene() {
   point.position.set(0, 0, 3);
   scene.add(point);
 
-  // Gem group
   group = new THREE.Group();
   scene.add(group);
 
   var mainGeo = new THREE.IcosahedronGeometry(1.2, 1);
   var innerGeo = new THREE.IcosahedronGeometry(0.6, 0);
 
-  // Main crystal body
-  var mainMat = new THREE.MeshPhysicalMaterial({
+  group.add(new THREE.Mesh(mainGeo, new THREE.MeshPhysicalMaterial({
     color: 0x4488ff, metalness: 0.1, roughness: 0.05,
     transparent: true, opacity: 0.7, side: THREE.DoubleSide, envMapIntensity: 2,
-  });
-  group.add(new THREE.Mesh(mainGeo, mainMat));
+  })));
 
-  // Wireframe overlay
-  var wireMat = new THREE.MeshBasicMaterial({ color: 0x88ccff, wireframe: true, transparent: true, opacity: 0.4 });
-  group.add(new THREE.Mesh(mainGeo, wireMat));
+  group.add(new THREE.Mesh(mainGeo, new THREE.MeshBasicMaterial({
+    color: 0x88ccff, wireframe: true, transparent: true, opacity: 0.4,
+  })));
 
-  // Inner rotating core
-  var innerMat = new THREE.MeshPhysicalMaterial({
+  innerMesh = new THREE.Mesh(innerGeo, new THREE.MeshPhysicalMaterial({
     color: 0xffffff, emissive: 0x2266cc, emissiveIntensity: 1.5, metalness: 0.8, roughness: 0,
-  });
-  innerMesh = new THREE.Mesh(innerGeo, innerMat);
+  }));
   group.add(innerMesh);
 
-  // Instanced particles
   var count = 60;
   var sphereGeo = new THREE.SphereGeometry(1, 6, 6);
-  var particleMat = new THREE.MeshBasicMaterial({ color: 0x88ccff, transparent: true, opacity: 0.8 });
-  particles = new THREE.InstancedMesh(sphereGeo, particleMat, count);
+  particles = new THREE.InstancedMesh(sphereGeo, new THREE.MeshBasicMaterial({
+    color: 0x88ccff, transparent: true, opacity: 0.8,
+  }), count);
   group.add(particles);
 
   particleData = [];
@@ -103,11 +260,35 @@ function createGemScene() {
   }
 }
 
+function updateGemTransform() {
+  // Apply user interaction (momentum when not dragging)
+  if (!gemState.dragging) {
+    if (gemState.autoRotate) {
+      gemState.rotY += 0.008;
+      gemState.rotX += 0.003;
+    } else {
+      gemState.rotY += gemState.rotVY;
+      gemState.rotX += gemState.rotVX;
+      gemState.rotVY *= 0.97;
+      gemState.rotVX *= 0.97;
+      if (Math.abs(gemState.rotVY) < 0.0001 && Math.abs(gemState.rotVX) < 0.0001) {
+        gemState.autoRotate = true;
+      }
+    }
+  }
+}
+
 function animateGem(delta) {
   if (!group) return;
-  group.rotation.x += delta * 0.3;
-  group.rotation.y += delta * 0.5;
-  group.rotation.z += delta * 0.1;
+
+  updateGemTransform();
+
+  // Apply rotation, position, scale to the group
+  group.rotation.x = gemState.rotX;
+  group.rotation.y = gemState.rotY;
+  group.position.x = gemState.offX;
+  group.position.y = gemState.offY;
+  group.scale.setScalar(gemState.scale);
 
   if (innerMesh) {
     innerMesh.rotation.x -= delta * 0.8;
@@ -133,10 +314,22 @@ function animateGem(delta) {
 }
 
 function initR3fgem() {
+  // Reset interaction state
+  gemState.rotX = 0.4;
+  gemState.rotY = 0.6;
+  gemState.rotZ = 0;
+  gemState.rotVX = 0;
+  gemState.rotVY = 0;
+  gemState.offX = 0;
+  gemState.offY = 0;
+  gemState.scale = 1.0;
+  gemState.dragging = false;
+  gemState.moving = false;
+  gemState.autoRotate = true;
+
   // Check if R3F overlay already exists (Vite/React build)
   var existing = document.querySelector('[data-mode-overlay="r3fgem"]');
   if (existing && !renderer) {
-    // React build — R3FGem.jsx handles rendering
     overlayEl = existing;
     return;
   }
@@ -147,7 +340,6 @@ function initR3fgem() {
   }
   overlayEl.style.display = 'block';
 
-  // Handle resize
   if (renderer) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -161,11 +353,14 @@ function renderR3fgem() {
   var H = state.ROWS;
   var t = state.time;
 
-  // Animate and render the three.js gem (legacy build only)
+  // Legacy build: animate and render the three.js gem
   if (renderer) {
     var delta = clock.getDelta();
     animateGem(delta);
     renderer.render(scene, camera);
+  } else {
+    // Vite/React build: still need to update transform for momentum
+    updateGemTransform();
   }
 
   // Read overlay canvas for masking
@@ -185,14 +380,12 @@ function renderR3fgem() {
     if (mCtx) {
       var rW = r3fCanvas.width;
       var rH = r3fCanvas.height;
-      // Use 4x supersampled grid for better silhouette detection
       var sampleScale = 4;
       var sW = W * sampleScale;
       var sH = H * sampleScale;
       var pixels = new Uint8Array(rW * rH * 4);
       mCtx.readPixels(0, 0, rW, rH, mCtx.RGBA, mCtx.UNSIGNED_BYTE, pixels);
 
-      // Build high-res mask
       var hiMask = new Uint8Array(sW * sH);
       var cellW = rW / sW;
       var cellH = rH / sH;
@@ -207,7 +400,6 @@ function renderR3fgem() {
         }
       }
 
-      // Downsample to char grid
       mask = new Uint8Array(W * H);
       for (var y = 0; y < H; y++) {
         for (var x = 0; x < W; x++) {
@@ -221,7 +413,6 @@ function renderR3fgem() {
         }
       }
 
-      // Dilate mask by 1 cell
       var raw = new Uint8Array(mask);
       for (var y = 0; y < H; y++) {
         for (var x = 0; x < W; x++) {
@@ -286,41 +477,24 @@ function renderR3fgem() {
       drawCharHSL(ch, x, y, hue | 0, sat | 0, light | 0);
     }
   }
+
+  // Label
+  var label = '[r3fgem] drag:rotate  right-click:move  scroll:scale';
+  var lx = Math.floor((W - label.length) / 2);
+  for (var li = 0; li < label.length; li++) {
+    if (!mask || !mask[(H - 1) * W + lx + li]) {
+      drawCharHSL(label[li], lx + li, H - 1, 220, 40, 22);
+    }
+  }
 }
 
 function cleanupR3fgem() {
   if (overlayEl) overlayEl.style.display = 'none';
-  // Don't dispose the three.js objects — just hide, so we can re-show quickly
-}
-
-function disposeR3fgem() {
-  if (renderer) {
-    renderer.dispose();
-    renderer.domElement.remove();
-    renderer = null;
-  }
-  if (scene) {
-    scene.traverse(function(obj) {
-      if (obj.geometry) obj.geometry.dispose();
-      if (obj.material) {
-        if (obj.material.map) obj.material.map.dispose();
-        obj.material.dispose();
-      }
-    });
-    scene = null;
-  }
-  if (overlayEl && overlayEl.parentNode) {
-    overlayEl.parentNode.removeChild(overlayEl);
-    overlayEl = null;
-  }
-  group = null;
-  innerMesh = null;
-  particles = null;
-  particleData = [];
 }
 
 registerMode('r3fgem', {
   init: initR3fgem,
   render: renderR3fgem,
+  attach: attachR3fgem,
   cleanup: cleanupR3fgem,
 });
