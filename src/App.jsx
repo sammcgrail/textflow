@@ -7,7 +7,7 @@ export default function App() {
   const glowRef = useRef(null);
   const navButtonsRef = useRef(null);
 
-  const { switchMode, fps, ready, currentMode } = useTextflowEngine(canvasRef, glowRef);
+  const { switchMode, fpsRef, ready, currentMode } = useTextflowEngine(canvasRef, glowRef);
 
   // Handle logo click — random mode
   const handleLogoClick = useCallback(() => {
@@ -82,7 +82,7 @@ export default function App() {
       <canvas id="glow" ref={glowRef} />
 
       <div id="info-bar">
-        <span id="fps">{fps} fps</span>
+        <span id="fps" ref={fpsRef}>0 fps</span>
         <span id="version">v4.1.0</span>
       </div>
     </>
