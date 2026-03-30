@@ -78,6 +78,8 @@ var icoVertCount = 0;
 })();
 
 // === Reusable THREE objects for projection (zero allocation per frame) ===
+// NOTE: Camera params (fov=45, near=0.1, far=100, position=[0,0,5]) must match
+// the <Canvas camera={...}> props in R3FGem.jsx. If those ever change, update here too.
 var _projCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 _projCam.position.set(0, 0, 5);
 _projCam.updateMatrixWorld();
