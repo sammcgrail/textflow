@@ -5,13 +5,15 @@ import { state } from '../core/state.js';
 
 // Textcube — actual three.js rendered 3D cube overlaid on flowing ASCII text
 // Text flows around the cube silhouette, hugging the edges
+//
+// Mask is built analytically by projecting 3D geometry to screen coords
+// and rasterizing in pure JS — no GPU readPixels sync needed.
+
 var scene = null;
 var camera = null;
 var renderer = null;
 var cube = null;
 var overlayCanvas = null;
-var maskCanvas = null;
-var maskCtx = null;
 var cubeMask = null; // Uint8Array — 1 where cube is
 var cubeDistField = null; // Float32Array — pre-computed proximity
 
@@ -37,10 +39,10 @@ var touchCount = 0;
 var cubeScale = 1.0;
 var pinchDist = 0;
 
-// Performance: cached buffers and frame skipping
-var maskFrameCounter = 0;
-var MASK_SKIP_FRAMES = 2;
-var cachedRawMask = null;
+// Cached buffers
+var cachedMaskSize = 0;
+
+var SQRT2 = Math.SQRT2;
 
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog ' +
@@ -54,30 +56,31 @@ var loremText = 'The quick brown fox jumps over the lazy dog ' +
   'Amazingly few discotheques provide jukeboxes ' +
   'Jackdaws love my big sphinx of quartz ';
 
-function initTextcube() {
-  rotX = 0.4;
-  rotY = 0.6;
-  rotVX = 0;
-  rotVY = 0;
-  dragging = false;
-  moving = false;
-  autoRotate = true;
-  cubeOffX = 0;
-  cubeOffY = 0;
-  cubeScale = 1.0;
-  pinchDist = 0;
-  cubeMask = null;
-  cubeDistField = null;
-  cachedRawMask = null;
-  maskFrameCounter = 0;
+// === Pre-extracted rounded box geometry for analytical projection ===
+var boxVerts = null; // Float32Array of [x,y,z, x,y,z, ...]
+var boxFaces = null; // Uint16Array of triangle indices
+var boxVertCount = 0;
 
-  setupScene();
-}
+(function extractBoxGeometry() {
+  var radius = 0.2;
+  var size = 1.8;
+  var geo = createRoundedBoxGeo(size, size, size, radius, 4);
+  var pos = geo.getAttribute('position');
+  boxVerts = new Float32Array(pos.array);
+  boxVertCount = pos.count;
+  var idx = geo.getIndex();
+  if (idx) {
+    boxFaces = new Uint16Array(idx.array);
+  } else {
+    // Non-indexed geometry — every 3 vertices form a triangle
+    boxFaces = new Uint16Array(pos.count);
+    for (var i = 0; i < pos.count; i++) boxFaces[i] = i;
+  }
+  geo.dispose();
+})();
 
-function createRoundedBox(w, h, d, r, segs) {
-  // Create a rounded box by extruding a rounded rect shape and combining faces
-  // Simpler approach: use capsule-like SDF or just use a sphere-modified box
-  // Easiest: BufferGeometry from a Box with chamfered edges
+// Standalone geometry creation for the IIFE (runs before setupScene)
+function createRoundedBoxGeo(w, h, d, r, segs) {
   var shape = new THREE.Shape();
   var hw = w / 2 - r;
   var hh = h / 2 - r;
@@ -101,10 +104,49 @@ function createRoundedBox(w, h, d, r, segs) {
     curveSegments: segs
   };
   var geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-  // Center the geometry (extrude goes from 0 to depth)
   geo.translate(0, 0, -d / 2);
   geo.computeVertexNormals();
   return geo;
+}
+
+// === Reusable THREE objects for projection (zero allocation per frame) ===
+// NOTE: Camera params (fov=45, near=0.1, far=100, position=[0,0,5]) must match
+// the camera created in setupScene. If those ever change, update here too.
+var _projCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+_projCam.position.set(0, 0, 5);
+_projCam.updateMatrixWorld();
+
+var _euler = new THREE.Euler();
+var _quat = new THREE.Quaternion();
+var _pos3 = new THREE.Vector3();
+var _scl3 = new THREE.Vector3();
+var _modelMat = new THREE.Matrix4();
+var _v3 = new THREE.Vector3();
+
+// Projected vertices buffer (reused across frames)
+var projBuf = null;
+var projBufSize = 0;
+
+function initTextcube() {
+  rotX = 0.4;
+  rotY = 0.6;
+  rotVX = 0;
+  rotVY = 0;
+  dragging = false;
+  moving = false;
+  autoRotate = true;
+  cubeOffX = 0;
+  cubeOffY = 0;
+  cubeScale = 1.0;
+  pinchDist = 0;
+  cubeMask = null;
+  cubeDistField = null;
+
+  setupScene();
+}
+
+function createRoundedBox(w, h, d, r, segs) {
+  return createRoundedBoxGeo(w, h, d, r, segs);
 }
 
 function setupScene() {
@@ -121,12 +163,6 @@ function setupScene() {
     overlayCanvas.setAttribute('data-mode-overlay', 'textcube');
     var parent = state.canvas.parentElement || document.body;
     parent.appendChild(overlayCanvas);
-  }
-
-  // Mask canvas for reading cube silhouette
-  if (!maskCanvas) {
-    maskCanvas = document.createElement('canvas');
-    maskCtx = maskCanvas.getContext('2d');
   }
 
   // Dispose previous scene resources
@@ -354,6 +390,150 @@ function onTouchEnd(e) {
   }
 }
 
+// === Analytical mask building (pure JS, no GPU sync) ===
+
+// Barycentric sign for point-in-triangle test
+function triSign(px, py, ax, ay, bx, by) {
+  return (px - bx) * (ay - by) - (ax - bx) * (py - by);
+}
+
+// Rasterize a projected triangle into the mask grid
+function rasterTriangle(mask, W, H, ax, ay, bx, by, cx, cy) {
+  var minX = Math.max(0, Math.floor(Math.min(ax, bx, cx)));
+  var maxX = Math.min(W - 1, Math.ceil(Math.max(ax, bx, cx)));
+  var minY = Math.max(0, Math.floor(Math.min(ay, by, cy)));
+  var maxY = Math.min(H - 1, Math.ceil(Math.max(ay, by, cy)));
+
+  for (var y = minY; y <= maxY; y++) {
+    for (var x = minX; x <= maxX; x++) {
+      // Test cell center (x+0.5, y+0.5) against triangle
+      var px = x + 0.5;
+      var py = y + 0.5;
+      var d1 = triSign(px, py, ax, ay, bx, by);
+      var d2 = triSign(px, py, bx, by, cx, cy);
+      var d3 = triSign(px, py, cx, cy, ax, ay);
+      var hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+      var hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+      if (!(hasNeg && hasPos)) {
+        mask[y * W + x] = 1;
+      }
+    }
+  }
+}
+
+function buildMask(W, H) {
+  var cellCount = W * H;
+  if (!cubeMask || cachedMaskSize !== cellCount) {
+    cubeMask = new Uint8Array(cellCount);
+    cubeDistField = new Float32Array(cellCount);
+    cachedMaskSize = cellCount;
+  }
+  cubeMask.fill(0);
+
+  // Screen dimensions for projection mapping
+  var vw = window.innerWidth || 1200;
+  var vh = window.innerHeight || 800;
+  var charW = state.CHAR_W || (vw / W);
+  var charH = state.CHAR_H || (vh / H);
+  var navH = state.NAV_H || 32;
+
+  // Update projection camera aspect to match screen
+  _projCam.aspect = vw / vh;
+  _projCam.updateProjectionMatrix();
+  _projCam.updateMatrixWorld();
+
+  // Build model matrix from cube transform state
+  _euler.set(rotX, rotY, 0, 'XYZ');
+  _quat.setFromEuler(_euler);
+  _pos3.set(cubeOffX, cubeOffY, 0);
+  _scl3.setScalar(cubeScale);
+  _modelMat.compose(_pos3, _quat, _scl3);
+
+  // Ensure projection buffer is large enough
+  var needed = boxVertCount * 2;
+  if (!projBuf || projBufSize < needed) {
+    projBuf = new Float32Array(needed);
+    projBufSize = needed;
+  }
+
+  // Project all box vertices to grid coords
+  for (var i = 0; i < boxVertCount; i++) {
+    _v3.set(boxVerts[i * 3], boxVerts[i * 3 + 1], boxVerts[i * 3 + 2]);
+    _v3.applyMatrix4(_modelMat);
+    _v3.project(_projCam);
+    var sx = (_v3.x * 0.5 + 0.5) * vw;
+    var sy = (1 - (_v3.y * 0.5 + 0.5)) * vh;
+    projBuf[i * 2] = sx / charW;
+    projBuf[i * 2 + 1] = (sy - navH) / charH;
+  }
+
+  // Rasterize box triangles
+  for (var t = 0; t < boxFaces.length; t += 3) {
+    var i0 = boxFaces[t], i1 = boxFaces[t + 1], i2 = boxFaces[t + 2];
+    rasterTriangle(cubeMask, W, H,
+      projBuf[i0 * 2], projBuf[i0 * 2 + 1],
+      projBuf[i1 * 2], projBuf[i1 * 2 + 1],
+      projBuf[i2 * 2], projBuf[i2 * 2 + 1]);
+  }
+
+  // Dilate mask by 1 cell for padding
+  cubeDistField.fill(0);
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var i = y * W + x;
+      if (cubeMask[i]) { cubeDistField[i] = 1; continue; }
+      if ((x > 0 && cubeMask[i - 1]) ||
+          (x < W - 1 && cubeMask[i + 1]) ||
+          (y > 0 && cubeMask[i - W]) ||
+          (y < H - 1 && cubeMask[i + W])) {
+        cubeDistField[i] = 1;
+      }
+    }
+  }
+  for (var i = 0; i < cellCount; i++) {
+    cubeMask[i] = cubeDistField[i] ? 1 : 0;
+  }
+
+  // Chamfer distance transform for proximity field
+  var INF = 999;
+  var maxDist = 3;
+  for (var i = 0; i < cellCount; i++) {
+    cubeDistField[i] = cubeMask[i] ? 0 : INF;
+  }
+  // Forward pass
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var i = y * W + x;
+      if (x > 0 && cubeDistField[i - 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - 1] + 1;
+      if (y > 0 && cubeDistField[i - W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W] + 1;
+      if (x > 0 && y > 0 && cubeDistField[i - W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W - 1] + SQRT2;
+      if (x < W - 1 && y > 0 && cubeDistField[i - W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W + 1] + SQRT2;
+    }
+  }
+  // Backward pass
+  for (var y = H - 1; y >= 0; y--) {
+    for (var x = W - 1; x >= 0; x--) {
+      var i = y * W + x;
+      if (x < W - 1 && cubeDistField[i + 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + 1] + 1;
+      if (y < H - 1 && cubeDistField[i + W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W] + 1;
+      if (x < W - 1 && y < H - 1 && cubeDistField[i + W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W + 1] + SQRT2;
+      if (x > 0 && y < H - 1 && cubeDistField[i + W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W - 1] + SQRT2;
+    }
+  }
+  // Convert to proximity (0..1 range)
+  for (var i = 0; i < cellCount; i++) {
+    if (cubeDistField[i] === 0) {
+      cubeDistField[i] = -1; // masked cell sentinel
+    } else if (cubeDistField[i] <= maxDist) {
+      cubeDistField[i] = 1 - cubeDistField[i] / maxDist;
+    } else {
+      cubeDistField[i] = 0;
+    }
+  }
+
+  return cubeMask;
+}
+
 function renderTextcube() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
@@ -409,101 +589,8 @@ function renderTextcube() {
   // Render the 3D cube
   renderer.render(scene, camera);
 
-  // === Optimized mask building (skip readPixels on some frames) ===
-  maskFrameCounter++;
-  var needsMaskRebuild = (maskFrameCounter % MASK_SKIP_FRAMES === 0) ||
-    !cubeMask || cubeMask.length !== W * H;
-
-  if (needsMaskRebuild) {
-    // Read overlay via 2D canvas (drawImage is faster than readPixels for this case)
-    // Use 2x2 sampling per cell instead of 4x4
-    var sampleScale = 2;
-    var sW = W * sampleScale;
-    var sH = H * sampleScale;
-    if (maskCanvas.width !== sW || maskCanvas.height !== sH) {
-      maskCanvas.width = sW;
-      maskCanvas.height = sH;
-    }
-    maskCtx.clearRect(0, 0, sW, sH);
-    maskCtx.drawImage(overlayCanvas, 0, 0, sW, sH);
-    var imgData = maskCtx.getImageData(0, 0, sW, sH);
-    var pixels = imgData.data;
-
-    var cellCount = W * H;
-    if (!cubeMask || cubeMask.length !== cellCount) {
-      cubeMask = new Uint8Array(cellCount);
-      cubeDistField = new Float32Array(cellCount);
-      cachedRawMask = new Uint8Array(cellCount);
-    }
-
-    // Build raw mask with 2x2 sampling
-    cachedRawMask.fill(0);
-    for (var y = 0; y < H; y++) {
-      for (var x = 0; x < W; x++) {
-        var hit = 0;
-        for (var sy = 0; sy < sampleScale && !hit; sy++) {
-          for (var sx = 0; sx < sampleScale && !hit; sx++) {
-            var pi = ((y * sampleScale + sy) * sW + (x * sampleScale + sx)) * 4;
-            if (pixels[pi + 3] > 5) hit = 1;
-          }
-        }
-        cachedRawMask[y * W + x] = hit;
-      }
-    }
-
-    // Dilate mask by 1 cell
-    cubeMask.fill(0);
-    for (var y = 0; y < H; y++) {
-      for (var x = 0; x < W; x++) {
-        var i = y * W + x;
-        if (cachedRawMask[i]) { cubeMask[i] = 1; continue; }
-        if ((x > 0 && cachedRawMask[i - 1]) ||
-            (x < W - 1 && cachedRawMask[i + 1]) ||
-            (y > 0 && cachedRawMask[i - W]) ||
-            (y < H - 1 && cachedRawMask[i + W])) {
-          cubeMask[i] = 1;
-        }
-      }
-    }
-
-    // Chamfer distance transform — O(2*cells) instead of O(cells*25)
-    var INF = 999;
-    var SQRT2 = 1.414;
-    var maxDist = 3;
-    for (var i = 0; i < cellCount; i++) {
-      cubeDistField[i] = cubeMask[i] ? 0 : INF;
-    }
-    // Forward pass
-    for (var y = 0; y < H; y++) {
-      for (var x = 0; x < W; x++) {
-        var i = y * W + x;
-        if (x > 0 && cubeDistField[i - 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - 1] + 1;
-        if (y > 0 && cubeDistField[i - W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W] + 1;
-        if (x > 0 && y > 0 && cubeDistField[i - W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W - 1] + SQRT2;
-        if (x < W - 1 && y > 0 && cubeDistField[i - W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W + 1] + SQRT2;
-      }
-    }
-    // Backward pass
-    for (var y = H - 1; y >= 0; y--) {
-      for (var x = W - 1; x >= 0; x--) {
-        var i = y * W + x;
-        if (x < W - 1 && cubeDistField[i + 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + 1] + 1;
-        if (y < H - 1 && cubeDistField[i + W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W] + 1;
-        if (x < W - 1 && y < H - 1 && cubeDistField[i + W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W + 1] + SQRT2;
-        if (x > 0 && y < H - 1 && cubeDistField[i + W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W - 1] + SQRT2;
-      }
-    }
-    // Convert distance to proximity (0..1)
-    for (var i = 0; i < cellCount; i++) {
-      if (cubeDistField[i] === 0) {
-        cubeDistField[i] = -1; // masked sentinel
-      } else if (cubeDistField[i] <= maxDist) {
-        cubeDistField[i] = 1 - cubeDistField[i] / maxDist;
-      } else {
-        cubeDistField[i] = 0;
-      }
-    }
-  }
+  // Build mask analytically (no GPU sync needed)
+  var mask = buildMask(W, H);
 
   // Render flowing text using pre-computed distance field
   var speed = 1.5;
@@ -514,7 +601,7 @@ function renderTextcube() {
     for (var x = 0; x < W; x++) {
       var mi = y * W + x;
 
-      if (cubeMask[mi]) continue;
+      if (mask[mi]) continue;
 
       // Read proximity from pre-computed distance field
       var nearCube = cubeDistField ? cubeDistField[mi] : 0;
@@ -550,7 +637,7 @@ function renderTextcube() {
   var label = '[textcube] drag:rotate  right-click:move';
   var lx = Math.floor((W - label.length) / 2);
   for (var li = 0; li < label.length; li++) {
-    if (!cubeMask[(H - 1) * W + lx + li]) {
+    if (!mask[(H - 1) * W + lx + li]) {
       drawCharHSL(label[li], lx + li, H - 1, 220, 40, 22);
     }
   }
@@ -579,9 +666,8 @@ function cleanupTextcube() {
     renderer.dispose();
     renderer = null;
   }
-  maskCanvas = null;
-  maskCtx = null;
   cubeMask = null;
+  cubeDistField = null;
 }
 
 // Cleanup when switching modes
