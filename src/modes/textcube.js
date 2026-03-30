@@ -13,6 +13,7 @@ var overlayCanvas = null;
 var maskCanvas = null;
 var maskCtx = null;
 var cubeMask = null; // Uint8Array — 1 where cube is
+var cubeDistField = null; // Float32Array — pre-computed proximity
 
 // Rotation state
 var rotX = 0.4;
@@ -35,6 +36,20 @@ var touchCount = 0;
 // Scale state (scroll / pinch)
 var cubeScale = 1.0;
 var pinchDist = 0;
+
+// Performance: cached buffers and frame skipping
+var maskFrameCounter = 0;
+var MASK_SKIP_FRAMES = 2;
+var cachedRawMask = null;
+// Pre-computed distance LUT for 5x5 kernel
+var cubeDistLUT = new Float32Array(25);
+(function() {
+  for (var dy = -2; dy <= 2; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      cubeDistLUT[(dy + 2) * 5 + (dx + 2)] = Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+})();
 
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog ' +
@@ -61,6 +76,9 @@ function initTextcube() {
   cubeScale = 1.0;
   pinchDist = 0;
   cubeMask = null;
+  cubeDistField = null;
+  cachedRawMask = null;
+  maskFrameCounter = 0;
 
   setupScene();
 }
@@ -400,55 +418,88 @@ function renderTextcube() {
   // Render the 3D cube
   renderer.render(scene, camera);
 
-  // Read the rendered frame at higher resolution for accurate masking
-  // Sample at 4x grid resolution and check if ANY sub-pixel hits the cube
-  var sampleScale = 4;
-  var sW = W * sampleScale;
-  var sH = H * sampleScale;
-  maskCanvas.width = sW;
-  maskCanvas.height = sH;
-  maskCtx.clearRect(0, 0, sW, sH);
-  maskCtx.drawImage(overlayCanvas, 0, 0, sW, sH);
-  var imgData = maskCtx.getImageData(0, 0, sW, sH);
-  var pixels = imgData.data;
+  // === Optimized mask building (skip readPixels on some frames) ===
+  maskFrameCounter++;
+  var needsMaskRebuild = (maskFrameCounter % MASK_SKIP_FRAMES === 0) ||
+    !cubeMask || cubeMask.length !== W * H;
 
-  if (!cubeMask || cubeMask.length !== W * H) {
-    cubeMask = new Uint8Array(W * H);
-  }
+  if (needsMaskRebuild) {
+    // Read overlay via 2D canvas (drawImage is faster than readPixels for this case)
+    // Use 2x2 sampling per cell instead of 4x4
+    var sampleScale = 2;
+    var sW = W * sampleScale;
+    var sH = H * sampleScale;
+    if (maskCanvas.width !== sW || maskCanvas.height !== sH) {
+      maskCanvas.width = sW;
+      maskCanvas.height = sH;
+    }
+    maskCtx.clearRect(0, 0, sW, sH);
+    maskCtx.drawImage(overlayCanvas, 0, 0, sW, sH);
+    var imgData = maskCtx.getImageData(0, 0, sW, sH);
+    var pixels = imgData.data;
 
-  // Build raw mask — cell is "cube" if ANY sub-pixel has alpha > 5
-  var rawMask = new Uint8Array(W * H);
-  for (var y = 0; y < H; y++) {
-    for (var x = 0; x < W; x++) {
-      var hit = 0;
-      for (var sy = 0; sy < sampleScale; sy++) {
-        for (var sx = 0; sx < sampleScale; sx++) {
-          var pi = ((y * sampleScale + sy) * sW + (x * sampleScale + sx)) * 4;
-          if (pixels[pi + 3] > 5) { hit = 1; break; }
+    var cellCount = W * H;
+    if (!cubeMask || cubeMask.length !== cellCount) {
+      cubeMask = new Uint8Array(cellCount);
+      cubeDistField = new Float32Array(cellCount);
+      cachedRawMask = new Uint8Array(cellCount);
+    }
+
+    // Build raw mask with 2x2 sampling
+    cachedRawMask.fill(0);
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var hit = 0;
+        for (var sy = 0; sy < sampleScale && !hit; sy++) {
+          for (var sx = 0; sx < sampleScale && !hit; sx++) {
+            var pi = ((y * sampleScale + sy) * sW + (x * sampleScale + sx)) * 4;
+            if (pixels[pi + 3] > 5) hit = 1;
+          }
         }
-        if (hit) break;
+        cachedRawMask[y * W + x] = hit;
       }
-      rawMask[y * W + x] = hit;
+    }
+
+    // Dilate + build distance field in one pass
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var i = y * W + x;
+        if (cachedRawMask[i]) {
+          cubeMask[i] = 1;
+          cubeDistField[i] = -1;
+          continue;
+        }
+        // Dilate check
+        var adj = 0;
+        if (x > 0 && cachedRawMask[i - 1]) adj = 1;
+        if (!adj && x < W - 1 && cachedRawMask[i + 1]) adj = 1;
+        if (!adj && y > 0 && cachedRawMask[i - W]) adj = 1;
+        if (!adj && y < H - 1 && cachedRawMask[i + W]) adj = 1;
+        cubeMask[i] = adj;
+        if (adj) { cubeDistField[i] = -1; continue; }
+
+        // Proximity from pre-computed LUT
+        var nearCube = 0;
+        for (var dy = -2; dy <= 2; dy++) {
+          var ny = y + dy;
+          if (ny < 0 || ny >= H) continue;
+          for (var dx = -2; dx <= 2; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            var nx = x + dx;
+            if (nx < 0 || nx >= W) continue;
+            if (cubeMask[ny * W + nx] || cachedRawMask[ny * W + nx]) {
+              var dist = cubeDistLUT[(dy + 2) * 5 + (dx + 2)];
+              var v = 1 - dist / 3;
+              if (v > nearCube) nearCube = v;
+            }
+          }
+        }
+        cubeDistField[i] = nearCube;
+      }
     }
   }
 
-  // Dilate mask by 1 cell to prevent edge bleed-through
-  for (var y = 0; y < H; y++) {
-    for (var x = 0; x < W; x++) {
-      if (rawMask[y * W + x]) {
-        cubeMask[y * W + x] = 1;
-        continue;
-      }
-      var adj = 0;
-      if (x > 0 && rawMask[y * W + x - 1]) adj = 1;
-      if (!adj && x < W - 1 && rawMask[y * W + x + 1]) adj = 1;
-      if (!adj && y > 0 && rawMask[(y - 1) * W + x]) adj = 1;
-      if (!adj && y < H - 1 && rawMask[(y + 1) * W + x]) adj = 1;
-      cubeMask[y * W + x] = adj;
-    }
-  }
-
-  // Render flowing text — flow AROUND the cube silhouette
+  // Render flowing text using pre-computed distance field
   var speed = 1.5;
   var textIdx = 0;
   var textOffset = Math.floor(t * speed * 3);
@@ -457,30 +508,13 @@ function renderTextcube() {
     for (var x = 0; x < W; x++) {
       var mi = y * W + x;
 
-      if (cubeMask[mi]) {
-        // Cube cell — skip (three.js renders here)
-        // But draw glow chars adjacent to cube edges
-        continue;
-      }
+      if (cubeMask[mi]) continue;
 
-      // Check proximity to cube for buffer zone and glow
-      var nearCube = 0;
-      var bufferDist = 2;
-      for (var dy = -bufferDist; dy <= bufferDist; dy++) {
-        for (var dx = -bufferDist; dx <= bufferDist; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          var nx = x + dx, ny = y + dy;
-          if (nx >= 0 && nx < W && ny >= 0 && ny < H && cubeMask[ny * W + nx]) {
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            nearCube = Math.max(nearCube, 1 - dist / (bufferDist + 1));
-          }
-        }
-      }
+      // Read proximity from pre-computed distance field
+      var nearCube = cubeDistField ? cubeDistField[mi] : 0;
 
-      // Skip cells too close to cube (tight buffer)
       if (nearCube > 0.6) continue;
 
-      // Text character from flowing stream
       var ci = (textOffset + textIdx) % loremText.length;
       textIdx++;
       var ch = loremText[ci];
@@ -492,12 +526,10 @@ function renderTextcube() {
         continue;
       }
 
-      // Bright colorful flowing text
       var hue = (t * 25 + y * 3 + x * 1.5 + Math.sin(t * 1.5 + x * 0.08) * 40) % 360;
       var sat = 60 + Math.sin(t * 0.7 + y * 0.15) * 20;
       var lum = 18 + Math.sin(t * 1.2 + x * 0.12 + y * 0.08) * 8;
 
-      // Near cube — text gets much brighter with intense glow
       if (nearCube > 0) {
         lum += nearCube * 35;
         sat += nearCube * 20;

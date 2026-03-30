@@ -46,6 +46,26 @@ var lastMoveX = 0, lastMoveY = 0;
 var touchCount = 0;
 var pinchDist = 0;
 
+// === Cached buffers (avoid per-frame allocation) ===
+var cachedPixels = null;
+var cachedPixelsSize = 0;
+var cachedMask = null;
+var cachedMaskSize = 0;
+var cachedDistField = null; // pre-computed distance field (Float32Array)
+var cachedDistSize = 0;
+var maskFrameCounter = 0;
+var MASK_SKIP_FRAMES = 2; // only rebuild mask every N frames
+
+// === Pre-computed distance lookup for 5x5 kernel ===
+var distLUT = new Float32Array(25);
+(function() {
+  for (var dy = -2; dy <= 2; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      distLUT[(dy + 2) * 5 + (dx + 2)] = Math.sqrt(dx * dx + dy * dy);
+    }
+  }
+})();
+
 // === Interaction handlers ===
 function onMouseDown(e) {
   if (state.currentMode !== 'r3fgem') return;
@@ -261,7 +281,6 @@ function createGemScene() {
 }
 
 function updateGemTransform() {
-  // Apply user interaction (momentum when not dragging)
   if (!gemState.dragging) {
     if (gemState.autoRotate) {
       gemState.rotY += 0.008;
@@ -283,7 +302,6 @@ function animateGem(delta) {
 
   updateGemTransform();
 
-  // Apply rotation, position, scale to the group
   group.rotation.x = gemState.rotX;
   group.rotation.y = gemState.rotY;
   group.position.x = gemState.offX;
@@ -313,8 +331,124 @@ function animateGem(delta) {
   }
 }
 
+// === Optimized mask building ===
+// Build mask + distance field from overlay canvas pixels
+// Only rebuilds every MASK_SKIP_FRAMES frames to amortize readPixels cost
+function buildMask(W, H) {
+  maskFrameCounter++;
+  var needsRebuild = (maskFrameCounter % MASK_SKIP_FRAMES === 0);
+
+  // Return cached if we have one and it's the right size
+  if (!needsRebuild && cachedMask && cachedMaskSize === W * H) {
+    return cachedMask;
+  }
+
+  var r3fCanvas = null;
+  if (overlayEl) {
+    r3fCanvas = overlayEl.querySelector('canvas');
+  }
+  if (!r3fCanvas || r3fCanvas.width === 0) return null;
+
+  var mCtx;
+  try {
+    mCtx = r3fCanvas.getContext('webgl2') || r3fCanvas.getContext('webgl');
+  } catch(e) { return null; }
+  if (!mCtx) return null;
+
+  var rW = r3fCanvas.width;
+  var rH = r3fCanvas.height;
+
+  // Reuse pixel buffer
+  var pixelCount = rW * rH * 4;
+  if (!cachedPixels || cachedPixelsSize !== pixelCount) {
+    cachedPixels = new Uint8Array(pixelCount);
+    cachedPixelsSize = pixelCount;
+  }
+  mCtx.readPixels(0, 0, rW, rH, mCtx.RGBA, mCtx.UNSIGNED_BYTE, cachedPixels);
+
+  // Reuse mask buffer
+  var cellCount = W * H;
+  if (!cachedMask || cachedMaskSize !== cellCount) {
+    cachedMask = new Uint8Array(cellCount);
+    cachedDistField = new Float32Array(cellCount);
+    cachedMaskSize = cellCount;
+  }
+  cachedMask.fill(0);
+
+  // Sample directly at cell grid resolution (skip expensive 4x supersampling)
+  // Sample 2x2 within each cell for adequate coverage of small particles
+  var cellW = rW / W;
+  var cellH = rH / H;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      // Check 4 sample points within the cell
+      var hit = 0;
+      for (var sy = 0; sy < 2 && !hit; sy++) {
+        for (var sx = 0; sx < 2 && !hit; sx++) {
+          var px = Math.floor((x + 0.25 + sx * 0.5) * cellW);
+          var py = Math.floor((H - 1 - y + 0.25 + sy * 0.5) * cellH);
+          if (px >= rW) px = rW - 1;
+          if (py >= rH) py = rH - 1;
+          var pi = (py * rW + px) * 4;
+          if (cachedPixels[pi + 3] > 10) hit = 1;
+        }
+      }
+      if (hit) cachedMask[y * W + x] = 1;
+    }
+  }
+
+  // Dilate mask by 1 cell (use separate pass to avoid read-write conflict)
+  // Write dilated result into distField temporarily as staging
+  cachedDistField.fill(0);
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var i = y * W + x;
+      if (cachedMask[i]) { cachedDistField[i] = 1; continue; }
+      if ((x > 0 && cachedMask[i - 1]) ||
+          (x < W - 1 && cachedMask[i + 1]) ||
+          (y > 0 && cachedMask[i - W]) ||
+          (y < H - 1 && cachedMask[i + W])) {
+        cachedDistField[i] = 1;
+      }
+    }
+  }
+  // Copy back to mask
+  for (var i = 0; i < cellCount; i++) {
+    cachedMask[i] = cachedDistField[i] ? 1 : 0;
+  }
+
+  // Build distance field: for each non-masked cell, compute proximity to nearest masked cell
+  // Use the pre-computed distLUT for the 5x5 kernel
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      var idx = y * W + x;
+      if (cachedMask[idx]) {
+        cachedDistField[idx] = -1; // sentinel: is masked
+        continue;
+      }
+      var nearGem = 0;
+      for (var dy = -2; dy <= 2; dy++) {
+        var ny = y + dy;
+        if (ny < 0 || ny >= H) continue;
+        for (var dx = -2; dx <= 2; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          var nx = x + dx;
+          if (nx < 0 || nx >= W) continue;
+          if (cachedMask[ny * W + nx]) {
+            var dist = distLUT[(dy + 2) * 5 + (dx + 2)];
+            var v = 1 - dist / 3; // bd+1 = 3
+            if (v > nearGem) nearGem = v;
+          }
+        }
+      }
+      cachedDistField[idx] = nearGem;
+    }
+  }
+
+  return cachedMask;
+}
+
 function initR3fgem() {
-  // Reset interaction state
   gemState.rotX = 0.4;
   gemState.rotY = 0.6;
   gemState.rotZ = 0;
@@ -326,15 +460,16 @@ function initR3fgem() {
   gemState.dragging = false;
   gemState.moving = false;
   gemState.autoRotate = true;
+  maskFrameCounter = 0;
+  cachedMask = null;
+  cachedDistField = null;
 
-  // Check if R3F overlay already exists (Vite/React build)
   var existing = document.querySelector('[data-mode-overlay="r3fgem"]');
   if (existing && !renderer) {
     overlayEl = existing;
     return;
   }
 
-  // Legacy build — create three.js gem
   if (!renderer) {
     createGemScene();
   }
@@ -353,104 +488,32 @@ function renderR3fgem() {
   var H = state.ROWS;
   var t = state.time;
 
-  // Legacy build: animate and render the three.js gem
   if (renderer) {
     var delta = clock.getDelta();
     animateGem(delta);
     renderer.render(scene, camera);
   } else {
-    // Vite/React build: still need to update transform for momentum
     updateGemTransform();
   }
 
-  // Read overlay canvas for masking
-  var r3fCanvas = null;
-  if (overlayEl) {
-    r3fCanvas = overlayEl.querySelector('canvas');
-  }
+  // Build/update mask (skips readPixels on most frames)
+  var mask = buildMask(W, H);
 
-  // Build mask from overlay canvas
-  var mask = null;
-  if (r3fCanvas && r3fCanvas.width > 0) {
-    var mCtx;
-    try {
-      mCtx = r3fCanvas.getContext('webgl2') || r3fCanvas.getContext('webgl');
-    } catch(e) {}
-
-    if (mCtx) {
-      var rW = r3fCanvas.width;
-      var rH = r3fCanvas.height;
-      var sampleScale = 4;
-      var sW = W * sampleScale;
-      var sH = H * sampleScale;
-      var pixels = new Uint8Array(rW * rH * 4);
-      mCtx.readPixels(0, 0, rW, rH, mCtx.RGBA, mCtx.UNSIGNED_BYTE, pixels);
-
-      var hiMask = new Uint8Array(sW * sH);
-      var cellW = rW / sW;
-      var cellH = rH / sH;
-      for (var sy = 0; sy < sH; sy++) {
-        for (var sx = 0; sx < sW; sx++) {
-          var px = Math.floor((sx + 0.5) * cellW);
-          var py = Math.floor((sH - 1 - sy + 0.5) * cellH);
-          if (px >= rW) px = rW - 1;
-          if (py >= rH) py = rH - 1;
-          var pi = (py * rW + px) * 4;
-          if (pixels[pi + 3] > 10) hiMask[sy * sW + sx] = 1;
-        }
-      }
-
-      mask = new Uint8Array(W * H);
-      for (var y = 0; y < H; y++) {
-        for (var x = 0; x < W; x++) {
-          var count = 0;
-          for (var dy = 0; dy < sampleScale; dy++) {
-            for (var dx = 0; dx < sampleScale; dx++) {
-              if (hiMask[(y * sampleScale + dy) * sW + x * sampleScale + dx]) count++;
-            }
-          }
-          if (count > 2) mask[y * W + x] = 1;
-        }
-      }
-
-      var raw = new Uint8Array(mask);
-      for (var y = 0; y < H; y++) {
-        for (var x = 0; x < W; x++) {
-          if (raw[y * W + x]) continue;
-          if ((x > 0 && raw[y * W + x - 1]) ||
-              (x < W - 1 && raw[y * W + x + 1]) ||
-              (y > 0 && raw[(y - 1) * W + x]) ||
-              (y < H - 1 && raw[(y + 1) * W + x])) {
-            mask[y * W + x] = 1;
-          }
-        }
-      }
-    }
-  }
-
-  // Render flowing text
+  // Render flowing text using pre-computed distance field
   var textIdx = 0;
   var textOffset = Math.floor(t * 2.5);
 
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      if (mask && mask[y * W + x]) continue;
+      var idx = y * W + x;
 
-      var nearGem = 0;
-      if (mask) {
-        var bd = 2;
-        for (var dy = -bd; dy <= bd; dy++) {
-          for (var dx = -bd; dx <= bd; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            var nx = x + dx, ny = y + dy;
-            if (nx >= 0 && nx < W && ny >= 0 && ny < H && mask[ny * W + nx]) {
-              var dist = Math.sqrt(dx * dx + dy * dy);
-              nearGem = Math.max(nearGem, 1 - dist / (bd + 1));
-            }
-          }
-        }
-      }
+      // Skip masked cells
+      if (mask && mask[idx]) continue;
 
+      // Read proximity from pre-computed distance field
+      var nearGem = cachedDistField ? cachedDistField[idx] : 0;
+
+      // Skip cells too close to gem (tight buffer)
       if (nearGem > 0.6) continue;
 
       var ci = (textOffset + textIdx) % gemText.length;
