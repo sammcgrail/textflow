@@ -10,6 +10,7 @@ import {
   initEngine,
   startLoop,
   switchMode,
+  onFpsUpdate,
   onModeChange,
   isReady,
   getModeFromPath,
@@ -35,6 +36,12 @@ state.buttons = document.querySelectorAll('nav button');
 // Update button active state when engine switches modes
 onModeChange(function(mode) {
   state.buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
+});
+
+// Wire FPS display
+var fpsEl = document.getElementById('fps');
+onFpsUpdate(function(fps) {
+  fpsEl.textContent = fps + ' fps';
 });
 
 // Button click handlers
