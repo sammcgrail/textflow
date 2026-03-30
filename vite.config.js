@@ -16,10 +16,4 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['@mediapipe/tasks-vision'],
   },
-  // Ensure three.js is bundled (replaces CDN imports)
-  resolve: {
-    alias: {
-      three: 'three',
-    },
-  },
 });

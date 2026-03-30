@@ -44,6 +44,8 @@ export function useTextflowEngine(canvasRef, glowRef) {
       if (fpsRef.current) fpsRef.current.textContent = fps + ' fps';
     });
 
+    const cleanupRef = { current: null };
+
     // Wait for engine ready, then start
     isReady().then(() => {
       const startMode = getModeFromPath();
@@ -51,12 +53,8 @@ export function useTextflowEngine(canvasRef, glowRef) {
       setCurrentMode(startMode);
       setReady(true);
       const stop = startLoop();
-
-      // Store stop for cleanup (though in practice the page doesn't unmount)
       cleanupRef.current = stop;
     });
-
-    const cleanupRef = { current: null };
 
     return () => {
       document.removeEventListener('contextmenu', onContextMenu);

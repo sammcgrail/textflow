@@ -8,6 +8,7 @@ import {
   initEngine,
   startLoop,
   switchMode,
+  onModeChange,
   isReady,
   getModeFromPath,
   getRandomMode,
@@ -28,6 +29,11 @@ initEngine(canvas, glowCanvas);
 
 // Legacy path: wire up nav buttons from static HTML
 state.buttons = document.querySelectorAll('nav button');
+
+// Update button active state when engine switches modes
+onModeChange(function(mode) {
+  state.buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
+});
 
 // Button click handlers
 state.buttons.forEach(function(b) {
