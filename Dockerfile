@@ -2,12 +2,10 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
-COPY build.js ./
-COPY src/ ./src/
-RUN node build.js
+COPY . .
+RUN npx vite build
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist/index.html /usr/share/nginx/html/
-COPY static/ /usr/share/nginx/html/static/
+COPY --from=builder /app/dist-vite/ /usr/share/nginx/html/
 EXPOSE 8080
