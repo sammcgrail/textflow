@@ -3,7 +3,7 @@ import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
-var clothPts, clothW, clothH, clothCols, clothRows;
+var clothPts, clothW, clothH, clothCols, clothRows, clothSpacing;
 function initCloth() {
   var spacing = 2.5;
   clothCols = Math.min(30, ((state.COLS - 4) / spacing) | 0);
