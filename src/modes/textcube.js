@@ -104,34 +104,38 @@ function setupScene() {
   // Cube — solid with visible edges
   var geo = new THREE.BoxGeometry(1.8, 1.8, 1.8);
 
-  // Main cube — semi-glossy dark material
+  // Main cube — glossy visible material
   var mat = new THREE.MeshPhongMaterial({
-    color: 0x1a1a2e,
-    specular: 0x4444ff,
-    shininess: 60,
+    color: 0x3355aa,
+    specular: 0xffffff,
+    shininess: 120,
     transparent: false,
     opacity: 1
   });
   cube = new THREE.Mesh(geo, mat);
   scene.add(cube);
 
-  // Edge lines
+  // Bright edge lines
   var edgeGeo = new THREE.EdgesGeometry(geo);
-  var edgeMat = new THREE.LineBasicMaterial({ color: 0x6666ff, linewidth: 2 });
+  var edgeMat = new THREE.LineBasicMaterial({ color: 0xaaccff, linewidth: 2 });
   var edges = new THREE.LineSegments(edgeGeo, edgeMat);
   cube.add(edges);
 
-  // Lights
-  var ambient = new THREE.AmbientLight(0x333355, 1);
+  // Strong lighting for visibility
+  var ambient = new THREE.AmbientLight(0x667799, 1.5);
   scene.add(ambient);
 
-  var dirLight = new THREE.DirectionalLight(0x8888ff, 1.5);
-  dirLight.position.set(2, 3, 4);
+  var dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+  dirLight.position.set(3, 4, 5);
   scene.add(dirLight);
 
-  var dirLight2 = new THREE.DirectionalLight(0x4444aa, 0.8);
-  dirLight2.position.set(-3, -1, 2);
+  var dirLight2 = new THREE.DirectionalLight(0x8888ff, 1.2);
+  dirLight2.position.set(-3, -2, 3);
   scene.add(dirLight2);
+
+  var dirLight3 = new THREE.DirectionalLight(0x6666aa, 0.8);
+  dirLight3.position.set(0, -3, -2);
+  scene.add(dirLight3);
 }
 
 function attachTextcube() {
