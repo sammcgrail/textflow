@@ -581,4 +581,4 @@ function wrappedRender() {
   origRender();
 }
 
-registerMode('textcube', { init: wrappedInit, render: wrappedRender, attach: attachTextcube });
+registerMode('textcube', { init: wrappedInit, render: wrappedRender, attach: attachTextcube, cleanup: cleanupTextcube });
