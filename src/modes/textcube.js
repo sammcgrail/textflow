@@ -197,6 +197,7 @@ function attachTextcube() {
 }
 
 function onMouseDown(e) {
+  if (state.currentMode !== 'textcube') return;
   e.preventDefault();
   if (e.button === 2) {
     // Right-click: move cube
@@ -213,6 +214,7 @@ function onMouseDown(e) {
 }
 
 function onMouseMove(e) {
+  if (state.currentMode !== 'textcube') return;
   if (dragging) {
     var dx = e.clientX - lastDragX;
     var dy = e.clientY - lastDragY;
@@ -244,6 +246,7 @@ function onMouseUp(e) {
 }
 
 function onTouchStart(e) {
+  if (state.currentMode !== 'textcube') return;
   e.preventDefault();
   touchCount = e.touches.length;
   if (touchCount >= 2) {
@@ -264,6 +267,7 @@ function onTouchStart(e) {
 }
 
 function onTouchMove(e) {
+  if (state.currentMode !== 'textcube') return;
   e.preventDefault();
   if (e.touches.length >= 2 && moving) {
     var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -285,6 +289,7 @@ function onTouchMove(e) {
 }
 
 function onTouchEnd(e) {
+  if (state.currentMode !== 'textcube') return;
   if (e.touches.length === 0) {
     dragging = false;
     moving = false;
