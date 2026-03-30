@@ -22,6 +22,8 @@ export default function App() {
   // Handle mode button click
   const handleModeClick = useCallback((modeId) => {
     switchMode(modeId);
+    // Blur the button so spacebar doesn't re-trigger it
+    if (document.activeElement) document.activeElement.blur();
     // Scroll nav to mode
     if (navButtonsRef.current) {
       const btn = navButtonsRef.current.querySelector(`button[data-mode="${modeId}"]`);
@@ -48,6 +50,17 @@ export default function App() {
       }
     }
   }, [ready, currentMode]);
+
+  // Prevent spacebar from activating focused buttons or scrolling
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   // Mouse wheel horizontal scrolling on nav bar
   useEffect(() => {
