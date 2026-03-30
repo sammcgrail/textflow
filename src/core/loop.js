@@ -52,6 +52,11 @@ export function loop(ts) {
 }
 
 export function switchMode(mode) {
+  // Hide any mode overlay canvases from previous mode (e.g. textcube's three.js canvas)
+  var overlays = document.querySelectorAll('[data-mode-overlay]');
+  for (var i = 0; i < overlays.length; i++) {
+    overlays[i].style.display = 'none';
+  }
   state.currentMode = mode;
   state.time = 0;
   // Clear stale pointer state so clicks don't bleed between modes

@@ -121,6 +121,7 @@ function setupScene() {
     overlayCanvas.style.left = '0';
     overlayCanvas.style.pointerEvents = 'none';
     overlayCanvas.style.zIndex = '5';
+    overlayCanvas.setAttribute('data-mode-overlay', 'textcube');
     var parent = state.canvas.parentElement || document.body;
     parent.appendChild(overlayCanvas);
   }
@@ -413,18 +414,35 @@ function renderTextcube() {
     cubeMask = new Uint8Array(W * H);
   }
 
-  // Build mask — cell is "cube" if ANY sub-pixel has alpha > 10
+  // Build raw mask — cell is "cube" if ANY sub-pixel has alpha > 5
+  var rawMask = new Uint8Array(W * H);
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var hit = 0;
       for (var sy = 0; sy < sampleScale; sy++) {
         for (var sx = 0; sx < sampleScale; sx++) {
           var pi = ((y * sampleScale + sy) * sW + (x * sampleScale + sx)) * 4;
-          if (pixels[pi + 3] > 10) { hit = 1; break; }
+          if (pixels[pi + 3] > 5) { hit = 1; break; }
         }
         if (hit) break;
       }
-      cubeMask[y * W + x] = hit;
+      rawMask[y * W + x] = hit;
+    }
+  }
+
+  // Dilate mask by 1 cell to prevent edge bleed-through
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (rawMask[y * W + x]) {
+        cubeMask[y * W + x] = 1;
+        continue;
+      }
+      var adj = 0;
+      if (x > 0 && rawMask[y * W + x - 1]) adj = 1;
+      if (!adj && x < W - 1 && rawMask[y * W + x + 1]) adj = 1;
+      if (!adj && y > 0 && rawMask[(y - 1) * W + x]) adj = 1;
+      if (!adj && y < H - 1 && rawMask[(y + 1) * W + x]) adj = 1;
+      cubeMask[y * W + x] = adj;
     }
   }
 
