@@ -1,198 +1,21 @@
 // ============================================================
-// TEXTFLOW — Entry Point
-// WebGL 2 instanced renderer with Canvas 2D fallback.
-// Zero DOM manipulation per frame.
+// TEXTFLOW — Entry Point (legacy esbuild IIFE build)
+// Uses the shared engine module for initialization and loop.
 // ============================================================
 
 import { state } from './core/state.js';
-import { resize } from './core/canvas.js';
-import { initPointer } from './core/pointer.js';
-import { initGlow } from './core/glow.js';
-import { initLoop, loop, switchMode, scrollNavToMode } from './core/loop.js';
-import { getModeFromPath, getRandomMode } from './core/router.js';
-import { getMode, getRenderers } from './core/registry.js';
-import { initWebGL } from './core/webgl-renderer.js';
-import { loadMsdfAtlas } from './core/atlas.js';
-
-// Import all modes — each self-registers via registerMode()
-import './modes/lava.js';
-import './modes/rain.js';
-import './modes/wave.js';
-import './modes/fire.js';
-import './modes/plasma.js';
-import './modes/life.js';
-import './modes/warp.js';
-import './modes/swirl.js';
-import './modes/rift.js';
-import './modes/voronoi.js';
-import './modes/bolt.js';
-import './modes/moire.js';
-import './modes/fold.js';
-import './modes/copper.js';
-import './modes/glitch.js';
-import './modes/flock.js';
-import './modes/roto.js';
-import './modes/erosion.js';
-import './modes/gravity.js';
-import './modes/paint.js';
-import './modes/ripple.js';
-import './modes/sand.js';
-import './modes/orbit.js';
-import './modes/grow.js';
-import './modes/magnet.js';
-import './modes/shatter.js';
-import './modes/pulse.js';
-import './modes/worm.js';
-import './modes/snake.js';
-import './modes/bloom.js';
-import './modes/fluid.js';
-import './modes/spiral.js';
-import './modes/cipher.js';
-import './modes/aurora.js';
-import './modes/pendulum.js';
-import './modes/diffuse.js';
-import './modes/crystal.js';
-import './modes/tvstatic.js';
-import './modes/crt.js';
-import './modes/vhs.js';
-import './modes/terminal.js';
-import './modes/oscilloscope.js';
-import './modes/dial.js';
-import './modes/propfont.js';
-import './modes/brightmatch.js';
-import './modes/smoothfluid.js';
-import './modes/vidascii.js';
-import './modes/vidcow.js';
-import './modes/vidscenes.js';
-import './modes/vidfootball.js';
-import './modes/vidclowns.js';
-import './modes/vidneon.js';
-import './modes/terrain.js';
-import './modes/tunnel.js';
-import './modes/noise.js';
-import './modes/interference.js';
-import './modes/automata.js';
-import './modes/maze.js';
-import './modes/langton.js';
-import './modes/wave2d.js';
-import './modes/heat.js';
-import './modes/lorenz.js';
-import './modes/galaxy.js';
-import './modes/cloth.js';
-import './modes/dla.js';
-import './modes/slime.js';
-import './modes/reaction.js';
-import './modes/nbody.js';
-import './modes/ants.js';
-import './modes/strange.js';
-import './modes/mandel.js';
-import './modes/storm.js';
-import './modes/starfield.js';
-import './modes/matrix.js';
-import './modes/snowfall.js';
-import './modes/firework.js';
-import './modes/kaleidoscope.js';
-import './modes/radar.js';
-import './modes/fountain.js';
-import './modes/coral.js';
-import './modes/smoke.js';
-import './modes/tornado.js';
-import './modes/dna.js';
-import './modes/circuit.js';
-import './modes/rain3d.js';
-import './modes/boids.js';
-import './modes/waves3d.js';
-import './modes/tree.js';
-import './modes/chem.js';
-import './modes/typewriter.js';
-import './modes/conway3.js';
-import './modes/wfc.js';
-import './modes/metaball.js';
-import './modes/heartbeat.js';
-import './modes/bubbles.js';
-import './modes/waterfall.js';
-import './modes/pixelsort.js';
-import './modes/pendwave.js';
-import './modes/hexlife.js';
-import './modes/bacteria.js';
-import './modes/harmonograph.js';
-import './modes/topography.js';
-import './modes/lissajous.js';
-import './modes/embers.js';
-import './modes/eclipse.js';
-import './modes/caustics.js';
-import './modes/constellations.js';
-import './modes/dissolve.js';
-import './modes/tetris.js';
-import './modes/highway.js';
-import './modes/cityscape.js';
-import './modes/ocean.js';
-import './modes/piano.js';
-import './modes/clock.js';
-import './modes/blackhole.js';
-import './modes/fireflies.js';
-import './modes/vinyl.js';
-import './modes/jellyfish.js';
-import './modes/campfire.js';
-import './modes/roots.js';
-import './modes/lightning.js';
-import './modes/fern.js';
-import './modes/waveform.js';
-import './modes/neuron.js';
-import './modes/hourglass.js';
-import './modes/volcano.js';
-import './modes/sonar.js';
-import './modes/drops.js';
-import './modes/tiles.js';
-import './modes/mushroom.js';
-import './modes/cascade.js';
-import './modes/northern.js';
-import './modes/tidal.js';
-import './modes/comet.js';
-import './modes/circuit2.js';
-import './modes/vidjellyfish.js';
-import './modes/vidlava.js';
-import './modes/vidcity.js';
-import './modes/vidocean.js';
-import './modes/vidfireworks.js';
-import './modes/rotozoomer.js';
-import './modes/rotowarp.js';
-import './modes/rotogrid.js';
-import './modes/rotoprism.js';
-import './modes/rotospiral.js';
-import './modes/rototunnel.js';
-import './modes/rotoplasma.js';
-import './modes/rotoflower.js';
-import './modes/rotocube.js';
-import './modes/rotoscroll.js';
-import './modes/rotodisk.js';
-import './modes/vidgears.js';
-import './modes/vidink.js';
-import './modes/vidaurora.js';
-import './modes/vidgyro.js';
-import './modes/vidstars.js';
-import './modes/cat.js';
-import './modes/buttons.js';
-import './modes/handpose.js';
-import './modes/facemesh.js';
-import './modes/webcam.js';
-import './modes/facepass.js';
-import './modes/headcube.js';
-import './modes/camtrail.js';
-import './modes/camhalftone.js';
-import './modes/camdepth.js';
-import './modes/faceglitch.js';
-import './modes/handfire.js';
-import './modes/handlaser.js';
-import './modes/handgravity.js';
-import './modes/facepaint.js';
-import './modes/facemirror.js';
-import './modes/threeterrain.js';
-import './modes/threetunnel.js';
-import './modes/threeparticles.js';
-import './modes/threeshapes.js';
-import './modes/threefacecube.js';
-import './modes/textcube.js';
+// Legacy esbuild build: eagerly import ALL modes (esbuild IIFE doesn't support dynamic import)
+import './modes/index.js';
+import {
+  initEngine,
+  startLoop,
+  switchMode,
+  onModeChange,
+  isReady,
+  getModeFromPath,
+  getRandomMode,
+} from './core/engine.js';
+import { scrollNavToMode } from './core/loop.js';
 
 // ============================================================
 // INITIALIZATION
@@ -201,50 +24,17 @@ import './modes/textcube.js';
 document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
 document.addEventListener('selectstart', function(e) { e.preventDefault(); });
 
-// Initialize state
-state.canvas = document.getElementById('c');
+// Initialize engine with DOM elements
+var canvas = document.getElementById('c');
+var glowCanvas = document.getElementById('glow');
+initEngine(canvas, glowCanvas);
+
+// Legacy path: wire up nav buttons from static HTML
 state.buttons = document.querySelectorAll('nav button');
-state.dpr = window.devicePixelRatio || 1;
-state.isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (window.innerWidth < 768);
 
-// Try WebGL 2 first, fall back to Canvas 2D
-var webglOK = initWebGL();
-if (!webglOK) {
-  console.log('WebGL 2 not available, using Canvas 2D fallback');
-  state.ctx = state.canvas.getContext('2d', { alpha: false, desynchronized: true });
-  state.useWebGL = false;
-} else {
-  console.log('WebGL 2 renderer active');
-  // Keep a 2D context reference for font/text measurement
-  // (e.g. glyph metrics used by propfont mode and canvas.js resize)
-  var measureCanvas = document.createElement('canvas');
-  state.ctx = measureCanvas.getContext('2d');
-}
-
-// Hide glow canvas when using WebGL (bloom shader handles it)
-if (state.useWebGL) {
-  var glowEl = document.getElementById('glow');
-  if (glowEl) glowEl.style.display = 'none';
-}
-
-// Initialize subsystems
-resize();
-initPointer();
-initGlow();
-initLoop();
-
-// Attach all mode event listeners
-var renderers = getRenderers();
-for (var modeName in renderers) {
-  var mode = getMode(modeName);
-  if (mode && mode.attach) mode.attach();
-}
-
-// Resize handler
-window.addEventListener('resize', function() {
-  resize();
-  var mode = getMode(state.currentMode);
-  if (mode && mode.init) mode.init();
+// Update button active state when engine switches modes
+onModeChange(function(mode) {
+  state.buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
 });
 
 // Button click handlers
@@ -266,14 +56,13 @@ navBtnsEl.addEventListener('wheel', function(e) {
   navBtnsEl.scrollLeft += e.deltaY || e.deltaX;
 }, { passive: false });
 
-// Wait for font + MSDF atlas to load before starting
-Promise.all([document.fonts.ready, state.useWebGL ? loadMsdfAtlas() : Promise.resolve()]).then(function() {
-  resize();
+// Wait for engine ready, then start
+isReady().then(function() {
   var startMode = getModeFromPath();
   switchMode(startMode);
   scrollNavToMode(startMode, true);
   var nav = document.querySelector('nav');
   nav.style.visibility = 'visible';
   nav.style.opacity = '1';
-  loop();
+  startLoop();
 });

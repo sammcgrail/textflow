@@ -1,6 +1,8 @@
 node_modules/
 dist/
+dist-vite/
 *.log
 *.log.*
 logs/
 .DS_Store
+test-screenshots/

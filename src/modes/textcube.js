@@ -1,12 +1,10 @@
+import * as THREE from 'three';
 import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
 // Textcube — actual three.js rendered 3D cube overlaid on flowing ASCII text
 // Text flows around the cube silhouette, hugging the edges
-
-var THREE = null;
-var threeLoaded = false;
 var scene = null;
 var camera = null;
 var renderer = null;
@@ -64,17 +62,7 @@ function initTextcube() {
   pinchDist = 0;
   cubeMask = null;
 
-  if (!threeLoaded && !THREE) {
-    import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js').then(function(mod) {
-      THREE = mod;
-      threeLoaded = true;
-      setupScene();
-    }).catch(function(err) {
-      threeLoaded = false;
-    });
-  } else if (THREE) {
-    setupScene();
-  }
+  setupScene();
 }
 
 function createRoundedBox(w, h, d, r, segs) {
@@ -131,6 +119,19 @@ function setupScene() {
     maskCanvas = document.createElement('canvas');
     maskCtx = maskCanvas.getContext('2d');
   }
+
+  // Dispose previous scene resources
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  cube = null;
 
   // Three.js renderer (renders to the overlay canvas)
   if (renderer) {
@@ -349,15 +350,6 @@ function renderTextcube() {
   var W = state.COLS, H = state.ROWS;
   var t = state.time;
 
-  if (!threeLoaded || !THREE) {
-    var msg = 'loading three.js...';
-    var mx = Math.floor((W - msg.length) / 2);
-    for (var i = 0; i < msg.length; i++) {
-      drawCharHSL(msg[i], mx + i, Math.floor(H / 2), (t * 60 + i * 15) % 360, 60, 40);
-    }
-    return;
-  }
-
   if (!renderer || !cube) {
     setupScene();
     if (!renderer || !cube) return;
@@ -473,7 +465,7 @@ function renderTextcube() {
 
       // Check proximity to cube for buffer zone and glow
       var nearCube = 0;
-      var bufferDist = 4;
+      var bufferDist = 2;
       for (var dy = -bufferDist; dy <= bufferDist; dy++) {
         for (var dx = -bufferDist; dx <= bufferDist; dx++) {
           if (dx === 0 && dy === 0) continue;
@@ -485,8 +477,8 @@ function renderTextcube() {
         }
       }
 
-      // Skip cells too close to cube (buffer zone)
-      if (nearCube > 0.7) continue;
+      // Skip cells too close to cube (tight buffer)
+      if (nearCube > 0.6) continue;
 
       // Text character from flowing stream
       var ci = (textOffset + textIdx) % loremText.length;
@@ -527,6 +519,20 @@ function renderTextcube() {
 }
 
 function cleanupTextcube() {
+  if (cube) {
+    cube = null;
+  }
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  camera = null;
   if (overlayCanvas && overlayCanvas.parentElement) {
     overlayCanvas.parentElement.removeChild(overlayCanvas);
     overlayCanvas = null;
@@ -535,6 +541,9 @@ function cleanupTextcube() {
     renderer.dispose();
     renderer = null;
   }
+  maskCanvas = null;
+  maskCtx = null;
+  cubeMask = null;
 }
 
 // Cleanup when switching modes
@@ -572,4 +581,4 @@ function wrappedRender() {
   origRender();
 }
 
-registerMode('textcube', { init: wrappedInit, render: wrappedRender, attach: attachTextcube });
+registerMode('textcube', { init: wrappedInit, render: wrappedRender, attach: attachTextcube, cleanup: cleanupTextcube });
