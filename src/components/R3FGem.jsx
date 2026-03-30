@@ -5,7 +5,8 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { gemState } from '../modes/r3fgem.js';
+import { gemState, seededRandom, generateParticleData, PARTICLE_SEED, PARTICLE_COUNT } from '../modes/r3fgem.js';
+import { state as engineState } from '../core/state.js';
 
 function Crystal() {
   const groupRef = useRef();
@@ -66,7 +67,7 @@ function Crystal() {
       </mesh>
 
       {/* Floating particles around the gem */}
-      <Particles count={60} />
+      <Particles count={PARTICLE_COUNT} />
     </group>
   );
 }
@@ -75,26 +76,16 @@ function Particles({ count }) {
   const meshRef = useRef();
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
+  // Use same seeded PRNG as r3fgem.js so mask aligns with rendered particles
   const particles = useMemo(() => {
-    const arr = [];
-    for (let i = 0; i < count; i++) {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      const r = 1.8 + Math.random() * 1.2;
-      arr.push({
-        x: r * Math.sin(phi) * Math.cos(theta),
-        y: r * Math.sin(phi) * Math.sin(theta),
-        z: r * Math.cos(phi),
-        speed: 0.3 + Math.random() * 0.7,
-        offset: Math.random() * Math.PI * 2,
-      });
-    }
-    return arr;
-  }, [count]);
+    const rng = seededRandom(PARTICLE_SEED);
+    return generateParticleData(rng);
+  }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     if (!meshRef.current) return;
-    const t = clock.getElapsedTime();
+    // Use engine state.time to match analytical mask projection timing
+    const t = engineState.time;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       const s = Math.sin(t * p.speed + p.offset);
@@ -138,7 +129,7 @@ export default function R3FGem({ visible }) {
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
         gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
-        style={{ background: 'transparent' }}
+        style={{ background: 'transparent', pointerEvents: 'none' }}
       >
         <ambientLight intensity={0.8} color="#667799" />
         <directionalLight position={[3, 4, 5]} intensity={2} />
