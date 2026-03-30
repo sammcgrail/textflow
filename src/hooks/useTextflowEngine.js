@@ -49,11 +49,21 @@ export function useTextflowEngine(canvasRef, glowRef) {
     // Wait for engine ready, then start
     isReady().then(() => {
       const startMode = getModeFromPath();
-      engineSwitchMode(startMode);
-      setCurrentMode(startMode);
-      setReady(true);
+      // Start the render loop immediately for responsiveness
       const stop = startLoop();
       cleanupRef.current = stop;
+      // Switch mode — await lazy-load before updating React state
+      // to avoid race condition with R3FGem.jsx's lazy() import
+      const result = engineSwitchMode(startMode);
+      if (result && result.then) {
+        result.then(function() {
+          setCurrentMode(startMode);
+          setReady(true);
+        });
+      } else {
+        setCurrentMode(startMode);
+        setReady(true);
+      }
     });
 
     return () => {
