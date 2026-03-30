@@ -95,7 +95,8 @@ function Particles({ count }) {
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const t = clock.getElapsedTime();
-    particles.forEach((p, i) => {
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
       const s = Math.sin(t * p.speed + p.offset);
       dummy.position.set(
         p.x + s * 0.3,
@@ -105,7 +106,7 @@ function Particles({ count }) {
       dummy.scale.setScalar(0.02 + Math.abs(s) * 0.03);
       dummy.updateMatrix();
       meshRef.current.setMatrixAt(i, dummy.matrix);
-    });
+    }
     meshRef.current.instanceMatrix.needsUpdate = true;
   });
 

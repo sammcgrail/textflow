@@ -56,15 +56,7 @@ var cachedDistSize = 0;
 var maskFrameCounter = 0;
 var MASK_SKIP_FRAMES = 2; // only rebuild mask every N frames
 
-// === Pre-computed distance lookup for 5x5 kernel ===
-var distLUT = new Float32Array(25);
-(function() {
-  for (var dy = -2; dy <= 2; dy++) {
-    for (var dx = -2; dx <= 2; dx++) {
-      distLUT[(dy + 2) * 5 + (dx + 2)] = Math.sqrt(dx * dx + dy * dy);
-    }
-  }
-})();
+var SQRT2 = 1.414;
 
 // === Interaction handlers ===
 function onMouseDown(e) {
@@ -397,8 +389,8 @@ function buildMask(W, H) {
     }
   }
 
-  // Dilate mask by 1 cell (use separate pass to avoid read-write conflict)
-  // Write dilated result into distField temporarily as staging
+  // Dilate mask by 1 cell
+  // Use distField as staging to avoid read-write conflict
   cachedDistField.fill(0);
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
@@ -412,36 +404,45 @@ function buildMask(W, H) {
       }
     }
   }
-  // Copy back to mask
   for (var i = 0; i < cellCount; i++) {
     cachedMask[i] = cachedDistField[i] ? 1 : 0;
   }
 
-  // Build distance field: for each non-masked cell, compute proximity to nearest masked cell
-  // Use the pre-computed distLUT for the 5x5 kernel
+  // Chamfer distance transform — O(2*cells) instead of O(cells*25)
+  // Initialize: mask cells = 0, others = large value
+  var INF = 999;
+  var maxDist = 3; // proximity range (bd+1)
+  for (var i = 0; i < cellCount; i++) {
+    cachedDistField[i] = cachedMask[i] ? 0 : INF;
+  }
+  // Forward pass (top-left → bottom-right)
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var idx = y * W + x;
-      if (cachedMask[idx]) {
-        cachedDistField[idx] = -1; // sentinel: is masked
-        continue;
-      }
-      var nearGem = 0;
-      for (var dy = -2; dy <= 2; dy++) {
-        var ny = y + dy;
-        if (ny < 0 || ny >= H) continue;
-        for (var dx = -2; dx <= 2; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          var nx = x + dx;
-          if (nx < 0 || nx >= W) continue;
-          if (cachedMask[ny * W + nx]) {
-            var dist = distLUT[(dy + 2) * 5 + (dx + 2)];
-            var v = 1 - dist / 3; // bd+1 = 3
-            if (v > nearGem) nearGem = v;
-          }
-        }
-      }
-      cachedDistField[idx] = nearGem;
+      var i = y * W + x;
+      if (x > 0 && cachedDistField[i - 1] + 1 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i - 1] + 1;
+      if (y > 0 && cachedDistField[i - W] + 1 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i - W] + 1;
+      if (x > 0 && y > 0 && cachedDistField[i - W - 1] + SQRT2 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i - W - 1] + SQRT2;
+      if (x < W - 1 && y > 0 && cachedDistField[i - W + 1] + SQRT2 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i - W + 1] + SQRT2;
+    }
+  }
+  // Backward pass (bottom-right → top-left)
+  for (var y = H - 1; y >= 0; y--) {
+    for (var x = W - 1; x >= 0; x--) {
+      var i = y * W + x;
+      if (x < W - 1 && cachedDistField[i + 1] + 1 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i + 1] + 1;
+      if (y < H - 1 && cachedDistField[i + W] + 1 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i + W] + 1;
+      if (x < W - 1 && y < H - 1 && cachedDistField[i + W + 1] + SQRT2 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i + W + 1] + SQRT2;
+      if (x > 0 && y < H - 1 && cachedDistField[i + W - 1] + SQRT2 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i + W - 1] + SQRT2;
+    }
+  }
+  // Convert to proximity (0..1 range)
+  for (var i = 0; i < cellCount; i++) {
+    if (cachedDistField[i] === 0) {
+      cachedDistField[i] = -1; // masked cell sentinel
+    } else if (cachedDistField[i] <= maxDist) {
+      cachedDistField[i] = 1 - cachedDistField[i] / maxDist;
+    } else {
+      cachedDistField[i] = 0;
     }
   }
 
