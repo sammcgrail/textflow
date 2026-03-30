@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
@@ -7,9 +8,6 @@ import { RAMP_DENSE } from '../core/ramps.js';
 // Head movement controls camera position for pronounced parallax
 
 var CDN_URL = 'https://cdn.jsdelivr.net/npm/@svenflow/micro-facemesh@0.1.2/dist/index.js';
-
-var THREE = null;
-var threeLoaded = false;
 var facemeshLib = null;
 var detector = null;
 var webcamEl = null;
@@ -221,17 +219,8 @@ function initThreefacecube() {
   startWebcam();
   loadFacemesh();
 
-  if (!THREE) {
-    import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js').then(function(mod) {
-      THREE = mod;
-      threeLoaded = true;
-      loadingThree = false;
-      setupScene();
-    });
-  } else {
-    loadingThree = false;
-    setupScene();
-  }
+  loadingThree = false;
+  setupScene();
 }
 
 function renderThreefacecube() {
@@ -240,13 +229,7 @@ function renderThreefacecube() {
   var t = state.time;
 
   // Loading state
-  if (loadingThree || !threeLoaded || !renderer) {
-    var msg = 'loading threefacecube...';
-    var mx = Math.floor((W - msg.length) / 2);
-    var my = Math.floor(H / 2);
-    for (var i = 0; i < msg.length; i++) {
-      drawCharHSL(msg[i], mx + i, my, (t * 60 + i * 15) % 360, 60, 40);
-    }
+  if (!renderer) {
     return;
   }
 

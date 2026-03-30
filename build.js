@@ -12,7 +12,7 @@ async function build() {
     format: 'iife',
     write: false,
     minify: false,
-    target: ['es2015'],
+    target: ['es2020'],
     sourcemap: false,
   });
 

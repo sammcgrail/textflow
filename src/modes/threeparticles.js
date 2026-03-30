@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
@@ -6,9 +7,6 @@ import { RAMP_DENSE } from '../core/ramps.js';
 
 // Three Particles — 3D particle storm with attractors, rendered to ASCII
 // Click to create explosion, drag to rotate camera
-
-var THREE = null;
-var threeLoaded = false;
 var renderer = null;
 var scene = null;
 var camera = null;
@@ -107,16 +105,7 @@ function initThreeparticles() {
   camPhi = 0.5;
   baseCamTheta = 0;
   baseCamPhi = 0.5;
-
-  if (!THREE) {
-    import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js').then(function(mod) {
-      THREE = mod;
-      threeLoaded = true;
-      setupScene();
-    });
-  } else {
-    setupScene();
-  }
+  setupScene();
 }
 
 function renderThreeparticles() {
@@ -124,13 +113,7 @@ function renderThreeparticles() {
   var W = state.COLS, H = state.ROWS;
   var t = state.time;
 
-  if (!threeLoaded || !renderer) {
-    var msg = 'loading three.js...';
-    var mx = Math.floor((W - msg.length) / 2);
-    var my = Math.floor(H / 2);
-    for (var i = 0; i < msg.length; i++) {
-      drawCharHSL(msg[i], mx + i, my, (t * 60 + i * 15) % 360, 60, 40);
-    }
+  if (!renderer) {
     return;
   }
 

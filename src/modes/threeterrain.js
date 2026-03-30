@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
@@ -6,9 +7,6 @@ import { RAMP_DENSE } from '../core/ramps.js';
 
 // Three Terrain — 3D terrain flyover with height-based coloring, rendered to ASCII
 // Drag to adjust camera angle
-
-var THREE = null;
-var threeLoaded = false;
 var renderer = null;
 var scene = null;
 var camera = null;
@@ -116,16 +114,7 @@ function initThreeterrain() {
   camOffset = 0;
   dragAngleX = 0;
   dragAngleY = 0;
-
-  if (!THREE) {
-    import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js').then(function(mod) {
-      THREE = mod;
-      threeLoaded = true;
-      setupScene();
-    });
-  } else {
-    setupScene();
-  }
+  setupScene();
 }
 
 function renderThreeterrain() {
@@ -133,13 +122,7 @@ function renderThreeterrain() {
   var W = state.COLS, H = state.ROWS;
   var t = state.time;
 
-  if (!threeLoaded || !renderer) {
-    var msg = 'loading three.js...';
-    var mx = Math.floor((W - msg.length) / 2);
-    var my = Math.floor(H / 2);
-    for (var i = 0; i < msg.length; i++) {
-      drawCharHSL(msg[i], mx + i, my, (t * 60 + i * 15) % 360, 60, 40);
-    }
+  if (!renderer) {
     return;
   }
 
