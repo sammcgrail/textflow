@@ -2,6 +2,9 @@
 // In the Vite/React build, the gem is rendered by R3FGem.jsx.
 // In the legacy esbuild build, we render it with raw three.js here.
 // Interaction state is exported for R3FGem.jsx to read.
+//
+// Mask is built analytically by projecting 3D geometry to screen coords
+// and rasterizing in pure JS — no GPU readPixels sync needed.
 
 import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
@@ -46,17 +49,89 @@ var lastMoveX = 0, lastMoveY = 0;
 var touchCount = 0;
 var pinchDist = 0;
 
-// === Cached buffers (avoid per-frame allocation) ===
-var cachedPixels = null;
-var cachedPixelsSize = 0;
+// === Cached buffers ===
 var cachedMask = null;
 var cachedMaskSize = 0;
-var cachedDistField = null; // pre-computed distance field (Float32Array)
-var cachedDistSize = 0;
-var maskFrameCounter = 0;
-var MASK_SKIP_FRAMES = 2; // only rebuild mask every N frames
+var cachedDistField = null;
 
-var SQRT2 = 1.414;
+var SQRT2 = Math.SQRT2;
+var PARTICLE_COUNT = 60;
+
+// === Pre-extracted icosahedron geometry for analytical projection ===
+var icoVerts = null; // Float32Array of [x,y,z, x,y,z, ...]
+var icoFaces = null; // Uint16Array of triangle indices
+var icoVertCount = 0;
+
+(function extractIcoGeometry() {
+  var geo = new THREE.IcosahedronGeometry(1.2, 1);
+  var pos = geo.getAttribute('position');
+  icoVerts = new Float32Array(pos.array);
+  icoVertCount = pos.count;
+  var idx = geo.getIndex();
+  if (idx) {
+    icoFaces = new Uint16Array(idx.array);
+  } else {
+    icoFaces = new Uint16Array(pos.count);
+    for (var i = 0; i < pos.count; i++) icoFaces[i] = i;
+  }
+  geo.dispose();
+})();
+
+// === Reusable THREE objects for projection (zero allocation per frame) ===
+// NOTE: Camera params (fov=45, near=0.1, far=100, position=[0,0,5]) must match
+// the <Canvas camera={...}> props in R3FGem.jsx. If those ever change, update here too.
+var _projCam = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+_projCam.position.set(0, 0, 5);
+_projCam.updateMatrixWorld();
+
+var _euler = new THREE.Euler();
+var _quat = new THREE.Quaternion();
+var _pos3 = new THREE.Vector3();
+var _scl3 = new THREE.Vector3();
+var _modelMat = new THREE.Matrix4();
+var _v3 = new THREE.Vector3();
+
+// Projected vertices buffer (reused across frames)
+var projBuf = null;
+var projBufSize = 0;
+
+// Seeded PRNG for deterministic particle positions
+// Must produce identical sequence as R3FGem.jsx to ensure mask alignment
+function seededRandom(seed) {
+  var s = seed;
+  return function() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+var PARTICLE_SEED = 42;
+
+function generateParticleData(rng) {
+  var data = [];
+  for (var i = 0; i < PARTICLE_COUNT; i++) {
+    var theta = rng() * Math.PI * 2;
+    var phi = Math.acos(2 * rng() - 1);
+    var r = 1.8 + rng() * 1.2;
+    data.push({
+      x: r * Math.sin(phi) * Math.cos(theta),
+      y: r * Math.sin(phi) * Math.sin(theta),
+      z: r * Math.cos(phi),
+      speed: 0.3 + rng() * 0.7,
+      offset: rng() * Math.PI * 2,
+    });
+  }
+  return data;
+}
+
+// Export for R3FGem.jsx to use the same particle positions
+export { seededRandom, generateParticleData, PARTICLE_SEED, PARTICLE_COUNT };
+
+function initParticleData() {
+  if (particleData.length === PARTICLE_COUNT) return;
+  var rng = seededRandom(PARTICLE_SEED);
+  particleData = generateParticleData(rng);
+}
 
 // === Interaction handlers ===
 function onMouseDown(e) {
@@ -250,26 +325,11 @@ function createGemScene() {
   }));
   group.add(innerMesh);
 
-  var count = 60;
   var sphereGeo = new THREE.SphereGeometry(1, 6, 6);
   particles = new THREE.InstancedMesh(sphereGeo, new THREE.MeshBasicMaterial({
     color: 0x88ccff, transparent: true, opacity: 0.8,
-  }), count);
+  }), PARTICLE_COUNT);
   group.add(particles);
-
-  particleData = [];
-  for (var i = 0; i < count; i++) {
-    var theta = Math.random() * Math.PI * 2;
-    var phi = Math.acos(2 * Math.random() - 1);
-    var r = 1.8 + Math.random() * 1.2;
-    particleData.push({
-      x: r * Math.sin(phi) * Math.cos(theta),
-      y: r * Math.sin(phi) * Math.sin(theta),
-      z: r * Math.cos(phi),
-      speed: 0.3 + Math.random() * 0.7,
-      offset: Math.random() * Math.PI * 2,
-    });
-  }
 }
 
 function updateGemTransform() {
@@ -323,42 +383,56 @@ function animateGem(delta) {
   }
 }
 
-// === Optimized mask building ===
-// Build mask + distance field from overlay canvas pixels
-// Only rebuilds every MASK_SKIP_FRAMES frames to amortize readPixels cost
+// === Analytical mask building (pure JS, no GPU sync) ===
+
+// Barycentric sign for point-in-triangle test
+function triSign(px, py, ax, ay, bx, by) {
+  return (px - bx) * (ay - by) - (ax - bx) * (py - by);
+}
+
+// Rasterize a projected triangle into the mask grid
+function rasterTriangle(mask, W, H, ax, ay, bx, by, cx, cy) {
+  var minX = Math.max(0, Math.floor(Math.min(ax, bx, cx)));
+  var maxX = Math.min(W - 1, Math.ceil(Math.max(ax, bx, cx)));
+  var minY = Math.max(0, Math.floor(Math.min(ay, by, cy)));
+  var maxY = Math.min(H - 1, Math.ceil(Math.max(ay, by, cy)));
+
+  for (var y = minY; y <= maxY; y++) {
+    for (var x = minX; x <= maxX; x++) {
+      // Test cell center (x+0.5, y+0.5) against triangle
+      var px = x + 0.5;
+      var py = y + 0.5;
+      var d1 = triSign(px, py, ax, ay, bx, by);
+      var d2 = triSign(px, py, bx, by, cx, cy);
+      var d3 = triSign(px, py, cx, cy, ax, ay);
+      var hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+      var hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+      if (!(hasNeg && hasPos)) {
+        mask[y * W + x] = 1;
+      }
+    }
+  }
+}
+
+// Rasterize a projected circle (particle) into the mask grid
+function rasterCircle(mask, W, H, cx, cy, r) {
+  var minX = Math.max(0, Math.floor(cx - r));
+  var maxX = Math.min(W - 1, Math.ceil(cx + r));
+  var minY = Math.max(0, Math.floor(cy - r));
+  var maxY = Math.min(H - 1, Math.ceil(cy + r));
+  var r2 = r * r;
+  for (var y = minY; y <= maxY; y++) {
+    for (var x = minX; x <= maxX; x++) {
+      var dx = x + 0.5 - cx;
+      var dy = y + 0.5 - cy;
+      if (dx * dx + dy * dy <= r2) {
+        mask[y * W + x] = 1;
+      }
+    }
+  }
+}
+
 function buildMask(W, H) {
-  maskFrameCounter++;
-  var needsRebuild = (maskFrameCounter % MASK_SKIP_FRAMES === 0);
-
-  // Return cached if we have one and it's the right size
-  if (!needsRebuild && cachedMask && cachedMaskSize === W * H) {
-    return cachedMask;
-  }
-
-  var r3fCanvas = null;
-  if (overlayEl) {
-    r3fCanvas = overlayEl.querySelector('canvas');
-  }
-  if (!r3fCanvas || r3fCanvas.width === 0) return null;
-
-  var mCtx;
-  try {
-    mCtx = r3fCanvas.getContext('webgl2') || r3fCanvas.getContext('webgl');
-  } catch(e) { return null; }
-  if (!mCtx) return null;
-
-  var rW = r3fCanvas.width;
-  var rH = r3fCanvas.height;
-
-  // Reuse pixel buffer
-  var pixelCount = rW * rH * 4;
-  if (!cachedPixels || cachedPixelsSize !== pixelCount) {
-    cachedPixels = new Uint8Array(pixelCount);
-    cachedPixelsSize = pixelCount;
-  }
-  mCtx.readPixels(0, 0, rW, rH, mCtx.RGBA, mCtx.UNSIGNED_BYTE, cachedPixels);
-
-  // Reuse mask buffer
   var cellCount = W * H;
   if (!cachedMask || cachedMaskSize !== cellCount) {
     cachedMask = new Uint8Array(cellCount);
@@ -367,30 +441,90 @@ function buildMask(W, H) {
   }
   cachedMask.fill(0);
 
-  // Sample directly at cell grid resolution (skip expensive 4x supersampling)
-  // Sample 2x2 within each cell for adequate coverage of small particles
-  var cellW = rW / W;
-  var cellH = rH / H;
-  for (var y = 0; y < H; y++) {
-    for (var x = 0; x < W; x++) {
-      // Check 4 sample points within the cell
-      var hit = 0;
-      for (var sy = 0; sy < 2 && !hit; sy++) {
-        for (var sx = 0; sx < 2 && !hit; sx++) {
-          var px = Math.floor((x + 0.25 + sx * 0.5) * cellW);
-          var py = Math.floor((H - 1 - y + 0.25 + sy * 0.5) * cellH);
-          if (px >= rW) px = rW - 1;
-          if (py >= rH) py = rH - 1;
-          var pi = (py * rW + px) * 4;
-          if (cachedPixels[pi + 3] > 10) hit = 1;
-        }
-      }
-      if (hit) cachedMask[y * W + x] = 1;
-    }
+  // Screen dimensions for projection mapping
+  var vw = window.innerWidth || 1200;
+  var vh = window.innerHeight || 800;
+  var charW = state.CHAR_W || (vw / W);
+  var charH = state.CHAR_H || (vh / H);
+  var navH = state.NAV_H || 32;
+
+  // Update projection camera aspect to match screen
+  _projCam.aspect = vw / vh;
+  _projCam.updateProjectionMatrix();
+  _projCam.updateMatrixWorld();
+
+  // Build model matrix from gemState
+  _euler.set(gemState.rotX, gemState.rotY, gemState.rotZ, 'XYZ');
+  _quat.setFromEuler(_euler);
+  _pos3.set(gemState.offX, gemState.offY, 0);
+  _scl3.setScalar(gemState.scale);
+  _modelMat.compose(_pos3, _quat, _scl3);
+
+  // Ensure projection buffer is large enough
+  var needed = icoVertCount * 2;
+  if (!projBuf || projBufSize < needed) {
+    projBuf = new Float32Array(needed);
+    projBufSize = needed;
   }
 
-  // Dilate mask by 1 cell
-  // Use distField as staging to avoid read-write conflict
+  // Project all icosahedron vertices to grid coords
+  for (var i = 0; i < icoVertCount; i++) {
+    _v3.set(icoVerts[i * 3], icoVerts[i * 3 + 1], icoVerts[i * 3 + 2]);
+    _v3.applyMatrix4(_modelMat);
+    _v3.project(_projCam);
+    var sx = (_v3.x * 0.5 + 0.5) * vw;
+    var sy = (1 - (_v3.y * 0.5 + 0.5)) * vh;
+    projBuf[i * 2] = sx / charW;
+    projBuf[i * 2 + 1] = (sy - navH) / charH;
+  }
+
+  // Rasterize icosahedron triangles
+  for (var t = 0; t < icoFaces.length; t += 3) {
+    var i0 = icoFaces[t], i1 = icoFaces[t + 1], i2 = icoFaces[t + 2];
+    rasterTriangle(cachedMask, W, H,
+      projBuf[i0 * 2], projBuf[i0 * 2 + 1],
+      projBuf[i1 * 2], projBuf[i1 * 2 + 1],
+      projBuf[i2 * 2], projBuf[i2 * 2 + 1]);
+  }
+
+  // Project and rasterize particles
+  var tanHalf = Math.tan(22.5 * Math.PI / 180); // tan(FOV/2)
+  var time = state.time;
+  for (var i = 0; i < particleData.length; i++) {
+    var p = particleData[i];
+    var s = Math.sin(time * p.speed + p.offset);
+    // Animated position in gem-local space (same formula as R3FGem.jsx)
+    var px = p.x + s * 0.3;
+    var py = p.y + Math.cos(time * p.speed * 0.7 + p.offset) * 0.3;
+    var pz = p.z + s * 0.2;
+    var worldRadius = (0.02 + Math.abs(s) * 0.03) * gemState.scale;
+
+    // Transform to world space
+    _v3.set(px, py, pz);
+    _v3.applyMatrix4(_modelMat);
+    var worldZ = _v3.z;
+
+    // Distance from camera (camera at z=5)
+    var dist = 5 - worldZ;
+    if (dist < 0.1) continue; // behind camera
+
+    // Project center to grid
+    _v3.project(_projCam);
+    var sx = (_v3.x * 0.5 + 0.5) * vw;
+    var sy = (1 - (_v3.y * 0.5 + 0.5)) * vh;
+    var gcx = sx / charW;
+    var gcy = (sy - navH) / charH;
+
+    // Compute projected radius in grid cells
+    // projectedScreenHeight = worldRadius / (dist * tan(fov/2)) * viewportHeight/2
+    var projPixelR = (worldRadius / (dist * tanHalf)) * vh * 0.5;
+    var projCellR = projPixelR / charH;
+    projCellR = Math.max(projCellR, 0.5); // minimum radius for coverage
+
+    rasterCircle(cachedMask, W, H, gcx, gcy, projCellR + 0.3);
+  }
+
+  // Dilate mask by 1 cell for padding
   cachedDistField.fill(0);
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
@@ -408,14 +542,13 @@ function buildMask(W, H) {
     cachedMask[i] = cachedDistField[i] ? 1 : 0;
   }
 
-  // Chamfer distance transform — O(2*cells) instead of O(cells*25)
-  // Initialize: mask cells = 0, others = large value
+  // Chamfer distance transform for proximity field
   var INF = 999;
-  var maxDist = 3; // proximity range (bd+1)
+  var maxDist = 3;
   for (var i = 0; i < cellCount; i++) {
     cachedDistField[i] = cachedMask[i] ? 0 : INF;
   }
-  // Forward pass (top-left → bottom-right)
+  // Forward pass
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var i = y * W + x;
@@ -425,7 +558,7 @@ function buildMask(W, H) {
       if (x < W - 1 && y > 0 && cachedDistField[i - W + 1] + SQRT2 < cachedDistField[i]) cachedDistField[i] = cachedDistField[i - W + 1] + SQRT2;
     }
   }
-  // Backward pass (bottom-right → top-left)
+  // Backward pass
   for (var y = H - 1; y >= 0; y--) {
     for (var x = W - 1; x >= 0; x--) {
       var i = y * W + x;
@@ -461,9 +594,11 @@ function initR3fgem() {
   gemState.dragging = false;
   gemState.moving = false;
   gemState.autoRotate = true;
-  maskFrameCounter = 0;
   cachedMask = null;
   cachedDistField = null;
+
+  // Initialize particle data for analytical mask (needed in both build paths)
+  initParticleData();
 
   var existing = document.querySelector('[data-mode-overlay="r3fgem"]');
   if (existing && !renderer) {
@@ -497,7 +632,7 @@ function renderR3fgem() {
     updateGemTransform();
   }
 
-  // Build/update mask (skips readPixels on most frames)
+  // Build mask analytically (no GPU sync needed)
   var mask = buildMask(W, H);
 
   // Render flowing text using pre-computed distance field
