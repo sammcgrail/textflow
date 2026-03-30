@@ -5,3 +5,4 @@ dist-vite/
 *.log.*
 logs/
 .DS_Store
+test-screenshots/

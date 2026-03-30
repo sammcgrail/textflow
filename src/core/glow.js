@@ -161,7 +161,8 @@ export var glows = {
   threeparticles: { color: 'rgba(200,150,255,0.4)', blur: 16 },
   threeshapes: { color: 'rgba(150,255,200,0.35)', blur: 14 },
   threefacecube: { color: 'rgba(150,180,255,0.35)', blur: 14 },
-  textcube: { color: 'rgba(200,180,255,0.35)', blur: 14 }
+  textcube: { color: 'rgba(200,180,255,0.35)', blur: 14 },
+  r3fgem: { color: 'rgba(100,150,255,0.4)', blur: 16 }
 };
 
 var glowCanvas = null;

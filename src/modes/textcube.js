@@ -465,7 +465,7 @@ function renderTextcube() {
 
       // Check proximity to cube for buffer zone and glow
       var nearCube = 0;
-      var bufferDist = 4;
+      var bufferDist = 2;
       for (var dy = -bufferDist; dy <= bufferDist; dy++) {
         for (var dx = -bufferDist; dx <= bufferDist; dx++) {
           if (dx === 0 && dy === 0) continue;
@@ -477,8 +477,8 @@ function renderTextcube() {
         }
       }
 
-      // Skip cells too close to cube (buffer zone)
-      if (nearCube > 0.7) continue;
+      // Skip cells too close to cube (tight buffer)
+      if (nearCube > 0.6) continue;
 
       // Text character from flowing stream
       var ci = (textOffset + textIdx) % loremText.length;

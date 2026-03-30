@@ -1,6 +1,9 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { MODES } from './modes-list.js';
 import { useTextflowEngine } from './hooks/useTextflowEngine.js';
+
+// R3F overlay components — lazy loaded, only in Vite build
+const R3FGem = lazy(() => import('./components/R3FGem.jsx'));
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -80,6 +83,11 @@ export default function App() {
 
       <canvas id="c" ref={canvasRef} />
       <canvas id="glow" ref={glowRef} />
+
+      {/* R3F overlay — only renders when r3fgem mode is active */}
+      <Suspense fallback={null}>
+        <R3FGem visible={currentMode === 'r3fgem'} />
+      </Suspense>
 
       <div id="info-bar">
         <span id="fps" ref={fpsRef}>0 fps</span>
