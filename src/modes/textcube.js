@@ -34,6 +34,10 @@ var lastMoveX = 0;
 var lastMoveY = 0;
 var touchCount = 0;
 
+// Scale state (scroll / pinch)
+var cubeScale = 1.0;
+var pinchDist = 0;
+
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog ' +
   'Pack my box with five dozen liquor jugs ' +
@@ -56,6 +60,8 @@ function initTextcube() {
   autoRotate = true;
   cubeOffX = 0;
   cubeOffY = 0;
+  cubeScale = 1.0;
+  pinchDist = 0;
   cubeMask = null;
 
   if (!threeLoaded && !THREE) {
@@ -191,6 +197,7 @@ function attachTextcube() {
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
   c.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+  c.addEventListener('wheel', onWheel, { passive: false });
   c.addEventListener('touchstart', onTouchStart, { passive: false });
   window.addEventListener('touchmove', onTouchMove, { passive: false });
   window.addEventListener('touchend', onTouchEnd);
@@ -245,18 +252,31 @@ function onMouseUp(e) {
   }
 }
 
+function onWheel(e) {
+  if (state.currentMode !== 'textcube') return;
+  e.preventDefault();
+  var delta = e.deltaY > 0 ? -0.05 : 0.05;
+  cubeScale = Math.max(0.3, Math.min(3.0, cubeScale + delta));
+}
+
 function onTouchStart(e) {
   if (state.currentMode !== 'textcube') return;
+  // Don't intercept touches on nav bar
+  if (e.target && e.target.closest && e.target.closest('nav')) return;
   e.preventDefault();
   touchCount = e.touches.length;
   if (touchCount >= 2) {
-    // Two-finger: move cube
+    // Two-finger: move + pinch to scale
     moving = true;
     dragging = false;
     var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
     lastMoveX = mx;
     lastMoveY = my;
+    pinchDist = Math.sqrt(
+      Math.pow(e.touches[1].clientX - e.touches[0].clientX, 2) +
+      Math.pow(e.touches[1].clientY - e.touches[0].clientY, 2)
+    );
   } else {
     // One finger: rotate
     dragging = true;
@@ -268,6 +288,7 @@ function onTouchStart(e) {
 
 function onTouchMove(e) {
   if (state.currentMode !== 'textcube') return;
+  if (!dragging && !moving) return;
   e.preventDefault();
   if (e.touches.length >= 2 && moving) {
     var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -276,6 +297,16 @@ function onTouchMove(e) {
     cubeOffY -= (my - lastMoveY) * 0.01;
     lastMoveX = mx;
     lastMoveY = my;
+    // Pinch to scale
+    var newDist = Math.sqrt(
+      Math.pow(e.touches[1].clientX - e.touches[0].clientX, 2) +
+      Math.pow(e.touches[1].clientY - e.touches[0].clientY, 2)
+    );
+    if (pinchDist > 0) {
+      var scaleFactor = newDist / pinchDist;
+      cubeScale = Math.max(0.3, Math.min(3.0, cubeScale * scaleFactor));
+    }
+    pinchDist = newDist;
   } else if (dragging && e.touches.length === 1) {
     var dx = e.touches[0].clientX - lastDragX;
     var dy = e.touches[0].clientY - lastDragY;
@@ -342,6 +373,7 @@ function renderTextcube() {
   cube.rotation.y = rotY;
   cube.position.x = cubeOffX;
   cube.position.y = cubeOffY;
+  cube.scale.set(cubeScale, cubeScale, cubeScale);
 
   // Size the overlay to match the main canvas exactly
   var mainCanvas = state.canvas;
