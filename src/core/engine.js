@@ -194,6 +194,9 @@ export function switchMode(mode) {
   // If mode is already registered, switch synchronously
   var m = getMode(mode);
   if (m) {
+    // Always attach any unattached mode listeners — the mode may have been
+    // registered by a separate import (e.g. React lazy) before attachNewModes ran.
+    attachNewModes();
     doSwitch(mode);
     return Promise.resolve();
   }

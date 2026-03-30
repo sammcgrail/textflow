@@ -612,10 +612,6 @@ function renderTextcube() {
       textIdx++;
       var ch = loremText[ci];
       if (ch === ' ') {
-        if (nearCube > 0.3) {
-          var glowHue = (t * 40 + x * 3 + y * 2) % 360;
-          drawCharHSL('.', x, y, glowHue, 70, 15 + nearCube * 30);
-        }
         continue;
       }
 
