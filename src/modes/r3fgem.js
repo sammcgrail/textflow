@@ -602,15 +602,24 @@ function initR3fgem() {
   initParticleData();
 
   var existing = document.querySelector('[data-mode-overlay="r3fgem"]');
-  if (existing && !renderer) {
+  if (existing) {
     overlayEl = existing;
+    if (!renderer) return; // Vite/React build — R3FGem.jsx handles 3D rendering
+  }
+
+  // In Vite/React build, R3FGem.jsx handles 3D rendering via React Three Fiber.
+  // Don't create a standalone three.js scene — it causes duplicate overlays and
+  // race conditions with the lazy-loaded R3FGem component.
+  var isReactBuild = !!document.getElementById('root');
+  if (!renderer && isReactBuild) {
     return;
   }
 
+  // Legacy esbuild build — create standalone three.js scene
   if (!renderer) {
     createGemScene();
   }
-  overlayEl.style.display = 'block';
+  if (overlayEl) overlayEl.style.display = 'block';
 
   if (renderer) {
     renderer.setSize(window.innerWidth, window.innerHeight);
