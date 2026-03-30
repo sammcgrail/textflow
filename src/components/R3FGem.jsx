@@ -138,7 +138,7 @@ export default function R3FGem({ visible }) {
       <Canvas
         camera={{ position: [0, 0, 5], fov: 45 }}
         gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
-        style={{ background: 'transparent' }}
+        style={{ background: 'transparent', pointerEvents: 'none' }}
       >
         <ambientLight intensity={0.8} color="#667799" />
         <directionalLight position={[3, 4, 5]} intensity={2} />
