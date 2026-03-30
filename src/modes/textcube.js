@@ -41,15 +41,6 @@ var pinchDist = 0;
 var maskFrameCounter = 0;
 var MASK_SKIP_FRAMES = 2;
 var cachedRawMask = null;
-// Pre-computed distance LUT for 5x5 kernel
-var cubeDistLUT = new Float32Array(25);
-(function() {
-  for (var dy = -2; dy <= 2; dy++) {
-    for (var dx = -2; dx <= 2; dx++) {
-      cubeDistLUT[(dy + 2) * 5 + (dx + 2)] = Math.sqrt(dx * dx + dy * dy);
-    }
-  }
-})();
 
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog ' +
@@ -460,41 +451,56 @@ function renderTextcube() {
       }
     }
 
-    // Dilate + build distance field in one pass
+    // Dilate mask by 1 cell
+    cubeMask.fill(0);
     for (var y = 0; y < H; y++) {
       for (var x = 0; x < W; x++) {
         var i = y * W + x;
-        if (cachedRawMask[i]) {
+        if (cachedRawMask[i]) { cubeMask[i] = 1; continue; }
+        if ((x > 0 && cachedRawMask[i - 1]) ||
+            (x < W - 1 && cachedRawMask[i + 1]) ||
+            (y > 0 && cachedRawMask[i - W]) ||
+            (y < H - 1 && cachedRawMask[i + W])) {
           cubeMask[i] = 1;
-          cubeDistField[i] = -1;
-          continue;
         }
-        // Dilate check
-        var adj = 0;
-        if (x > 0 && cachedRawMask[i - 1]) adj = 1;
-        if (!adj && x < W - 1 && cachedRawMask[i + 1]) adj = 1;
-        if (!adj && y > 0 && cachedRawMask[i - W]) adj = 1;
-        if (!adj && y < H - 1 && cachedRawMask[i + W]) adj = 1;
-        cubeMask[i] = adj;
-        if (adj) { cubeDistField[i] = -1; continue; }
+      }
+    }
 
-        // Proximity from pre-computed LUT
-        var nearCube = 0;
-        for (var dy = -2; dy <= 2; dy++) {
-          var ny = y + dy;
-          if (ny < 0 || ny >= H) continue;
-          for (var dx = -2; dx <= 2; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            var nx = x + dx;
-            if (nx < 0 || nx >= W) continue;
-            if (cubeMask[ny * W + nx] || cachedRawMask[ny * W + nx]) {
-              var dist = cubeDistLUT[(dy + 2) * 5 + (dx + 2)];
-              var v = 1 - dist / 3;
-              if (v > nearCube) nearCube = v;
-            }
-          }
-        }
-        cubeDistField[i] = nearCube;
+    // Chamfer distance transform — O(2*cells) instead of O(cells*25)
+    var INF = 999;
+    var SQRT2 = 1.414;
+    var maxDist = 3;
+    for (var i = 0; i < cellCount; i++) {
+      cubeDistField[i] = cubeMask[i] ? 0 : INF;
+    }
+    // Forward pass
+    for (var y = 0; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var i = y * W + x;
+        if (x > 0 && cubeDistField[i - 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - 1] + 1;
+        if (y > 0 && cubeDistField[i - W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W] + 1;
+        if (x > 0 && y > 0 && cubeDistField[i - W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W - 1] + SQRT2;
+        if (x < W - 1 && y > 0 && cubeDistField[i - W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i - W + 1] + SQRT2;
+      }
+    }
+    // Backward pass
+    for (var y = H - 1; y >= 0; y--) {
+      for (var x = W - 1; x >= 0; x--) {
+        var i = y * W + x;
+        if (x < W - 1 && cubeDistField[i + 1] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + 1] + 1;
+        if (y < H - 1 && cubeDistField[i + W] + 1 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W] + 1;
+        if (x < W - 1 && y < H - 1 && cubeDistField[i + W + 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W + 1] + SQRT2;
+        if (x > 0 && y < H - 1 && cubeDistField[i + W - 1] + SQRT2 < cubeDistField[i]) cubeDistField[i] = cubeDistField[i + W - 1] + SQRT2;
+      }
+    }
+    // Convert distance to proximity (0..1)
+    for (var i = 0; i < cellCount; i++) {
+      if (cubeDistField[i] === 0) {
+        cubeDistField[i] = -1; // masked sentinel
+      } else if (cubeDistField[i] <= maxDist) {
+        cubeDistField[i] = 1 - cubeDistField[i] / maxDist;
+      } else {
+        cubeDistField[i] = 0;
       }
     }
   }
