@@ -350,15 +350,22 @@ function wrappedInit() {
     var parent = state.canvas.parentElement || document.body;
     parent.appendChild(overlayCanvas);
   }
+  // Force show overlay
+  if (overlayCanvas) {
+    overlayCanvas.style.display = '';
+    // Force re-size on next render
+    overlayCanvas.width = 0;
+    overlayCanvas.height = 0;
+  }
   origInit();
 }
 
 // Listen for mode changes to hide overlay
 var lastMode = null;
 function checkModeChange() {
-  if (state.mode !== 'textcube' && overlayCanvas && overlayCanvas.parentElement) {
+  if (state.currentMode !== 'textcube' && overlayCanvas && overlayCanvas.parentElement) {
     overlayCanvas.style.display = 'none';
-  } else if (state.mode === 'textcube' && overlayCanvas) {
+  } else if (state.currentMode === 'textcube' && overlayCanvas) {
     overlayCanvas.style.display = '';
   }
 }
