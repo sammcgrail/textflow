@@ -4,6 +4,8 @@
 // ============================================================
 
 import { state } from './core/state.js';
+// Legacy esbuild build: eagerly import ALL modes (esbuild IIFE doesn't support dynamic import)
+import './modes/index.js';
 import {
   initEngine,
   startLoop,

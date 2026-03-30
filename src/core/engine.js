@@ -13,8 +13,10 @@ import { loadMsdfAtlas } from './atlas.js';
 import { getMode, getRenderers } from './registry.js';
 import { getModeFromPath, getRandomMode, updateURL } from './router.js';
 
-// Ensure all modes are registered (side-effect imports)
-import '../modes/index.js';
+// Eagerly load core modes only; other groups are lazy-loaded on demand.
+// The legacy esbuild path (entry.js) imports ../modes/index.js directly.
+import '../modes/groups/core.js';
+import { ensureModeLoaded } from '../modes/modeGroups.js';
 
 // --- Private loop state ---
 var lastTime = 0;
@@ -26,6 +28,8 @@ var fpsCallback = null;
 var modeChangeCallback = null;
 var readyResolve = null;
 var readyPromise = new Promise(function(resolve) { readyResolve = resolve; });
+var attachedModes = {}; // Track which modes have had attach() called
+var engineInitialized = false;
 
 // --- Public API ---
 
@@ -62,12 +66,16 @@ export function initEngine(canvas, glowCanvas) {
   initPointer();
   initGlow();
 
-  // Attach all mode event listeners
+  // Attach all currently registered mode event listeners
   var renderers = getRenderers();
   for (var modeName in renderers) {
     var mode = getMode(modeName);
-    if (mode && mode.attach) mode.attach();
+    if (mode && mode.attach) {
+      mode.attach();
+      attachedModes[modeName] = true;
+    }
   }
+  engineInitialized = true;
 
   // Resize handler
   window.addEventListener('resize', handleResize);
@@ -142,9 +150,9 @@ export function startLoop() {
 }
 
 /**
- * Switch to a different mode — hides overlays, resets state, updates URL.
+ * Perform the actual mode switch (synchronous portion).
  */
-export function switchMode(mode) {
+function doSwitch(mode) {
   // Hide any mode overlay canvases from previous mode
   var overlays = document.querySelectorAll('[data-mode-overlay]');
   for (var i = 0; i < overlays.length; i++) {
@@ -158,6 +166,39 @@ export function switchMode(mode) {
   if (modeChangeCallback) modeChangeCallback(mode);
   var m = getMode(mode);
   if (m && m.init) m.init();
+}
+
+/**
+ * Attach event listeners for any newly registered modes (after lazy loading).
+ */
+function attachNewModes() {
+  if (!engineInitialized) return;
+  var renderers = getRenderers();
+  for (var modeName in renderers) {
+    if (!attachedModes[modeName]) {
+      var mode = getMode(modeName);
+      if (mode && mode.attach) mode.attach();
+      attachedModes[modeName] = true;
+    }
+  }
+}
+
+/**
+ * Switch to a different mode — loads the mode group if needed, then switches.
+ * Returns a Promise that resolves after the switch is complete.
+ */
+export function switchMode(mode) {
+  // If mode is already registered, switch synchronously
+  var m = getMode(mode);
+  if (m) {
+    doSwitch(mode);
+    return Promise.resolve();
+  }
+  // Otherwise, lazy-load the group first
+  return ensureModeLoaded(mode).then(function() {
+    attachNewModes();
+    doSwitch(mode);
+  });
 }
 
 /**

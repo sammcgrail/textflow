@@ -17,11 +17,29 @@ var camOffset = 0;
 var dragAngleX = 0;
 var dragAngleY = 0;
 
-function disposeRenderer() {
+function disposeAll() {
+  if (terrain) {
+    terrain.geometry.dispose();
+    terrain.material.dispose();
+    terrain = null;
+  }
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  camera = null;
   if (renderer) {
     renderer.dispose();
     renderer = null;
   }
+  readCanvas = null;
+  readCtx = null;
 }
 
 function setupScene() {
@@ -30,7 +48,7 @@ function setupScene() {
   var rW = W * 2;
   var rH = H * 2;
 
-  disposeRenderer();
+  disposeAll();
 
   renderer = new THREE.WebGLRenderer({
     antialias: false,
