@@ -182,4 +182,5 @@ export const MODES = [
   { id: "threeshapes", label: "threeshapes" },
   { id: "threefacecube", label: "threefacecube" },
   { id: "textcube", label: "textcube" },
+  { id: "r3fgem", label: "r3fgem" },
 ];
