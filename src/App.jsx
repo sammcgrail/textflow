@@ -11,35 +11,28 @@ export default function App() {
   const navButtonsRef = useRef(null);
 
   const { switchMode, fpsRef, ready, currentMode } = useTextflowEngine(canvasRef, glowRef);
+  // Track whether nav should auto-center (logo click, URL nav, initial load — NOT button clicks)
+  const shouldCenterRef = useRef(true);
 
   // Handle logo click — random mode
   const handleLogoClick = useCallback(() => {
     const filtered = MODES.filter((m) => m.id !== 'vidascii');
     const random = filtered[Math.floor(Math.random() * filtered.length)];
+    shouldCenterRef.current = true;
     switchMode(random.id);
   }, [switchMode]);
 
   // Handle mode button click
   const handleModeClick = useCallback((modeId) => {
+    shouldCenterRef.current = false;
     switchMode(modeId);
     // Blur the button so spacebar doesn't re-trigger it
     if (document.activeElement) document.activeElement.blur();
-    // Scroll nav to mode
-    if (navButtonsRef.current) {
-      const btn = navButtonsRef.current.querySelector(`button[data-mode="${modeId}"]`);
-      if (btn) {
-        const containerWidth = navButtonsRef.current.clientWidth;
-        const btnCenter = btn.offsetLeft + btn.offsetWidth / 2;
-        let scrollTarget = btnCenter - containerWidth / 2;
-        scrollTarget = Math.max(0, Math.min(scrollTarget, navButtonsRef.current.scrollWidth - containerWidth));
-        navButtonsRef.current.scrollTo({ left: scrollTarget, behavior: 'smooth' });
-      }
-    }
   }, [switchMode]);
 
-  // Scroll nav to active mode on ready
+  // Scroll nav to active mode on ready / when centering is requested (logo click, URL, initial load)
   useEffect(() => {
-    if (ready && navButtonsRef.current) {
+    if (ready && navButtonsRef.current && shouldCenterRef.current) {
       const btn = navButtonsRef.current.querySelector(`button[data-mode="${currentMode}"]`);
       if (btn) {
         const containerWidth = navButtonsRef.current.clientWidth;

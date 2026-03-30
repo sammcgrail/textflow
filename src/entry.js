@@ -46,7 +46,7 @@ onFpsUpdate(function(fps) {
 
 // Button click handlers
 state.buttons.forEach(function(b) {
-  b.addEventListener('click', function() { switchMode(b.dataset.mode); scrollNavToMode(b.dataset.mode); });
+  b.addEventListener('click', function() { switchMode(b.dataset.mode); });
 });
 
 // Logo click -> random mode
