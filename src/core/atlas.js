@@ -115,7 +115,7 @@ export function buildAtlas(gl) {
   }
 
   // Upload MSDF image directly to WebGL texture — bypasses canvas 2D premultiply
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_GL, false);
+  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
   if (atlasTexture) gl.deleteTexture(atlasTexture);
   atlasTexture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, atlasTexture);
