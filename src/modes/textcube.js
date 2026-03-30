@@ -237,8 +237,14 @@ function onMouseMove(e) {
   if (moving) {
     var dx = e.clientX - lastMoveX;
     var dy = e.clientY - lastMoveY;
-    cubeOffX += dx * 0.01;
-    cubeOffY -= dy * 0.01;
+    // Map pixel movement to world units at z=0
+    // Camera at z=5, FOV=45°: visible height = 2*5*tan(22.5°) ≈ 4.14
+    var vh = window.innerHeight || 800;
+    var vw = window.innerWidth || 1200;
+    var worldH = 2 * 5 * Math.tan(22.5 * Math.PI / 180);
+    var worldW = worldH * (vw / vh);
+    cubeOffX += dx * (worldW / vw);
+    cubeOffY -= dy * (worldH / vh);
     lastMoveX = e.clientX;
     lastMoveY = e.clientY;
     e.preventDefault();
@@ -294,8 +300,12 @@ function onTouchMove(e) {
   if (e.touches.length >= 2 && moving) {
     var mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
     var my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    cubeOffX += (mx - lastMoveX) * 0.01;
-    cubeOffY -= (my - lastMoveY) * 0.01;
+    var vh2 = window.innerHeight || 800;
+    var vw2 = window.innerWidth || 1200;
+    var wH2 = 2 * 5 * Math.tan(22.5 * Math.PI / 180);
+    var wW2 = wH2 * (vw2 / vh2);
+    cubeOffX += (mx - lastMoveX) * (wW2 / vw2);
+    cubeOffY -= (my - lastMoveY) * (wH2 / vh2);
     lastMoveX = mx;
     lastMoveY = my;
     // Pinch to scale
