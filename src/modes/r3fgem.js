@@ -497,7 +497,8 @@ function buildMask(W, H) {
     var px = p.x + s * 0.3;
     var py = p.y + Math.cos(time * p.speed * 0.7 + p.offset) * 0.3;
     var pz = p.z + s * 0.2;
-    var worldRadius = (0.02 + Math.abs(s) * 0.03) * gemState.scale;
+    // 2x safety margin accounts for low-poly sphere facets, AA, and material glow
+    var worldRadius = (0.02 + Math.abs(s) * 0.03) * gemState.scale * 2.0;
 
     // Transform to world space
     _v3.set(px, py, pz);
@@ -519,9 +520,9 @@ function buildMask(W, H) {
     // projectedScreenHeight = worldRadius / (dist * tan(fov/2)) * viewportHeight/2
     var projPixelR = (worldRadius / (dist * tanHalf)) * vh * 0.5;
     var projCellR = projPixelR / charH;
-    projCellR = Math.max(projCellR, 0.5); // minimum radius for coverage
+    projCellR = Math.max(projCellR, 1.0); // minimum 1 cell radius for coverage
 
-    rasterCircle(cachedMask, W, H, gcx, gcy, projCellR + 0.3);
+    rasterCircle(cachedMask, W, H, gcx, gcy, projCellR + 0.5);
   }
 
   // Dilate mask by 1 cell for padding
