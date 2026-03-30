@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0f">
+<meta property="og:title" content="textflow">
+<meta property="og:description" content="176 interactive ASCII art experiments — gravity wells, falling sand, fractal trees, text worms, and more">
+<meta property="og:image" content="https://sebland.com/textflow/static/og-roto.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sebland.com/textflow">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="textflow">
+<meta name="twitter:description" content="176 interactive ASCII art experiments">
+<meta name="twitter:image" content="https://sebland.com/textflow/static/og-roto.png">
+<link rel="icon" href="/textflow/static/favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="/textflow/static/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>textflow</title>
+<link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+
+<nav>
+  <span class="logo" id="logo-btn" style="cursor:pointer">textflow</span>
+  <div class="nav-buttons">
+  <button class="active" data-mode="lava">lava</button>
+  <button data-mode="rain">rain</button>
+  <button data-mode="wave">wave</button>
+  <button data-mode="fire">fire</button>
+  <button data-mode="plasma">plasma</button>
+  <button data-mode="life">life</button>
+  <button data-mode="warp">warp</button>
+  <button data-mode="swirl">swirl</button>
+  <button data-mode="rift">rift</button>
+  <button data-mode="voronoi">voronoi</button>
+  <button data-mode="bolt">bolt</button>
+  <button data-mode="moire">moire</button>
+  <button data-mode="fold">fold</button>
+  <button data-mode="copper">copper</button>
+  <button data-mode="glitch">glitch</button>
+  <button data-mode="flock">flock</button>
+  <button data-mode="roto">roto</button>
+  <button data-mode="erosion">erosion</button>
+  <button data-mode="gravity">gravity</button>
+  <button data-mode="paint">paint</button>
+  <button data-mode="ripple">ripple</button>
+  <button data-mode="sand">sand</button>
+  <button data-mode="orbit">orbit</button>
+  <button data-mode="grow">grow</button>
+  <button data-mode="magnet">magnet</button>
+  <button data-mode="shatter">shatter</button>
+  <button data-mode="pulse">pulse</button>
+  <button data-mode="worm">worm</button>
+  <button data-mode="snake">snake</button>
+  <button data-mode="bloom">bloom</button>
+  <button data-mode="fluid">fluid</button>
+  <button data-mode="spiral">spiral</button>
+  <button data-mode="cipher">cipher</button>
+  <button data-mode="aurora">aurora</button>
+  <button data-mode="pendulum">pendulum</button>
+  <button data-mode="diffuse">diffuse</button>
+  <button data-mode="crystal">crystal</button>
+  <button data-mode="tvstatic">tvstatic</button>
+  <button data-mode="crt">crt</button>
+  <button data-mode="vhs">vhs</button>
+  <button data-mode="terminal">terminal</button>
+  <button data-mode="oscilloscope">scope</button>
+  <button data-mode="dial">dial</button>
+  <button data-mode="propfont">propfont</button>
+  <button data-mode="brightmatch">brightmatch</button>
+  <button data-mode="smoothfluid">smoothfluid</button>
+  <button data-mode="vidascii">vidascii</button>
+  <button data-mode="vidcow">vidcow</button>
+  <button data-mode="vidscenes">vidscenes</button>
+  <button data-mode="vidfootball">vidfootball</button>
+  <button data-mode="vidclowns">vidclowns</button>
+  <button data-mode="vidneon">vidneon</button>
+  <button data-mode="terrain">terrain</button>
+  <button data-mode="tunnel">tunnel</button>
+  <button data-mode="noise">noise</button>
+  <button data-mode="interference">interference</button>
+  <button data-mode="automata">automata</button>
+  <button data-mode="maze">maze</button>
+  <button data-mode="langton">langton</button>
+  <button data-mode="wave2d">wave2d</button>
+  <button data-mode="heat">heat</button>
+  <button data-mode="lorenz">lorenz</button>
+  <button data-mode="galaxy">galaxy</button>
+  <button data-mode="cloth">cloth</button>
+  <button data-mode="dla">dla</button>
+  <button data-mode="slime">slime</button>
+  <button data-mode="reaction">reaction</button>
+  <button data-mode="nbody">nbody</button>
+  <button data-mode="ants">ants</button>
+  <button data-mode="strange">strange</button>
+  <button data-mode="mandel">mandel</button>
+  <button data-mode="storm">storm</button>
+  <button data-mode="starfield">starfield</button>
+  <button data-mode="matrix">matrix</button>
+  <button data-mode="snowfall">snowfall</button>
+  <button data-mode="firework">firework</button>
+  <button data-mode="kaleidoscope">kaleidoscope</button>
+  <button data-mode="radar">radar</button>
+  <button data-mode="fountain">fountain</button>
+  <button data-mode="coral">coral</button>
+  <button data-mode="smoke">smoke</button>
+  <button data-mode="tornado">tornado</button>
+  <button data-mode="dna">dna</button>
+  <button data-mode="circuit">circuit</button>
+  <button data-mode="rain3d">rain3d</button>
+  <button data-mode="boids">boids</button>
+  <button data-mode="waves3d">waves3d</button>
+  <button data-mode="tree">tree</button>
+  <button data-mode="chem">chem</button>
+  <button data-mode="typewriter">typewriter</button>
+  <button data-mode="conway3">conway3</button>
+  <button data-mode="wfc">wfc</button>
+  <button data-mode="metaball">metaball</button>
+  <button data-mode="heartbeat">heartbeat</button>
+  <button data-mode="bubbles">bubbles</button>
+  <button data-mode="waterfall">waterfall</button>
+  <button data-mode="pixelsort">pixelsort</button>
+  <button data-mode="pendwave">pendwave</button>
+  <button data-mode="hexlife">hexlife</button>
+  <button data-mode="bacteria">bacteria</button>
+  <button data-mode="harmonograph">harmonograph</button>
+  <button data-mode="topography">topography</button>
+  <button data-mode="lissajous">lissajous</button>
+  <button data-mode="embers">embers</button>
+  <button data-mode="eclipse">eclipse</button>
+  <button data-mode="caustics">caustics</button>
+  <button data-mode="constellations">constellations</button>
+  <button data-mode="dissolve">dissolve</button>
+  <button data-mode="tetris">tetris</button>
+  <button data-mode="highway">highway</button>
+  <button data-mode="cityscape">cityscape</button>
+  <button data-mode="ocean">ocean</button>
+  <button data-mode="piano">piano</button>
+  <button data-mode="clock">clock</button>
+  <button data-mode="blackhole">blackhole</button>
+  <button data-mode="fireflies">fireflies</button>
+  <button data-mode="vinyl">vinyl</button>
+  <button data-mode="jellyfish">jellyfish</button>
+  <button data-mode="campfire">campfire</button>
+  <button data-mode="roots">roots</button>
+  <button data-mode="lightning">lightning</button>
+  <button data-mode="fern">fern</button>
+  <button data-mode="waveform">waveform</button>
+  <button data-mode="neuron">neuron</button>
+  <button data-mode="hourglass">hourglass</button>
+  <button data-mode="volcano">volcano</button>
+  <button data-mode="sonar">sonar</button>
+  <button data-mode="drops">drops</button>
+  <button data-mode="tiles">tiles</button>
+  <button data-mode="mushroom">mushroom</button>
+  <button data-mode="cascade">cascade</button>
+  <button data-mode="northern">northern</button>
+  <button data-mode="tidal">tidal</button>
+  <button data-mode="comet">comet</button>
+  <button data-mode="circuit2">circuit2</button>
+  <button data-mode="vidjellyfish">vidjellyfish</button>
+  <button data-mode="vidlava">vidlava</button>
+  <button data-mode="vidcity">vidcity</button>
+  <button data-mode="vidocean">vidocean</button>
+  <button data-mode="vidfireworks">vidfireworks</button>
+  <button data-mode="rotozoomer">rotozoomer</button>
+  <button data-mode="rotowarp">rotowarp</button>
+  <button data-mode="rotogrid">rotogrid</button>
+  <button data-mode="rotoprism">rotoprism</button>
+  <button data-mode="rotospiral">rotospiral</button>
+  <button data-mode="rototunnel">rototunnel</button>
+  <button data-mode="rotoplasma">rotoplasma</button>
+  <button data-mode="rotoflower">rotoflower</button>
+  <button data-mode="rotocube">rotocube</button>
+  <button data-mode="rotoscroll">rotoscroll</button>
+  <button data-mode="rotodisk">rotodisk</button>
+  <button data-mode="vidgears">vidgears</button>
+  <button data-mode="vidink">vidink</button>
+  <button data-mode="vidaurora">vidaurora</button>
+  <button data-mode="vidgyro">vidgyro</button>
+  <button data-mode="vidstars">vidstars</button>
+  <button data-mode="cat">cat</button>
+  <button data-mode="buttons">buttons</button>
+  <button data-mode="handpose">handpose</button>
+  <button data-mode="facemesh">facemesh</button>
+  <button data-mode="webcam">webcam</button>
+  <button data-mode="facepass">facepass</button>
+  <button data-mode="headcube">headcube</button>
+  <button data-mode="camtrail">camtrail</button>
+  <button data-mode="camhalftone">camhalftone</button>
+  <button data-mode="camdepth">camdepth</button>
+  <button data-mode="faceglitch">faceglitch</button>
+  <button data-mode="facepaint">facepaint</button>
+  <button data-mode="facemirror">facemirror</button>
+  <button data-mode="handfire">handfire</button>
+  <button data-mode="handlaser">handlaser</button>
+  <button data-mode="handgravity">handgravity</button>
+  <button data-mode="threeterrain">threeterrain</button>
+  <button data-mode="threetunnel">threetunnel</button>
+  <button data-mode="threeparticles">threeparticles</button>
+  <button data-mode="threeshapes">threeshapes</button>
+  <button data-mode="threefacecube">threefacecube</button>
+  <button data-mode="textcube">textcube</button>
+  </div>
+</nav>
+
+<canvas id="c"></canvas>
+<canvas id="glow"></canvas>
+<div id="info-bar"><span id="fps"></span><span id="version">v4.1.0</span></div>
+
+<script type="module" src="./entry.js"></script>
+</body>
+</html>

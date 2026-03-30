@@ -1,12 +1,10 @@
+import * as THREE from 'three';
 import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { registerMode } from '../core/registry.js';
 import { state } from '../core/state.js';
 
 // Textcube — actual three.js rendered 3D cube overlaid on flowing ASCII text
 // Text flows around the cube silhouette, hugging the edges
-
-var THREE = null;
-var threeLoaded = false;
 var scene = null;
 var camera = null;
 var renderer = null;
@@ -64,17 +62,7 @@ function initTextcube() {
   pinchDist = 0;
   cubeMask = null;
 
-  if (!threeLoaded && !THREE) {
-    import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js').then(function(mod) {
-      THREE = mod;
-      threeLoaded = true;
-      setupScene();
-    }).catch(function(err) {
-      threeLoaded = false;
-    });
-  } else if (THREE) {
-    setupScene();
-  }
+  setupScene();
 }
 
 function createRoundedBox(w, h, d, r, segs) {
@@ -348,15 +336,6 @@ function renderTextcube() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
   var t = state.time;
-
-  if (!threeLoaded || !THREE) {
-    var msg = 'loading three.js...';
-    var mx = Math.floor((W - msg.length) / 2);
-    for (var i = 0; i < msg.length; i++) {
-      drawCharHSL(msg[i], mx + i, Math.floor(H / 2), (t * 60 + i * 15) % 360, 60, 40);
-    }
-    return;
-  }
 
   if (!renderer || !cube) {
     setupScene();
