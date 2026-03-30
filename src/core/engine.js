@@ -23,6 +23,7 @@ var fpsLast = 0;
 var fpsDisplay = 0;
 var rafId = null;
 var fpsCallback = null;
+var modeChangeCallback = null;
 var readyResolve = null;
 var readyPromise = new Promise(function(resolve) { readyResolve = resolve; });
 
@@ -154,10 +155,7 @@ export function switchMode(mode) {
   pointer.clicked = false;
   pointer.down = false;
   updateURL(mode);
-  // Update nav buttons if they exist (legacy path)
-  if (state.buttons) {
-    state.buttons.forEach(function(b) { b.classList.toggle('active', b.dataset.mode === mode); });
-  }
+  if (modeChangeCallback) modeChangeCallback(mode);
   var m = getMode(mode);
   if (m && m.init) m.init();
 }
@@ -167,6 +165,13 @@ export function switchMode(mode) {
  */
 export function onFpsUpdate(callback) {
   fpsCallback = callback;
+}
+
+/**
+ * Register a mode-change callback — called with the new mode name after each switch.
+ */
+export function onModeChange(callback) {
+  modeChangeCallback = callback;
 }
 
 /**
