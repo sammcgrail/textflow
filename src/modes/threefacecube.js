@@ -39,11 +39,28 @@ var faceDetected = false;
 
 var FACE_COLORS = [0xff3366, 0x33ff66, 0x3366ff, 0xffff33, 0xff6633, 0x33ffff];
 
-function disposeRenderer() {
+function disposeAll() {
+  if (mainCube) {
+    mainCube = null;
+  }
+  orbitCubes = [];
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  camera = null;
   if (renderer) {
     renderer.dispose();
     renderer = null;
   }
+  readCanvas = null;
+  readCtx = null;
 }
 
 function setupScene() {
@@ -52,7 +69,7 @@ function setupScene() {
   var rW = W * 2;
   var rH = H * 2;
 
-  disposeRenderer();
+  disposeAll();
 
   renderer = new THREE.WebGLRenderer({
     antialias: false,

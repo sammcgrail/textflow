@@ -64,8 +64,13 @@ export function useTextflowEngine(canvasRef, glowRef) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const switchMode = useCallback((mode) => {
-    engineSwitchMode(mode);
-    setCurrentMode(mode);
+    // engineSwitchMode may need to lazy-load a mode group first
+    var result = engineSwitchMode(mode);
+    if (result && result.then) {
+      result.then(function() { setCurrentMode(mode); });
+    } else {
+      setCurrentMode(mode);
+    }
   }, []);
 
   return { switchMode, fpsRef, ready, currentMode };

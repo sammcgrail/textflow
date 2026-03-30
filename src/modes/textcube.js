@@ -120,6 +120,19 @@ function setupScene() {
     maskCtx = maskCanvas.getContext('2d');
   }
 
+  // Dispose previous scene resources
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  cube = null;
+
   // Three.js renderer (renders to the overlay canvas)
   if (renderer) {
     renderer.dispose();
@@ -506,6 +519,20 @@ function renderTextcube() {
 }
 
 function cleanupTextcube() {
+  if (cube) {
+    cube = null;
+  }
+  if (scene) {
+    scene.traverse(function(obj) {
+      if (obj.geometry) obj.geometry.dispose();
+      if (obj.material) {
+        if (obj.material.map) obj.material.map.dispose();
+        obj.material.dispose();
+      }
+    });
+    scene = null;
+  }
+  camera = null;
   if (overlayCanvas && overlayCanvas.parentElement) {
     overlayCanvas.parentElement.removeChild(overlayCanvas);
     overlayCanvas = null;
@@ -514,6 +541,9 @@ function cleanupTextcube() {
     renderer.dispose();
     renderer = null;
   }
+  maskCanvas = null;
+  maskCtx = null;
+  cubeMask = null;
 }
 
 // Cleanup when switching modes
