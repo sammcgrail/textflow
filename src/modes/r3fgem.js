@@ -54,7 +54,7 @@ var cachedMask = null;
 var cachedMaskSize = 0;
 var cachedDistField = null;
 
-var SQRT2 = 1.414;
+var SQRT2 = Math.SQRT2;
 var PARTICLE_COUNT = 60;
 
 // === Pre-extracted icosahedron geometry for analytical projection ===
@@ -93,26 +93,42 @@ var _v3 = new THREE.Vector3();
 var projBuf = null;
 var projBufSize = 0;
 
-// Seed for deterministic particle positions (shared between R3FGem.jsx and here)
-var particleSeed = null;
+// Seeded PRNG for deterministic particle positions
+// Must produce identical sequence as R3FGem.jsx to ensure mask alignment
+function seededRandom(seed) {
+  var s = seed;
+  return function() {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
 
-function initParticleData() {
-  if (particleData.length === PARTICLE_COUNT) return;
-  // Use fixed seed for consistency with R3FGem.jsx's useMemo
-  // Both use the same algorithm: random spherical distribution
-  particleData = [];
+var PARTICLE_SEED = 42;
+
+function generateParticleData(rng) {
+  var data = [];
   for (var i = 0; i < PARTICLE_COUNT; i++) {
-    var theta = Math.random() * Math.PI * 2;
-    var phi = Math.acos(2 * Math.random() - 1);
-    var r = 1.8 + Math.random() * 1.2;
-    particleData.push({
+    var theta = rng() * Math.PI * 2;
+    var phi = Math.acos(2 * rng() - 1);
+    var r = 1.8 + rng() * 1.2;
+    data.push({
       x: r * Math.sin(phi) * Math.cos(theta),
       y: r * Math.sin(phi) * Math.sin(theta),
       z: r * Math.cos(phi),
-      speed: 0.3 + Math.random() * 0.7,
-      offset: Math.random() * Math.PI * 2,
+      speed: 0.3 + rng() * 0.7,
+      offset: rng() * Math.PI * 2,
     });
   }
+  return data;
+}
+
+// Export for R3FGem.jsx to use the same particle positions
+export { seededRandom, generateParticleData, PARTICLE_SEED, PARTICLE_COUNT };
+
+function initParticleData() {
+  if (particleData.length === PARTICLE_COUNT) return;
+  var rng = seededRandom(PARTICLE_SEED);
+  particleData = generateParticleData(rng);
 }
 
 // === Interaction handlers ===
@@ -414,39 +430,6 @@ function rasterCircle(mask, W, H, cx, cy, r) {
   }
 }
 
-// Project a world-space point to grid coords using the projection camera
-function projectToGrid(wx, wy, wz, W, H, vw, vh, charW, charH, navH) {
-  _v3.set(wx, wy, wz);
-  _v3.project(_projCam);
-  // NDC to screen pixels
-  var sx = (_v3.x * 0.5 + 0.5) * vw;
-  var sy = (1 - (_v3.y * 0.5 + 0.5)) * vh;
-  // Screen pixels to grid cell coords
-  var gx = sx / charW;
-  var gy = (sy - navH) / charH;
-  return gx; // return via shared buffer to avoid allocation
-}
-
-// Shared projection output (avoids object allocation)
-var _projOut = [0, 0, 0]; // [gridX, gridY, viewZ]
-
-function projectToGridFull(wx, wy, wz, vw, vh, charW, charH, navH) {
-  _v3.set(wx, wy, wz);
-  _v3.applyMatrix4(_projCam.matrixWorldInverse);
-  var viewZ = _v3.z; // view-space Z (negative = in front of camera)
-  _v3.applyMatrix4(_projCam.projectionMatrix);
-  // Perspective divide
-  if (_v3.w !== undefined && _v3.w !== 0) {
-    _v3.x /= _v3.w;
-    _v3.y /= _v3.w;
-  }
-  var sx = (_v3.x * 0.5 + 0.5) * vw;
-  var sy = (1 - (_v3.y * 0.5 + 0.5)) * vh;
-  _projOut[0] = sx / charW;
-  _projOut[1] = (sy - navH) / charH;
-  _projOut[2] = viewZ;
-}
-
 function buildMask(W, H) {
   var cellCount = W * H;
   if (!cachedMask || cachedMaskSize !== cellCount) {
@@ -469,7 +452,7 @@ function buildMask(W, H) {
   _projCam.updateMatrixWorld();
 
   // Build model matrix from gemState
-  _euler.set(gemState.rotX, gemState.rotY, 0, 'XYZ');
+  _euler.set(gemState.rotX, gemState.rotY, gemState.rotZ, 'XYZ');
   _quat.setFromEuler(_euler);
   _pos3.set(gemState.offX, gemState.offY, 0);
   _scl3.setScalar(gemState.scale);
