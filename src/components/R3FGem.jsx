@@ -12,7 +12,7 @@ function Crystal({ time }) {
   // Create icosahedron geometry variants
   const mainGeo = useMemo(() => new THREE.IcosahedronGeometry(1.2, 1), []);
   const innerGeo = useMemo(() => new THREE.IcosahedronGeometry(0.6, 0), []);
-  const outerGeo = useMemo(() => new THREE.IcosahedronGeometry(1.6, 0), []);
+
 
   useFrame((_, delta) => {
     if (groupRef.current) {
@@ -59,16 +59,6 @@ function Crystal({ time }) {
           emissiveIntensity={1.5}
           metalness={0.8}
           roughness={0}
-        />
-      </mesh>
-
-      {/* Outer wireframe shell */}
-      <mesh geometry={outerGeo}>
-        <meshBasicMaterial
-          color="#4466aa"
-          wireframe
-          transparent
-          opacity={0.15}
         />
       </mesh>
 

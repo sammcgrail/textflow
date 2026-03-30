@@ -62,7 +62,6 @@ function createGemScene() {
 
   var mainGeo = new THREE.IcosahedronGeometry(1.2, 1);
   var innerGeo = new THREE.IcosahedronGeometry(0.6, 0);
-  var outerGeo = new THREE.IcosahedronGeometry(1.6, 0);
 
   // Main crystal body
   var mainMat = new THREE.MeshPhysicalMaterial({
@@ -81,10 +80,6 @@ function createGemScene() {
   });
   innerMesh = new THREE.Mesh(innerGeo, innerMat);
   group.add(innerMesh);
-
-  // Outer wireframe shell
-  var outerMat = new THREE.MeshBasicMaterial({ color: 0x4466aa, wireframe: true, transparent: true, opacity: 0.15 });
-  group.add(new THREE.Mesh(outerGeo, outerMat));
 
   // Instanced particles
   var count = 60;
