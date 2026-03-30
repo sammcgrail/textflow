@@ -1,6 +1,6 @@
 # textflow
 
-**179 interactive ASCII art experiments** — lava flows, fractals, falling sand, 3D terrain, webcam effects, and more. All rendered as text characters in the browser.
+**175 interactive ASCII art experiments** — lava flows, fractals, falling sand, 3D terrain, webcam effects, and more. All rendered as text characters in the browser.
 
 [**Live Demo**](https://sebland.com/textflow)
 
@@ -64,8 +64,13 @@ TV static, CRT scanlines, VHS tracking, terminal emulation, oscilloscope, and mo
 - **textcube** — Glossy rounded cube with text flowing around its silhouette
 - **r3fgem** — React Three Fiber rendered crystalline gem (first R3F mode)
 
+r3fgem and textcube use analytical 3D→2D projection to rasterize geometry masks in pure JS — no GPU readPixels sync needed.
+
 ### Webcam / ML (16 modes)
 Real-time webcam processing with MediaPipe machine learning:
+- **webcam** — Raw webcam feed rendered as ASCII characters
+- **cat** — Webcam with cat-ear overlay effects
+- **buttons** — Interactive UI buttons rendered in ASCII with hover/click states
 - **facemesh** — 468-point face mesh overlay
 - **facepass** — Matrix-style face reveal with glitch effects
 - **headcube** — 3D cube controlled by head rotation
@@ -121,7 +126,7 @@ src/
     glow.js         — Canvas 2D glow fallback
     loop.js         — scrollNavToMode utility
   modes/
-    *.js            — 179 self-registering mode files
+    *.js            — 175 self-registering mode files
     groups/         — Lazy-loaded mode groups (code-splitting)
     modeGroups.js   — Mode-to-group mapping for dynamic imports
     index.js        — Barrel file (eager import for legacy build)
