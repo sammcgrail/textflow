@@ -203,4 +203,4 @@ function renderThreeshapes() {
   }
 }
 
-registerMode('threeshapes', { init: initThreeshapes, render: renderThreeshapes });
+registerMode('threeshapes', { init: initThreeshapes, render: renderThreeshapes, cleanup: disposeAll });

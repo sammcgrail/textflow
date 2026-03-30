@@ -210,4 +210,4 @@ function renderThreeterrain() {
   }
 }
 
-registerMode('threeterrain', { init: initThreeterrain, render: renderThreeterrain });
+registerMode('threeterrain', { init: initThreeterrain, render: renderThreeterrain, cleanup: disposeAll });

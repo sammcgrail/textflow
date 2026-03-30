@@ -272,4 +272,4 @@ function renderThreeparticles() {
   }
 }
 
-registerMode('threeparticles', { init: initThreeparticles, render: renderThreeparticles });
+registerMode('threeparticles', { init: initThreeparticles, render: renderThreeparticles, cleanup: disposeAll });

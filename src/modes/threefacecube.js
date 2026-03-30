@@ -340,4 +340,4 @@ function renderThreefacecube() {
   }
 }
 
-registerMode('threefacecube', { init: initThreefacecube, render: renderThreefacecube });
+registerMode('threefacecube', { init: initThreefacecube, render: renderThreefacecube, cleanup: disposeAll });

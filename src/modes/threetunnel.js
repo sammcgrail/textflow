@@ -213,4 +213,4 @@ function renderThreetunnel() {
   }
 }
 
-registerMode('threetunnel', { init: initThreetunnel, render: renderThreetunnel });
+registerMode('threetunnel', { init: initThreetunnel, render: renderThreetunnel, cleanup: disposeAll });

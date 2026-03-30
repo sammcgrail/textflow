@@ -153,6 +153,9 @@ export function startLoop() {
  * Perform the actual mode switch (synchronous portion).
  */
 function doSwitch(mode) {
+  // Cleanup previous mode (e.g. dispose three.js resources)
+  var prev = getMode(state.currentMode);
+  if (prev && prev.cleanup) prev.cleanup();
   // Hide any mode overlay canvases from previous mode
   var overlays = document.querySelectorAll('[data-mode-overlay]');
   for (var i = 0; i < overlays.length; i++) {
