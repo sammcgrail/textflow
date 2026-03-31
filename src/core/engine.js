@@ -1,7 +1,7 @@
 // ============================================================
 // engine.js — Framework-agnostic textflow engine.
 // Shared initialization, loop, and mode switching logic used by
-// both entry.js (legacy esbuild IIFE) and useTextflowEngine (React).
+// useTextflowEngine (React) initializes and manages the render loop.
 // ============================================================
 
 import { state } from './state.js';
@@ -14,7 +14,6 @@ import { getMode, getRenderers } from './registry.js';
 import { getModeFromPath, getRandomMode, updateURL } from './router.js';
 
 // Eagerly load core modes only; other groups are lazy-loaded on demand.
-// The legacy esbuild path (entry.js) imports ../modes/index.js directly.
 import '../modes/groups/core.js';
 import { ensureModeLoaded } from '../modes/modeGroups.js';
 

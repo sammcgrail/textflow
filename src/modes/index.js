@@ -1,5 +1,4 @@
 // Barrel file — import all modes so they self-register via registerMode().
-// Both entry.js (legacy esbuild) and useTextflowEngine.js (React) import this.
 import './lava.js';
 import './rain.js';
 import './wave.js';
