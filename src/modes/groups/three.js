@@ -13,3 +13,4 @@ import '../threenebula.js';
 import '../threewaves.js';
 import '../tslblob.js';
 import '../tslfire.js';
+import '../tslascii.js';
