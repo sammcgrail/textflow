@@ -6,3 +6,8 @@ import '../threeshapes.js';
 import '../threefacecube.js';
 import '../textcube.js';
 import '../r3fgem.js';
+import '../threestorm.js';
+import '../threevortex.js';
+import '../threecubes.js';
+import '../threenebula.js';
+import '../threewaves.js';
