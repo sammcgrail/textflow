@@ -47,7 +47,8 @@ var ROTO_MODES = [
 var THREE_MODES = [
   'threeterrain', 'threetunnel', 'threeparticles', 'threeshapes',
   'threefacecube', 'textcube', 'r3fgem',
-  'threestorm', 'threevortex', 'threecubes', 'threenebula', 'threewaves'
+  'threestorm', 'threevortex', 'threecubes', 'threenebula', 'threewaves',
+  'tslblob'
 ];
 
 var WEBCAM_MODES = [

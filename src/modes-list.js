@@ -205,6 +205,7 @@ export const MODES = [
   { id: "threecubes", label: "threecubes" },
   { id: "threenebula", label: "threenebula" },
   { id: "threewaves", label: "threewaves" },
+  { id: "tslblob", label: "tslblob" },
   { id: "cloud", label: "cloud" },
   { id: "symbiosis", label: "symbiosis" },
   { id: "blackholes", label: "blackholes" },

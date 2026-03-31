@@ -168,6 +168,7 @@ export var glows = {
   threecubes: { color: 'rgba(255,100,255,0.5)', blur: 22 },
   threenebula: { color: 'rgba(180,120,255,0.55)', blur: 26 },
   threewaves: { color: 'rgba(80,220,255,0.5)', blur: 22 },
+  tslblob: { color: 'rgba(200,100,255,0.55)', blur: 24 },
   prism: { color: 'rgba(255,255,255,0.5)', blur: 22 },
   phoenix: { color: 'rgba(255,120,30,0.55)', blur: 24 },
   swarm: { color: 'rgba(180,100,255,0.5)', blur: 20 },
