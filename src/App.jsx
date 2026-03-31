@@ -4,6 +4,8 @@ import { useTextflowEngine } from './hooks/useTextflowEngine.js';
 
 // R3F overlay components — lazy loaded, only in Vite build
 const R3FGem = lazy(() => import('./components/R3FGem.jsx'));
+const R3FHandsmash = lazy(() => import('./components/R3FHandsmash.jsx'));
+const R3FHandball = lazy(() => import('./components/R3FHandball.jsx'));
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -93,11 +95,16 @@ export default function App() {
       {/* R3F overlay — only renders when r3fgem mode is active */}
       <Suspense fallback={null}>
         <R3FGem visible={currentMode === 'r3fgem'} />
+        <R3FHandsmash visible={currentMode === 'handsmash'} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <R3FHandball visible={currentMode === 'handball'} />
       </Suspense>
 
       <div id="info-bar">
         <span id="fps" ref={fpsRef}>0 fps</span>
-        <span id="version">v5.0.0</span>
+        <span id="version">v5.1.0</span>
       </div>
     </>
   );
