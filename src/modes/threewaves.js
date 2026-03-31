@@ -59,18 +59,21 @@ function setupScene() {
 
   camera = new THREE.PerspectiveCamera(60, rW / rH, 0.1, 200);
 
-  var ambient = new THREE.AmbientLight(0x556688, 0.8);
+  var ambient = new THREE.AmbientLight(0x8899bb, 1.5);
   scene.add(ambient);
-  var dirLight = new THREE.DirectionalLight(0xaaccff, 1.2);
+  var dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
   dirLight.position.set(0, 20, 10);
   scene.add(dirLight);
+  var dirLight2 = new THREE.DirectionalLight(0x4488ff, 1.0);
+  dirLight2.position.set(0, -10, -5);
+  scene.add(dirLight2);
 
   // Dynamic point lights
   wavePointLights = [];
   for (var l = 0; l < 3; l++) {
     var hue = l / 3;
     var col = new THREE.Color().setHSL(hue * 0.6 + 0.4, 0.9, 0.7);
-    var pl = new THREE.PointLight(col, 1.5, 40);
+    var pl = new THREE.PointLight(col, 3.0, 60);
     pl.position.set(0, 3, 0);
     scene.add(pl);
     wavePointLights.push(pl);
@@ -81,8 +84,8 @@ function setupScene() {
   planeGeo.rotateX(-Math.PI / 2);
 
   var planeMat = new THREE.MeshPhongMaterial({
-    color: 0x66aaee,
-    shininess: 60,
+    color: 0x88ccff,
+    shininess: 120,
     side: THREE.DoubleSide,
     flatShading: false,
     vertexColors: true
@@ -179,7 +182,7 @@ function renderThreewaves() {
     var normalizedH = (height + 4) / 8;
     normalizedH = Math.max(0, Math.min(1, normalizedH));
     var hue = 0.45 + (1 - normalizedH) * 0.35;
-    var lightness = 0.4 + normalizedH * 0.5;
+    var lightness = 0.55 + normalizedH * 0.4;
     var saturation = 0.8 + normalizedH * 0.2;
     var col = new THREE.Color().setHSL(hue, saturation, lightness);
     colors[i3] = col.r; colors[i3 + 1] = col.g; colors[i3 + 2] = col.b;
@@ -216,9 +219,9 @@ function renderThreewaves() {
       var pi = (sy * rW + sx) * 4;
       var r = imgData[pi], g = imgData[pi + 1], b = imgData[pi + 2];
       var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      if (lum < 0.02) continue;
+      if (lum < 0.01) continue;
       var ci = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
-      drawChar(RAMP_DENSE[ci], x, y, Math.min(255, r * 1.4) | 0, Math.min(255, g * 1.4) | 0, Math.min(255, b * 1.4) | 0, Math.max(0.3, Math.min(1, lum * 2.0)));
+      drawChar(RAMP_DENSE[ci], x, y, Math.min(255, r * 1.8) | 0, Math.min(255, g * 1.8) | 0, Math.min(255, b * 1.8) | 0, Math.max(0.4, Math.min(1, lum * 2.5)));
     }
   }
 
