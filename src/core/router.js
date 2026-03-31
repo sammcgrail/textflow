@@ -22,8 +22,16 @@ export function updateURL(mode) {
   var tail = base[base.length - 1];
   if (base.length > 1 && (renderers[tail] || allModes.indexOf(tail) !== -1)) base.pop();
   var newPath = base.join('/') + '/' + mode;
-  history.replaceState(null, '', newPath);
-  document.title = 'textflow \u2014 ' + mode;
+  var title = 'textflow \u2014 ' + mode;
+  document.title = title;
+  // Safari share sheet caches title from replaceState — pass title as 2nd arg
+  // and also use pushState so Safari recognizes the navigation as a new "page"
+  history.replaceState({ mode: mode }, title, newPath);
+  // Update og:title meta tag for Safari share sheet / social previews
+  var ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.setAttribute('content', title);
+  var twTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twTitle) twTitle.setAttribute('content', title);
 }
 
 export function getRandomMode() {
