@@ -259,7 +259,7 @@ function renderTslfire() {
   }
 
   var label = '[tslfire] click:pulse drag:heat';
-  var lx = W - label.length - 1;
+  var lx = Math.max(0, W - label.length - 1);
   for (var li = 0; li < label.length; li++) {
     drawCharHSL(label[li], lx + li, H - 1, 0, 0, 25);
   }

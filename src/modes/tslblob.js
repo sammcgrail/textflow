@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { Fn, uniform, vec3, vec4, float, sin, cos, abs, dot, normalize, mix, pow, positionLocal, normalLocal, cameraPosition, positionWorld } from 'three/tsl';
+import { Fn, uniform, vec3, vec4, float, sin, cos, abs, dot, normalize, mix, pow, positionLocal, normalLocal, normalWorld, cameraPosition, positionWorld } from 'three/tsl';
 import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
@@ -24,6 +24,7 @@ var baseCamPhi = 0.7;
 var morphTarget = 1.0;
 var currentMorph = 1.0;
 var rendererReady = false;
+var initGeneration = 0;
 
 function disposeAll() {
   if (blobMesh) {
@@ -82,7 +83,7 @@ function setupScene() {
   hueShiftUniform = uniform(0.0);
 
   // High-detail icosahedron for smooth organic deformation
-  var geo = new THREE.IcosahedronGeometry(1.5, 64);
+  var geo = new THREE.IcosahedronGeometry(1.5, 16);
 
   // TSL position node — vertex displacement with layered noise
   var positionNode = Fn(function() {
@@ -117,7 +118,7 @@ function setupScene() {
   // TSL color node — procedural coloring based on position and normal
   var colorNode = Fn(function() {
     var wPos = positionWorld.toVar();
-    var n = normalize(normalLocal).toVar();
+    var n = normalize(normalWorld).toVar();
     var t = timeUniform;
 
     // Height-based hue cycling
@@ -125,7 +126,7 @@ function setupScene() {
 
     // Fresnel-like edge glow
     var viewDir = normalize(cameraPosition.sub(wPos));
-    var fresnel = pow(float(1.0).sub(abs(dot(viewDir, n))), float(2.5));
+    var fresnel = pow(float(1.0).sub(dot(viewDir, n).clamp(0, 1)), float(2.5));
 
     // Base color from hue cycling — vivid rainbow
     var r = sin(hue.mul(6.283)).mul(0.5).add(0.5);
@@ -176,13 +177,14 @@ function initTslblob() {
   baseCamTheta = 0.5; baseCamPhi = 0.7;
   setupScene();
   rendererReady = false;
+  initGeneration++;
+  var gen = initGeneration;
   // WebGPURenderer requires async init
   if (renderer && renderer.init) {
     renderer.init().then(function() {
-      rendererReady = true;
+      if (gen === initGeneration) rendererReady = true;
     }).catch(function(err) {
       console.warn('WebGPU/WebGL init failed, tslblob unavailable:', err);
-      // Don't set rendererReady — mode will show blank rather than throw every frame
     });
   } else {
     rendererReady = true;
@@ -236,6 +238,8 @@ function renderTslblob() {
   try {
     renderer.render(scene, camera);
   } catch (e) {
+    if (!renderTslblob._errCount) renderTslblob._errCount = 0;
+    if (renderTslblob._errCount++ < 5) console.warn('tslblob render error:', e.message);
     return;
   }
 
@@ -263,7 +267,7 @@ function renderTslblob() {
   }
 
   var label = '[tslblob] click:morph drag:rotate';
-  var lx = W - label.length - 1;
+  var lx = Math.max(0, W - label.length - 1);
   for (var li = 0; li < label.length; li++) {
     drawCharHSL(label[li], lx + li, H - 1, 0, 0, 25);
   }
