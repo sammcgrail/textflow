@@ -82,7 +82,7 @@ function setupScene() {
   hueShiftUniform = uniform(0.0);
 
   // High-detail icosahedron for smooth organic deformation
-  var geo = new THREE.IcosahedronGeometry(1.5, 128);
+  var geo = new THREE.IcosahedronGeometry(1.5, 64);
 
   // TSL position node — vertex displacement with layered noise
   var positionNode = Fn(function() {
@@ -181,8 +181,8 @@ function initTslblob() {
     renderer.init().then(function() {
       rendererReady = true;
     }).catch(function(err) {
-      console.warn('WebGPU init failed:', err);
-      rendererReady = true; // try anyway
+      console.warn('WebGPU/WebGL init failed, tslblob unavailable:', err);
+      // Don't set rendererReady — mode will show blank rather than throw every frame
     });
   } else {
     rendererReady = true;
@@ -252,10 +252,12 @@ function renderTslblob() {
       var lum = (0.299 * r + 0.587 * g + 0.114 * b2) / 255;
       if (lum < 0.01) continue;
       var ci = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
+      var peak = Math.max(r, g, b2, 1);
+      var boost = Math.min(1.6, 255 / peak);
       drawChar(RAMP_DENSE[ci], x, y,
-        Math.min(255, r * 1.6) | 0,
-        Math.min(255, g * 1.6) | 0,
-        Math.min(255, b2 * 1.6) | 0,
+        (r * boost) | 0,
+        (g * boost) | 0,
+        (b2 * boost) | 0,
         Math.max(0.3, Math.min(1, lum * 2.0)));
     }
   }

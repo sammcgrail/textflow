@@ -48,7 +48,8 @@ var THREE_MODES = [
   'threeterrain', 'threetunnel', 'threeparticles', 'threeshapes',
   'threefacecube', 'textcube', 'r3fgem',
   'threestorm', 'threevortex', 'threecubes', 'threenebula', 'threewaves',
-  'tslblob'
+  'tslblob',
+  'tslfire'
 ];
 
 var WEBCAM_MODES = [
