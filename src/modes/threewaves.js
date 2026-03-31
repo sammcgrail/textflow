@@ -59,9 +59,9 @@ function setupScene() {
 
   camera = new THREE.PerspectiveCamera(60, rW / rH, 0.1, 200);
 
-  var ambient = new THREE.AmbientLight(0x223344, 0.3);
+  var ambient = new THREE.AmbientLight(0x556688, 0.8);
   scene.add(ambient);
-  var dirLight = new THREE.DirectionalLight(0x6688cc, 0.5);
+  var dirLight = new THREE.DirectionalLight(0xaaccff, 1.2);
   dirLight.position.set(0, 20, 10);
   scene.add(dirLight);
 
@@ -69,8 +69,8 @@ function setupScene() {
   wavePointLights = [];
   for (var l = 0; l < 3; l++) {
     var hue = l / 3;
-    var col = new THREE.Color().setHSL(hue * 0.3 + 0.5, 0.8, 0.6);
-    var pl = new THREE.PointLight(col, 0.8, 25);
+    var col = new THREE.Color().setHSL(hue * 0.6 + 0.4, 0.9, 0.7);
+    var pl = new THREE.PointLight(col, 1.5, 40);
     pl.position.set(0, 3, 0);
     scene.add(pl);
     wavePointLights.push(pl);
@@ -81,7 +81,7 @@ function setupScene() {
   planeGeo.rotateX(-Math.PI / 2);
 
   var planeMat = new THREE.MeshPhongMaterial({
-    color: 0x4488cc,
+    color: 0x66aaee,
     shininess: 60,
     side: THREE.DoubleSide,
     flatShading: false,
@@ -91,7 +91,7 @@ function setupScene() {
   var vertCount = planeGeo.attributes.position.count;
   var colArray = new Float32Array(vertCount * 3);
   for (var i = 0; i < vertCount; i++) {
-    colArray[i * 3] = 0.2; colArray[i * 3 + 1] = 0.5; colArray[i * 3 + 2] = 0.9;
+    colArray[i * 3] = 0.4; colArray[i * 3 + 1] = 0.7; colArray[i * 3 + 2] = 1.0;
   }
   planeGeo.setAttribute('color', new THREE.BufferAttribute(colArray, 3));
 
@@ -100,9 +100,9 @@ function setupScene() {
 
   // Initial wave sources
   waveSources = [
-    { x: 0, z: 0, freq: 2.0, amp: 2.0, phase: 0 },
-    { x: -10, z: -10, freq: 3.0, amp: 1.5, phase: 1.5 },
-    { x: 10, z: 5, freq: 2.5, amp: 1.8, phase: 3.0 }
+    { x: 0, z: 0, freq: 2.0, amp: 3.0, phase: 0 },
+    { x: -10, z: -10, freq: 3.0, amp: 2.5, phase: 1.5 },
+    { x: 10, z: 5, freq: 2.5, amp: 2.8, phase: 3.0 }
   ];
 
   camTheta = 0.3; camPhi = 0.6;
@@ -178,9 +178,9 @@ function renderThreewaves() {
 
     var normalizedH = (height + 4) / 8;
     normalizedH = Math.max(0, Math.min(1, normalizedH));
-    var hue = 0.55 + (1 - normalizedH) * 0.1;
-    var lightness = 0.2 + normalizedH * 0.55;
-    var saturation = 0.7 + normalizedH * 0.3;
+    var hue = 0.45 + (1 - normalizedH) * 0.35;
+    var lightness = 0.4 + normalizedH * 0.5;
+    var saturation = 0.8 + normalizedH * 0.2;
     var col = new THREE.Color().setHSL(hue, saturation, lightness);
     colors[i3] = col.r; colors[i3 + 1] = col.g; colors[i3 + 2] = col.b;
   }
@@ -218,7 +218,7 @@ function renderThreewaves() {
       var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       if (lum < 0.02) continue;
       var ci = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
-      drawChar(RAMP_DENSE[ci], x, y, r, g, b, Math.max(0.2, Math.min(1, lum * 1.5)));
+      drawChar(RAMP_DENSE[ci], x, y, Math.min(255, r * 1.4) | 0, Math.min(255, g * 1.4) | 0, Math.min(255, b * 1.4) | 0, Math.max(0.3, Math.min(1, lum * 2.0)));
     }
   }
 
