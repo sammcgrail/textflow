@@ -433,10 +433,10 @@ function renderRhythm() {
 
   // ---- HUD ----
   var scoreStr = 'SCORE ' + score;
-  drawText(scoreStr, 1, 0, 60, 70, 60);
+  drawText(scoreStr, 1, 2, 60, 70, 60);
 
   var hiStr = 'HI ' + highScore;
-  drawText(hiStr, W - hiStr.length - 1, 0, 30, 50, 45);
+  drawText(hiStr, W - hiStr.length - 1, 2, 30, 50, 45);
 
   if (combo > 1) {
     var comboStr = combo + 'x COMBO';
@@ -455,7 +455,7 @@ function renderRhythm() {
   if (gameStarted && !gameOver) {
     var timeLeft = Math.max(0, Math.ceil(90 - songTime));
     var timeStr = String(timeLeft) + 's';
-    drawText(timeStr, Math.floor(W / 2) - 1, 0, timeLeft < 10 ? 0 : 120, 60, 50);
+    drawText(timeStr, Math.floor(W / 2) - 1, 2, timeLeft < 10 ? 0 : 120, 60, 50);
   }
 
   // ---- Start screen ----

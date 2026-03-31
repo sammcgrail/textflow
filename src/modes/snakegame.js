@@ -239,13 +239,13 @@ function renderSnake() {
   // Score display
   var scoreStr = 'SCORE: ' + score + '  HI: ' + highScore;
   for (var i = 0; i < scoreStr.length; i++) {
-    drawCharHSL(scoreStr[i], 2 + i, 0, 60, 60, 70);
+    drawCharHSL(scoreStr[i], 2 + i, 2, 60, 60, 70);
   }
 
   // Speed display
   var speedStr = 'SPEED: ' + (11 - Math.floor(tickInterval / 15));
   for (var i = 0; i < speedStr.length; i++) {
-    drawCharHSL(speedStr[i], W - speedStr.length - 2 + i, 0, 180, 40, 50);
+    drawCharHSL(speedStr[i], W - speedStr.length - 2 + i, 2, 180, 40, 50);
   }
 
   if (!gameOver || deathAnimTimer > 0) {
