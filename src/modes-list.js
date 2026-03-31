@@ -176,6 +176,8 @@ export const MODES = [
   { id: "handfire", label: "handfire" },
   { id: "handlaser", label: "handlaser" },
   { id: "handgravity", label: "handgravity" },
+  { id: "handsmash", label: "handsmash" },
+  { id: "handball", label: "handball" },
   { id: "threeterrain", label: "threeterrain" },
   { id: "threetunnel", label: "threetunnel" },
   { id: "threeparticles", label: "threeparticles" },

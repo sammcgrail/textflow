@@ -15,3 +15,5 @@ import '../facemirror.js';
 import '../handfire.js';
 import '../handlaser.js';
 import '../handgravity.js';
+import '../handball.js';
+import '../handsmash.js';
