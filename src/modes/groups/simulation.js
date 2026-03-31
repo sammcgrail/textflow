@@ -98,3 +98,8 @@ import '../blackholes.js';
 import '../synthwave.js';
 import '../aquarium.js';
 import '../raincity.js';
+import '../prism.js';
+import '../phoenix.js';
+import '../swarm.js';
+import '../supernova.js';
+import '../inferno.js';

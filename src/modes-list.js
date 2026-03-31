@@ -206,4 +206,9 @@ export const MODES = [
   { id: "synthwave", label: "synthwave" },
   { id: "aquarium", label: "aquarium" },
   { id: "raincity", label: "raincity" },
+  { id: "prism", label: "prism" },
+  { id: "phoenix", label: "phoenix" },
+  { id: "swarm", label: "swarm" },
+  { id: "supernova", label: "supernova" },
+  { id: "inferno", label: "inferno" },
 ];

@@ -182,3 +182,8 @@ import './r3fgem.js';
 import './handball.js';
 import './rhythm.js';
 import './aquarium.js';
+import './prism.js';
+import './phoenix.js';
+import './swarm.js';
+import './supernova.js';
+import './inferno.js';
