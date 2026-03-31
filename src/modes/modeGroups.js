@@ -22,7 +22,8 @@ var SIMULATION_MODES = [
   'piano', 'clock', 'blackhole', 'fireflies', 'vinyl', 'jellyfish',
   'campfire', 'roots', 'lightning', 'fern', 'waveform', 'neuron', 'hourglass',
   'volcano', 'sonar', 'drops', 'tiles', 'mushroom', 'cascade', 'northern',
-  'tidal', 'comet', 'circuit2'
+  'tidal', 'comet', 'circuit2', 'snakegame', 'asteroids', 'rhythm', 'neonrace',
+  'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity'
 ];
 
 var RETRO_MODES = [
@@ -50,7 +51,7 @@ var THREE_MODES = [
 var WEBCAM_MODES = [
   'cat', 'buttons', 'handpose', 'facemesh', 'webcam', 'facepass',
   'headcube', 'camtrail', 'camhalftone', 'camdepth', 'faceglitch',
-  'facepaint', 'facemirror', 'handfire', 'handlaser', 'handgravity', 'handsmash', 'handball', 'fruiteat'
+  'facepaint', 'facemirror', 'handfire', 'handlaser', 'handgravity', 'handsmash', 'handball', 'fruiteat', 'facebricks', 'facepong', 'story', 'fingercount', 'tilttext', 'photostory', 'sunsmile', 'faceballoon', 'tiltmaze', 'tiltpour', 'cloud'
 ];
 
 // Build reverse lookup: modeName -> groupName

@@ -181,3 +181,5 @@ import './threefacecube.js';
 import './textcube.js';
 import './r3fgem.js';
 import './handball.js';
+import './rhythm.js';
+import './aquarium.js';
