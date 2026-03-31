@@ -184,6 +184,7 @@ import './threevortex.js';
 import './threecubes.js';
 import './threenebula.js';
 import './threewaves.js';
+import './tslblob.js';
 import './handball.js';
 import './rhythm.js';
 import './aquarium.js';
