@@ -564,29 +564,29 @@ function renderRace() {
 
   // --- HUD ---
   var scoreStr = 'SCORE ' + score;
-  drawText(scoreStr, 1, 0, 55, 80, 55);
+  drawText(scoreStr, 1, 2, 55, 80, 55);
 
   var hiStr = 'HI ' + highScore;
-  drawText(hiStr, W - hiStr.length - 1, 0, 320, 60, 45);
+  drawText(hiStr, W - hiStr.length - 1, 2, 320, 60, 45);
 
   // Lives as hearts
   for (var li = 0; li < lives; li++) {
-    drawCharHSL('<', Math.floor(W / 2) - 4 + li * 3, 0, 0, 90, 55);
-    drawCharHSL('3', Math.floor(W / 2) - 3 + li * 3, 0, 0, 90, 55);
+    drawCharHSL('<', Math.floor(W / 2) - 4 + li * 3, 2, 0, 90, 55);
+    drawCharHSL('3', Math.floor(W / 2) - 3 + li * 3, 2, 0, 90, 55);
   }
 
   // Speed bar
   var speedBar = 'SPD:';
   var barLen = Math.floor(((speed - baseSpeed) / (maxSpeed - baseSpeed)) * 10);
   for (var si = 0; si < barLen; si++) speedBar += '=';
-  drawText(speedBar, 1, 1, 180, 70, 40);
+  drawText(speedBar, 1, 3, 180, 70, 40);
 
   // Active powerup indicators
   if (shieldTimer > 0) {
-    drawText('[SHIELD]', W - 10, 1, 180, 90, 50 + Math.sin(t * 4) * 15);
+    drawText('[SHIELD]', W - 10, 3, 180, 90, 50 + Math.sin(t * 4) * 15);
   }
   if (boostTimer > 0) {
-    drawText('>BOOST<', W - 10, 1, 55, 90, 50 + Math.sin(t * 6) * 15);
+    drawText('>BOOST<', W - 10, 3, 55, 90, 50 + Math.sin(t * 6) * 15);
   }
 
   // --- Start screen ---
