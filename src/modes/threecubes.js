@@ -66,16 +66,16 @@ function setupScene() {
   readCtx = readCanvas.getContext('2d', { willReadFrequently: true });
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x080810);
+  scene.background = new THREE.Color(0x050510);
 
   camera = new THREE.PerspectiveCamera(60, rW / rH, 0.1, 200);
 
-  var ambient = new THREE.AmbientLight(0x333355, 0.4);
+  var ambient = new THREE.AmbientLight(0x667799, 0.8);
   scene.add(ambient);
-  var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  var dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
   dirLight.position.set(10, 15, 10);
   scene.add(dirLight);
-  var pointLight = new THREE.PointLight(0xff6644, 1.0, 30);
+  var pointLight = new THREE.PointLight(0xff6644, 1.5, 50);
   pointLight.position.set(-5, 5, -5);
   scene.add(pointLight);
 
@@ -114,9 +114,9 @@ function setupScene() {
         cubeRotations[idx * 4 + 2] = Math.random() * Math.PI * 2;
         cubeRotations[idx * 4 + 3] = 0.5 + Math.random() * 0.5;
 
-        var hue = (gx / 8 * 0.3 + gy / 8 * 0.3 + gz / 8 * 0.3) % 1;
+        var hue = (gx / 8 * 0.4 + gy / 8 * 0.35 + gz / 8 * 0.25) % 1;
         var isSurface = (gx === 0 || gx === 7 || gy === 0 || gy === 7 || gz === 0 || gz === 7);
-        var lightness = isSurface ? 0.65 : 0.35;
+        var lightness = isSurface ? 0.7 : 0.55;
         var col = new THREE.Color().setHSL(hue, 0.9, lightness);
         colorAttr.setXYZ(idx, col.r, col.g, col.b);
 
@@ -233,7 +233,7 @@ function renderThreecubes() {
       var lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       if (lum < 0.02) continue;
       var ci = Math.min(RAMP_DENSE.length - 1, (lum * RAMP_DENSE.length) | 0);
-      drawChar(RAMP_DENSE[ci], x, y, r, g, b, Math.max(0.2, Math.min(1, lum * 1.5)));
+      drawChar(RAMP_DENSE[ci], x, y, Math.min(255, r * 1.4) | 0, Math.min(255, g * 1.4) | 0, Math.min(255, b * 1.4) | 0, Math.max(0.3, Math.min(1, lum * 2.0)));
     }
   }
 
