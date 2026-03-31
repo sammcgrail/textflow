@@ -162,7 +162,12 @@ export var glows = {
   threeshapes: { color: 'rgba(150,255,200,0.35)', blur: 14 },
   threefacecube: { color: 'rgba(150,180,255,0.35)', blur: 14 },
   textcube: { color: 'rgba(200,180,255,0.35)', blur: 14 },
-  r3fgem: { color: 'rgba(100,150,255,0.4)', blur: 16 }
+  r3fgem: { color: 'rgba(100,150,255,0.4)', blur: 16 },
+  prism: { color: 'rgba(255,255,255,0.5)', blur: 22 },
+  phoenix: { color: 'rgba(255,120,30,0.55)', blur: 24 },
+  swarm: { color: 'rgba(180,100,255,0.5)', blur: 20 },
+  supernova: { color: 'rgba(255,220,100,0.55)', blur: 26 },
+  inferno: { color: 'rgba(255,80,20,0.55)', blur: 24 }
 };
 
 var glowCanvas = null;

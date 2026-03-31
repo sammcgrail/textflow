@@ -23,7 +23,8 @@ var SIMULATION_MODES = [
   'campfire', 'roots', 'lightning', 'fern', 'waveform', 'neuron', 'hourglass',
   'volcano', 'sonar', 'drops', 'tiles', 'mushroom', 'cascade', 'northern',
   'tidal', 'comet', 'circuit2', 'snakegame', 'asteroids', 'rhythm', 'neonrace',
-  'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity'
+  'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity',
+  'prism', 'phoenix', 'swarm', 'supernova', 'inferno'
 ];
 
 var RETRO_MODES = [
