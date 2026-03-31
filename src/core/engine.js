@@ -80,9 +80,11 @@ export function initEngine(canvas, glowCanvas) {
   // Resize handler
   window.addEventListener('resize', handleResize);
 
-  // Wait for font + MSDF atlas, then mark ready
+  // Wait for font + MSDF atlas, then mark ready.
+  // Add timeout to prevent Safari iOS hang (document.fonts.ready can stall).
+  var fontTimeout = new Promise(function(resolve) { setTimeout(resolve, 5000); });
   Promise.all([
-    document.fonts.ready,
+    Promise.race([document.fonts.ready, fontTimeout]),
     state.useWebGL ? loadMsdfAtlas() : Promise.resolve(),
   ]).then(function() {
     resize();
@@ -152,10 +154,26 @@ export function startLoop() {
 /**
  * Perform the actual mode switch (synchronous portion).
  */
+function stopAllWebcamStreams() {
+  var videos = document.querySelectorAll('video');
+  for (var i = 0; i < videos.length; i++) {
+    var v = videos[i];
+    if (v.srcObject) {
+      var tracks = v.srcObject.getTracks();
+      for (var j = 0; j < tracks.length; j++) {
+        tracks[j].stop();
+      }
+      v.srcObject = null;
+    }
+  }
+}
+
 function doSwitch(mode) {
   // Cleanup previous mode (e.g. dispose three.js resources)
   var prev = getMode(state.currentMode);
   if (prev && prev.cleanup) prev.cleanup();
+  // Stop any active webcam streams to release camera indicator
+  stopAllWebcamStreams();
   // Hide any mode overlay canvases from previous mode
   var overlays = document.querySelectorAll('[data-mode-overlay]');
   for (var i = 0; i < overlays.length; i++) {
@@ -169,6 +187,9 @@ function doSwitch(mode) {
   if (modeChangeCallback) modeChangeCallback(mode);
   var m = getMode(mode);
   if (m && m.init) m.init();
+  // Always re-attach event listeners for the active mode.
+  // attach() calls cleanup first, so this is safe to call repeatedly.
+  if (m && m.attach) m.attach();
 }
 
 /**

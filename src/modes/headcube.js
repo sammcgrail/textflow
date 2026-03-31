@@ -76,7 +76,8 @@ function initHeadcube() {
 }
 
 function startWebcam() {
-  if (webcamReady) return;
+  if (webcamReady && webcamEl && webcamEl.srcObject && webcamEl.srcObject.active) return;
+  webcamReady = false;
   navigator.mediaDevices.getUserMedia({
     video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
   }).then(function(stream) {

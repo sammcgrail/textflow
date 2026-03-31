@@ -7,6 +7,8 @@ const R3FGem = lazy(() => import('./components/R3FGem.jsx'));
 const R3FHandsmash = lazy(() => import('./components/R3FHandsmash.jsx'));
 const R3FHandball = lazy(() => import('./components/R3FHandball.jsx'));
 const R3FFruiteat = lazy(() => import('./components/R3FFruiteat.jsx'));
+const R3FFacebricks = lazy(() => import('./components/R3FFacebricks.jsx'));
+const R3FFaceballoon = lazy(() => import('./components/R3FFaceballoon.jsx'));
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -102,6 +104,8 @@ export default function App() {
       <Suspense fallback={null}>
         <R3FHandball visible={currentMode === 'handball'} />
         <R3FFruiteat visible={currentMode === 'fruiteat'} />
+        <R3FFacebricks visible={currentMode === 'facebricks'} />
+        <R3FFaceballoon visible={currentMode === 'faceballoon'} />
       </Suspense>
 
       <div id="info-bar">

@@ -143,7 +143,8 @@ function setupScene() {
 }
 
 function startWebcam() {
-  if (webcamReady) return;
+  if (webcamReady && webcamEl && webcamEl.srcObject && webcamEl.srcObject.active) return;
+  webcamReady = false;
   if (!webcamEl) {
     webcamEl = document.createElement('video');
     webcamEl.muted = true;

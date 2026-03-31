@@ -23,6 +23,7 @@ export function updateURL(mode) {
   if (base.length > 1 && (renderers[tail] || allModes.indexOf(tail) !== -1)) base.pop();
   var newPath = base.join('/') + '/' + mode;
   history.replaceState(null, '', newPath);
+  document.title = 'textflow \u2014 ' + mode;
 }
 
 export function getRandomMode() {

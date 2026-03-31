@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npx vite build
+RUN node generate-og-pages.mjs
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
