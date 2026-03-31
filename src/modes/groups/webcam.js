@@ -17,3 +17,4 @@ import '../handlaser.js';
 import '../handgravity.js';
 import '../handball.js';
 import '../handsmash.js';
+import '../fruiteat.js';

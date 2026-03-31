@@ -50,7 +50,7 @@ var THREE_MODES = [
 var WEBCAM_MODES = [
   'cat', 'buttons', 'handpose', 'facemesh', 'webcam', 'facepass',
   'headcube', 'camtrail', 'camhalftone', 'camdepth', 'faceglitch',
-  'facepaint', 'facemirror', 'handfire', 'handlaser', 'handgravity', 'handsmash', 'handball'
+  'facepaint', 'facemirror', 'handfire', 'handlaser', 'handgravity', 'handsmash', 'handball', 'fruiteat'
 ];
 
 // Build reverse lookup: modeName -> groupName

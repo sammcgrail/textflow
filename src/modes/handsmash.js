@@ -39,13 +39,10 @@ export var smashState = {
 var BALL_GRAVITY = 0.0004;
 var BALL_DAMPING = 0.998;
 var BALL_RESTITUTION = 0.85;
-var HAND_IMPULSE_STRENGTH = 0.06;
+var HAND_IMPULSE_STRENGTH = 0.04;
 
-// Previous hand position for velocity tracking
-var prevHandX = 0.5;
-var prevHandY = 0.5;
-var handVelX = 0;
-var handVelY = 0;
+// Previous landmark positions for velocity tracking
+var prevLandmarks = null;
 
 // Text content
 var TEXT_CONTENT = 'SHATTER DESTROY SMASH BREAK CRASH WRECK DEMOLISH OBLITERATE PULVERIZE ANNIHILATE ';
@@ -71,6 +68,10 @@ var HAND_CONNECTIONS = [
   [5,9],[9,13],[13,17]
 ];
 
+// Key collision landmarks — fingertips + palm
+var COLLISION_LANDMARKS = [0, 4, 8, 9, 12, 16, 20];
+var COLLISION_RADIUS = 0.06; // per-landmark collision radius
+
 function initHandsmash() {
   loading = true;
   loadError = null;
@@ -81,6 +82,7 @@ function initHandsmash() {
   debris = [];
   debrisIdx = 0;
   textIdx = 0;
+  prevLandmarks = null;
 
   // Reset ball to center with small random velocity
   smashState.ballX = 0.5;
@@ -89,11 +91,6 @@ function initHandsmash() {
   smashState.ballVY = -0.01;
   smashState.ballGlow = 0.0;
   smashState.handVisible = false;
-
-  prevHandX = 0.5;
-  prevHandY = 0.5;
-  handVelX = 0;
-  handVelY = 0;
 
   if (!webcamEl) {
     webcamEl = document.createElement('video');
@@ -168,8 +165,8 @@ function updateSmoothedHands() {
 
   while (smoothHands.length < hands.length) {
     var lmArr = [];
-    for (var li = 0; li < 21; li++) lmArr.push({ x: W * 0.5, y: H * 0.5 });
-    smoothHands.push({ cx: W * 0.5, cy: H * 0.5, nx: 0.5, ny: 0.5, landmarks: lmArr });
+    for (var li = 0; li < 21; li++) lmArr.push({ x: W * 0.5, y: H * 0.5, nx: 0.5, ny: 0.5 });
+    smoothHands.push({ landmarks: lmArr });
   }
 
   for (var hi = 0; hi < hands.length; hi++) {
@@ -177,25 +174,16 @@ function updateSmoothedHands() {
     var lm = hand.landmarks;
     if (!lm || lm.length < 21) continue;
 
-    // Palm center in grid coords (mirrored X)
-    var pcx = ((1 - lm[0].x) + (1 - lm[9].x)) * 0.5 * W;
-    var pcy = (lm[0].y + lm[9].y) * 0.5 * H;
-
-    // Palm center in normalized coords (mirrored X)
-    var pnx = ((1 - lm[0].x) + (1 - lm[9].x)) * 0.5;
-    var pny = (lm[0].y + lm[9].y) * 0.5;
-
     var sh = smoothHands[hi];
-    sh.cx = sh.cx * 0.4 + pcx * 0.6;
-    sh.cy = sh.cy * 0.4 + pcy * 0.6;
-    sh.nx = sh.nx * 0.4 + pnx * 0.6;
-    sh.ny = sh.ny * 0.4 + pny * 0.6;
-
     for (var li2 = 0; li2 < 21; li2++) {
-      var tx = (1 - lm[li2].x) * W;
-      var ty = lm[li2].y * H;
-      sh.landmarks[li2].x = sh.landmarks[li2].x * 0.4 + tx * 0.6;
-      sh.landmarks[li2].y = sh.landmarks[li2].y * 0.4 + ty * 0.6;
+      var nx = 1 - lm[li2].x; // mirror X
+      var ny = lm[li2].y;
+      var gx = nx * W;
+      var gy = ny * H;
+      sh.landmarks[li2].x = sh.landmarks[li2].x * 0.3 + gx * 0.7;
+      sh.landmarks[li2].y = sh.landmarks[li2].y * 0.3 + gy * 0.7;
+      sh.landmarks[li2].nx = sh.landmarks[li2].nx * 0.3 + nx * 0.7;
+      sh.landmarks[li2].ny = sh.landmarks[li2].ny * 0.3 + ny * 0.7;
     }
   }
 }
@@ -240,48 +228,72 @@ function updateBallPhysics() {
 function handleHandCollision() {
   var numHands = Math.min(hands.length, smoothHands.length);
   smashState.handVisible = numHands > 0;
-
   if (numHands === 0) return;
+
+  var hit = false;
 
   for (var hi = 0; hi < numHands; hi++) {
     var sh = smoothHands[hi];
-    var dx = smashState.ballX - sh.nx;
-    var dy = smashState.ballY - sh.ny;
-    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (!sh.landmarks) continue;
 
-    if (dist < smashState.ballRadius + 0.05) {
-      // Track hand velocity
-      handVelX = sh.nx - prevHandX;
-      handVelY = sh.ny - prevHandY;
+    // Check all collision landmarks (fingertips + palm + wrist)
+    for (var ci = 0; ci < COLLISION_LANDMARKS.length; ci++) {
+      var lIdx = COLLISION_LANDMARKS[ci];
+      var lm = sh.landmarks[lIdx];
+      var dx = smashState.ballX - lm.nx;
+      var dy = smashState.ballY - lm.ny;
+      var dist = Math.sqrt(dx * dx + dy * dy);
 
-      // Push ball away from hand
-      var nx = dist > 0.001 ? dx / dist : 0;
-      var ny = dist > 0.001 ? dy / dist : 1;
+      if (dist < smashState.ballRadius + COLLISION_RADIUS) {
+        // Compute landmark velocity from previous frame
+        var lvx = 0, lvy = 0;
+        if (prevLandmarks && prevLandmarks[hi] && prevLandmarks[hi][lIdx]) {
+          lvx = lm.nx - prevLandmarks[hi][lIdx].nx;
+          lvy = lm.ny - prevLandmarks[hi][lIdx].ny;
+        }
 
-      // Force = hand velocity + separation impulse
-      var handSpeed = Math.sqrt(handVelX * handVelX + handVelY * handVelY);
-      var impulse = HAND_IMPULSE_STRENGTH + handSpeed * 2.0;
+        // Push ball away from this landmark
+        var nx2 = dist > 0.001 ? dx / dist : 0;
+        var ny2 = dist > 0.001 ? dy / dist : 1;
 
-      smashState.ballVX += nx * impulse;
-      smashState.ballVY += ny * impulse;
+        var handSpeed = Math.sqrt(lvx * lvx + lvy * lvy);
+        var impulse = HAND_IMPULSE_STRENGTH + handSpeed * 3.0;
 
-      // Cap speed
-      var speed = Math.sqrt(smashState.ballVX * smashState.ballVX + smashState.ballVY * smashState.ballVY);
-      if (speed > 0.08) {
-        smashState.ballVX = (smashState.ballVX / speed) * 0.08;
-        smashState.ballVY = (smashState.ballVY / speed) * 0.08;
+        smashState.ballVX += nx2 * impulse;
+        smashState.ballVY += ny2 * impulse;
+
+        // Separate ball from landmark
+        var overlap = (smashState.ballRadius + COLLISION_RADIUS) - dist;
+        smashState.ballX += nx2 * overlap * 0.5;
+        smashState.ballY += ny2 * overlap * 0.5;
+
+        hit = true;
       }
-
-      // Separate ball from hand
-      smashState.ballX = sh.nx + nx * (smashState.ballRadius + 0.06);
-      smashState.ballY = sh.ny + ny * (smashState.ballRadius + 0.06);
-
-      // Glow on hit
-      smashState.ballGlow = 1.0;
     }
+  }
 
-    prevHandX = sh.nx;
-    prevHandY = sh.ny;
+  if (hit) {
+    // Cap speed
+    var speed = Math.sqrt(smashState.ballVX * smashState.ballVX + smashState.ballVY * smashState.ballVY);
+    if (speed > 0.08) {
+      smashState.ballVX = (smashState.ballVX / speed) * 0.08;
+      smashState.ballVY = (smashState.ballVY / speed) * 0.08;
+    }
+    smashState.ballGlow = 1.0;
+  }
+
+  // Store current landmarks as previous for next frame
+  prevLandmarks = [];
+  for (var phi = 0; phi < numHands; phi++) {
+    var plm = {};
+    var psh = smoothHands[phi];
+    if (psh && psh.landmarks) {
+      for (var pli = 0; pli < COLLISION_LANDMARKS.length; pli++) {
+        var pidx = COLLISION_LANDMARKS[pli];
+        plm[pidx] = { nx: psh.landmarks[pidx].nx, ny: psh.landmarks[pidx].ny };
+      }
+    }
+    prevLandmarks.push(plm);
   }
 }
 
@@ -297,7 +309,6 @@ function spawnDebris(gx, gy, ch, hue) {
 
   var angle = Math.random() * 6.283;
   var speed = 1.0 + Math.random() * 3.0;
-  // Bias velocity away from ball center
   var bGridX = smashState.ballX * state.COLS;
   var bGridY = smashState.ballY * state.ROWS;
   var awayX = gx - bGridX;
@@ -323,7 +334,7 @@ function updateDebris() {
     var d = debris[i];
     if (d.life <= 0) continue;
 
-    d.vy += 0.15; // gravity on debris
+    d.vy += 0.15;
     d.x += d.vx * 0.3;
     d.y += d.vy * 0.3;
     d.vx *= 0.97;
@@ -395,7 +406,6 @@ function renderHandsmash() {
       if (dd < br) {
         var idx = sy * W + sx;
         if (cellHealth[idx] > 0.3) {
-          // Get the character that would be at this cell
           var tci = (sy * W + sx) % TEXT_CONTENT.length;
           var ch = TEXT_CONTENT[tci];
           var cellHue = 180 + ((sx + sy * 3) % 40);
@@ -423,7 +433,6 @@ function renderHandsmash() {
       var baseSat = 60 + Math.sin(t * 0.5 + tx * 0.1 + ty * 0.15) * 15;
       var baseLit = 15 + health * 15 + Math.sin(t * 0.8 + tx * 0.2) * 5;
 
-      // Dim cells that are regenerating
       if (health < 0.7) {
         baseLit *= health;
         baseSat *= health;
@@ -433,7 +442,7 @@ function renderHandsmash() {
     }
   }
 
-  // Draw ball aura in ASCII (soft glow dots around ball)
+  // Draw ball aura in ASCII
   var auraRadius = br + 2;
   for (var aa = 0; aa < 6.283; aa += 0.2) {
     for (var ar = br * 0.5; ar < auraRadius; ar += 1.2) {
@@ -455,20 +464,35 @@ function renderHandsmash() {
     var dpy = Math.round(d.y);
     if (dpx < 0 || dpx >= W || dpy < 0 || dpy >= H) continue;
 
-    // Hue transitions from text blue to ball orange as it fades
     var dHue = d.hue + (1 - d.life) * (20 - d.hue);
     var dSat = 60 + d.alpha * 30;
     var dLit = 10 + d.alpha * 40;
     drawCharHSL(d.ch, dpx, dpy, dHue, dSat, dLit);
   }
 
-  // Draw hand skeleton
+  // Draw hand skeleton — BRIGHT white/yellow for visibility
   var numHands = Math.min(hands.length, smoothHands.length);
   for (var hi = 0; hi < numHands; hi++) {
     var sh = smoothHands[hi];
     if (!sh.landmarks) continue;
 
-    // Skeleton bones
+    // Glow aura around each joint (extra visibility)
+    for (var gi = 0; gi < 21; gi++) {
+      var glx = Math.round(sh.landmarks[gi].x);
+      var gly = Math.round(sh.landmarks[gi].y);
+      for (var gdx = -1; gdx <= 1; gdx++) {
+        for (var gdy = -1; gdy <= 1; gdy++) {
+          if (gdx === 0 && gdy === 0) continue;
+          var ggx = glx + gdx;
+          var ggy = gly + gdy;
+          if (ggx >= 0 && ggx < W && ggy >= 0 && ggy < H) {
+            drawCharHSL('.', ggx, ggy, 50, 90, 30);
+          }
+        }
+      }
+    }
+
+    // Skeleton bones — bright yellow
     for (var ci2 = 0; ci2 < HAND_CONNECTIONS.length; ci2++) {
       var ca = sh.landmarks[HAND_CONNECTIONS[ci2][0]];
       var cb = sh.landmarks[HAND_CONNECTIONS[ci2][1]];
@@ -476,20 +500,26 @@ function renderHandsmash() {
       var llen = Math.sqrt(ldx * ldx + ldy * ldy);
       var lsteps = Math.max(1, Math.ceil(llen * 1.5));
       for (var ls = 0; ls <= lsteps; ls++) {
-        var lt = ls / lsteps;
-        var lx = Math.round(ca.x + ldx * lt);
-        var ly = Math.round(ca.y + ldy * lt);
+        var lt2 = ls / lsteps;
+        var lx = Math.round(ca.x + ldx * lt2);
+        var ly = Math.round(ca.y + ldy * lt2);
         if (lx < 0 || lx >= W || ly < 0 || ly >= H) continue;
-        drawCharHSL('-', lx, ly, 40, 50, 35);
+        drawCharHSL('-', lx, ly, 50, 100, 70);
       }
     }
 
-    // Joint nodes
+    // Joint nodes — bright white/yellow
     for (var ji = 0; ji < 21; ji++) {
       var jx = Math.round(sh.landmarks[ji].x);
       var jy = Math.round(sh.landmarks[ji].y);
       if (jx >= 0 && jx < W && jy >= 0 && jy < H) {
-        drawCharHSL('o', jx, jy, 30, 80, 50);
+        // Fingertips get extra emphasis
+        var isTip = (ji === 4 || ji === 8 || ji === 12 || ji === 16 || ji === 20);
+        if (isTip) {
+          drawCharHSL('@', jx, jy, 40, 100, 85);
+        } else {
+          drawCharHSL('O', jx, jy, 50, 100, 75);
+        }
       }
     }
   }

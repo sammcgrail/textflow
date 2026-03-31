@@ -6,6 +6,7 @@ import { useTextflowEngine } from './hooks/useTextflowEngine.js';
 const R3FGem = lazy(() => import('./components/R3FGem.jsx'));
 const R3FHandsmash = lazy(() => import('./components/R3FHandsmash.jsx'));
 const R3FHandball = lazy(() => import('./components/R3FHandball.jsx'));
+const R3FFruiteat = lazy(() => import('./components/R3FFruiteat.jsx'));
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -100,11 +101,12 @@ export default function App() {
 
       <Suspense fallback={null}>
         <R3FHandball visible={currentMode === 'handball'} />
+        <R3FFruiteat visible={currentMode === 'fruiteat'} />
       </Suspense>
 
       <div id="info-bar">
         <span id="fps" ref={fpsRef}>0 fps</span>
-        <span id="version">v5.1.0</span>
+        <span id="version">v5.2.0</span>
       </div>
     </>
   );

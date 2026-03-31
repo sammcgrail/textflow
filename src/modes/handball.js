@@ -511,16 +511,31 @@ function renderHandball() {
         else if (ldx * ldy > 0) lch = '\\';
         else lch = '/';
 
-        drawCharHSL(lch, lx, ly, 0, 0, 80);
+        drawCharHSL(lch, lx, ly, 50, 100, 85);
       }
     }
 
-    // Draw joint nodes
+    // Draw joint nodes — bright and visible
     for (var ji = 0; ji < 21; ji++) {
       var jx = Math.round(sh[ji].x * W);
       var jy = Math.round(sh[ji].y * H);
       if (jx >= 0 && jx < W && jy >= 0 && jy < H) {
-        drawCharHSL('o', jx, jy, 0, 0, 90);
+        var isTip = (ji === 4 || ji === 8 || ji === 12 || ji === 16 || ji === 20);
+        if (isTip) {
+          drawCharHSL('@', jx, jy, 40, 100, 90);
+          // Glow around fingertips
+          for (var gd = -1; gd <= 1; gd++) {
+            for (var ge = -1; ge <= 1; ge++) {
+              if (gd === 0 && ge === 0) continue;
+              var ggx = jx + gd, ggy = jy + ge;
+              if (ggx >= 0 && ggx < W && ggy >= 0 && ggy < H) {
+                drawCharHSL('.', ggx, ggy, 50, 80, 40);
+              }
+            }
+          }
+        } else {
+          drawCharHSL('O', jx, jy, 50, 100, 80);
+        }
       }
     }
   }
