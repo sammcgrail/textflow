@@ -50,7 +50,8 @@ var THREE_MODES = [
   'threestorm', 'threevortex', 'threecubes', 'threenebula', 'threewaves',
   'tslblob',
   'tslfire',
-  'tslascii'
+  'tslascii',
+  'tslascii2'
 ];
 
 var WEBCAM_MODES = [
