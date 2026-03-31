@@ -59,8 +59,8 @@ function createFish(W, H) {
   return {
     x: goingRight ? -template.w : W + template.w,
     y: 2 + Math.floor(Math.random() * (sandLine - 4)),
-    vx: (0.3 + Math.random() * 0.8) * (goingRight ? 1 : -1),
-    vy: (Math.random() - 0.5) * 0.15,
+    vx: (0.15 + Math.random() * 0.4) * (goingRight ? 1 : -1),
+    vy: (Math.random() - 0.5) * 0.08,
     templateIdx: templateIdx,
     colorIdx: colorIdx,
     goingRight: goingRight,
@@ -87,8 +87,8 @@ function createSchoolFish(W, H) {
     group.push({
       x: centerX + (Math.random() - 0.5) * 8,
       y: centerY + (Math.random() - 0.5) * 4,
-      vx: groupVx + (Math.random() - 0.5) * 0.2,
-      vy: (Math.random() - 0.5) * 0.1,
+      vx: groupVx * 0.5 + (Math.random() - 0.5) * 0.1,
+      vy: (Math.random() - 0.5) * 0.05,
       colorIdx: colorIdx,
       wobbleOffset: Math.random() * Math.PI * 2
     });
@@ -288,7 +288,7 @@ function updateFish(dt, W, H) {
           }
         } else {
           // Swim toward food
-          var speed = f.baseSpeed * 2.5;
+          var speed = f.baseSpeed * 1.8;
           f.vx = (fdx / dist) * speed;
           f.vy = (fdy / dist) * speed;
           f.goingRight = f.vx > 0;
@@ -376,12 +376,12 @@ function updateSchoolFish(dt, W, H) {
 
     // Clamp speed
     var speed = Math.sqrt(s.vx * s.vx + s.vy * s.vy);
-    if (speed > 1.2) {
-      s.vx = (s.vx / speed) * 1.2;
-      s.vy = (s.vy / speed) * 1.2;
+    if (speed > 0.6) {
+      s.vx = (s.vx / speed) * 0.6;
+      s.vy = (s.vy / speed) * 0.6;
     }
-    if (speed < 0.2) {
-      s.vx = (s.vx / Math.max(speed, 0.01)) * 0.2;
+    if (speed < 0.1) {
+      s.vx = (s.vx / Math.max(speed, 0.01)) * 0.1;
     }
 
     s.x += s.vx * dt * 60;
