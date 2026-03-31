@@ -11,6 +11,7 @@ import {
   isReady,
   getModeFromPath,
 } from '../core/engine.js';
+import { onPopState } from '../core/router.js';
 
 /**
  * useTextflowEngine — connects React to the imperative textflow engine.
@@ -64,6 +65,17 @@ export function useTextflowEngine(canvasRef, glowRef) {
         setCurrentMode(startMode);
         setReady(true);
       }
+
+      // Handle browser back/forward button — switch to the mode in history
+      // Return the promise so router.js can reset isPopstateNavigation after async load
+      onPopState(function(mode) {
+        var r = engineSwitchMode(mode);
+        if (r && r.then) {
+          return r.then(function() { setCurrentMode(mode); });
+        } else {
+          setCurrentMode(mode);
+        }
+      });
     });
 
     return () => {
