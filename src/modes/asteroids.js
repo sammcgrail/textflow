@@ -573,18 +573,18 @@ function renderGame() {
 
   // HUD
   var scoreStr = 'SCORE ' + score;
-  drawText(scoreStr, 1, 0, 55, 70, 65);
+  drawText(scoreStr, 1, 2, 55, 70, 65);
 
   var hiStr = 'HI ' + highScore;
-  drawText(hiStr, Math.floor(W / 2 - hiStr.length / 2), 0, 55, 40, 45);
+  drawText(hiStr, Math.floor(W / 2 - hiStr.length / 2), 2, 55, 40, 45);
 
   // Lives display
   var livesStr = 'x' + lives;
   var livesX = W - livesStr.length - 1 - lives * 2;
   for (var i = 0; i < lives; i++) {
-    drawCharHSL('^', livesX + i * 2, 0, 190, 80, 65);
+    drawCharHSL('^', livesX + i * 2, 2, 190, 80, 65);
   }
-  drawText(livesStr, W - livesStr.length - 1, 0, 190, 60, 55);
+  drawText(livesStr, W - livesStr.length - 1, 2, 190, 60, 55);
 
   // Combo indicator
   if (combo > 1 && comboTimer > 0) {
