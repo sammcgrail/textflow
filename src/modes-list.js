@@ -209,6 +209,8 @@ export const MODES = [
   { id: "tslfire", label: "tslfire" },
   { id: "tslascii", label: "tslascii" },
   { id: "tslascii2", label: "tslascii2" },
+  { id: "tslmatrix", label: "tslmatrix" },
+  { id: "tslplasma", label: "tslplasma" },
   { id: "cloud", label: "cloud" },
   { id: "symbiosis", label: "symbiosis" },
   { id: "blackholes", label: "blackholes" },

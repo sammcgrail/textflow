@@ -188,6 +188,8 @@ import './tslblob.js';
 import './tslfire.js';
 import './tslascii.js';
 import './tslascii2.js';
+import './tslmatrix.js';
+import './tslplasma.js';
 import './handball.js';
 import './rhythm.js';
 import './aquarium.js';

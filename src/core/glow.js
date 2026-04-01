@@ -172,6 +172,8 @@ export var glows = {
   tslfire: { color: 'rgba(255,120,30,0.6)', blur: 28 },
   tslascii: { color: 'rgba(255,150,50,0.55)', blur: 24 },
   tslascii2: { color: 'rgba(50,180,255,0.55)', blur: 24 },
+  tslmatrix: { color: 'rgba(0,255,70,0.55)', blur: 24 },
+  tslplasma: { color: 'rgba(200,100,255,0.55)', blur: 26 },
   prism: { color: 'rgba(255,255,255,0.5)', blur: 22 },
   phoenix: { color: 'rgba(255,120,30,0.55)', blur: 24 },
   swarm: { color: 'rgba(180,100,255,0.5)', blur: 20 },
