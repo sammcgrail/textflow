@@ -26,7 +26,8 @@ var currentPulse = 0.0;
 
 var GLYPH_CHARS = ' .,:;~=+*#@';
 var GLYPH_COLS = 11;
-var GLYPH_TILE = 16;
+var GLYPH_TILE_W = 10; // glyph tile width (approx terminal char width)
+var GLYPH_TILE_H = 20; // glyph tile height (approx terminal char height)
 
 function disposeAll() {
   if (renderTarget) { renderTarget.dispose(); renderTarget = null; }
