@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { Fn, uniform, vec2, vec3, vec4, float, floor, fract, clamp, smoothstep, sin, cos, abs, max, min, mix, pow, select, texture, uv } from 'three/tsl';
+import { Fn, uniform, vec2, vec3, vec4, float, floor, fract, clamp, smoothstep, sin, cos, abs, max, min, mix, pow, length, select, texture, uv } from 'three/tsl';
 import { clearCanvas } from '../core/draw.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
@@ -139,31 +139,31 @@ function setupScene() {
     // Wave source 1: center-left, slow
     var d1x = px.sub(2.0);
     var d1y = py.sub(3.0);
-    var dist1 = pow(d1x.mul(d1x).add(d1y.mul(d1y)), float(0.5));
+    var dist1 = length(vec2(d1x, d1y));
     var wave1 = sin(dist1.mul(3.0).sub(t.mul(1.5))).mul(float(0.4));
 
     // Wave source 2: top-right, medium
     var d2x = px.sub(6.0);
     var d2y = py.sub(1.0);
-    var dist2 = pow(d2x.mul(d2x).add(d2y.mul(d2y)), float(0.5));
+    var dist2 = length(vec2(d2x, d2y));
     var wave2 = sin(dist2.mul(4.0).sub(t.mul(2.0)).add(1.5)).mul(float(0.35));
 
     // Wave source 3: bottom, fast
     var d3x = px.sub(4.0);
     var d3y = py.sub(5.5);
-    var dist3 = pow(d3x.mul(d3x).add(d3y.mul(d3y)), float(0.5));
+    var dist3 = length(vec2(d3x, d3y));
     var wave3 = sin(dist3.mul(2.5).sub(t.mul(1.2)).add(3.0)).mul(float(0.3));
 
     // Wave source 4: mouse-driven ripple
     var mx = fragUV.x.sub(mouse.x);
     var my = fragUV.y.sub(float(1.0).sub(mouse.y));
-    var mDist = pow(mx.mul(mx).add(my.mul(my)), float(0.5)).mul(12.0);
+    var mDist = length(vec2(mx, my)).mul(12.0);
     var mouseWave = sin(mDist.mul(5.0).sub(t.mul(3.0))).mul(float(0.5));
     var mouseFade = clamp(float(1.0).sub(mDist.mul(0.15)), float(0.0), float(1.0));
     mouseWave = mouseWave.mul(mouseFade);
 
     // Pulse wave from click — expanding ring
-    var pulseDist = pow(mx.mul(mx).add(my.mul(my)), float(0.5)).mul(8.0);
+    var pulseDist = length(vec2(mx, my)).mul(8.0);
     var pulseWave = sin(pulseDist.mul(8.0).sub(pulse.mul(15.0))).mul(float(0.6));
     var pulseFade = clamp(pulse.mul(2.0).sub(pulseDist.mul(0.3)), float(0.0), float(1.0));
     pulseFade = pulseFade.mul(clamp(float(1.0).sub(pulse.mul(0.5)), float(0.0), float(1.0)));
