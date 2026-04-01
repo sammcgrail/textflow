@@ -627,28 +627,38 @@ function drawPopGraph(W, t) {
 // Attach — mouse/click events
 // ============================================================
 
+function _seedAt(clientX, clientY) {
+  if (state.currentMode !== 'symbiosis') return;
+
+  var rect = state.canvas.getBoundingClientRect();
+  var scaleX = state.canvas.width / (state.dpr * rect.width);
+  var scaleY = state.canvas.height / (state.dpr * rect.height);
+  var cx = (clientX - rect.left) * scaleX;
+  var cy = (clientY - rect.top) * scaleY;
+  var col = Math.floor(cx / state.CHAR_W);
+  var row = Math.floor(cy / state.CHAR_H);
+
+  // Burst of plants at click/touch position
+  for (var i = 0; i < 15; i++) {
+    var px = col + Math.floor(Math.random() * 7) - 3;
+    var py = row + Math.floor(Math.random() * 7) - 3;
+    spawnPlant(clampX(px), clampY(py));
+  }
+}
+
+var _touchHandler = null;
+
 function attach() {
   cleanup();
 
-  _clickHandler = function(e) {
-    if (state.currentMode !== 'symbiosis') return;
-
-    var rect = state.canvas.getBoundingClientRect();
-    var scaleX = state.canvas.width / (state.dpr * rect.width);
-    var scaleY = state.canvas.height / (state.dpr * rect.height);
-    var cx = (e.clientX - rect.left) * scaleX;
-    var cy = (e.clientY - rect.top) * scaleY;
-    var col = Math.floor(cx / state.CELL_W);
-    var row = Math.floor(cy / state.CELL_H);
-
-    // Burst of plants at click position
-    for (var i = 0; i < 15; i++) {
-      var px = col + Math.floor(Math.random() * 7) - 3;
-      var py = row + Math.floor(Math.random() * 7) - 3;
-      spawnPlant(clampX(px), clampY(py));
-    }
+  _clickHandler = function(e) { _seedAt(e.clientX, e.clientY); };
+  _touchHandler = function(e) {
+    e.preventDefault();
+    var touch = e.touches[0];
+    if (touch) _seedAt(touch.clientX, touch.clientY);
   };
   state.canvas.addEventListener('click', _clickHandler);
+  state.canvas.addEventListener('touchstart', _touchHandler, { passive: false });
 }
 
 // ============================================================
@@ -659,6 +669,10 @@ function cleanup() {
   if (_clickHandler && state.canvas) {
     state.canvas.removeEventListener('click', _clickHandler);
     _clickHandler = null;
+  }
+  if (_touchHandler && state.canvas) {
+    state.canvas.removeEventListener('touchstart', _touchHandler);
+    _touchHandler = null;
   }
 }
 
