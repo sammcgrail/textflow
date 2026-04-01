@@ -222,5 +222,4 @@ export const MODES = [
   { id: "swarm", label: "swarm" },
   { id: "supernova", label: "supernova" },
   { id: "inferno", label: "inferno" },
-  { id: "tslvibe", label: "tslvibe" },
 ];
