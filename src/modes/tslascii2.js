@@ -80,6 +80,7 @@ function createGlyphAtlas() {
   var tex = new THREE.CanvasTexture(c);
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
+  tex.flipY = false;
   tex.needsUpdate = true;
   return tex;
 }
@@ -240,9 +241,7 @@ function setupScene() {
     var glyphIndex = floor(boosted.mul(float(GLYPH_COLS - 1)).add(0.5));
     glyphIndex = clamp(glyphIndex, float(0.0), float(GLYPH_COLS - 1));
 
-    // Flip localUV.x to correct WebGPU horizontal mirroring
-    var flippedX = float(1.0).sub(localUV.x);
-    var glyphU = glyphIndex.mul(float(1.0 / GLYPH_COLS)).add(flippedX.mul(float(1.0 / GLYPH_COLS)));
+    var glyphU = glyphIndex.mul(float(1.0 / GLYPH_COLS)).add(localUV.x.mul(float(1.0 / GLYPH_COLS)));
     var glyphV = localUV.y;
     var glyphSample = texture(glyphAtlas, vec2(glyphU, glyphV));
     var glyphMask = glyphSample.r;
