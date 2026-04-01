@@ -103,3 +103,4 @@ import '../phoenix.js';
 import '../swarm.js';
 import '../supernova.js';
 import '../inferno.js';
+import '../tslvibe.js';
