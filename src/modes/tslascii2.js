@@ -63,21 +63,28 @@ function disposeAll() {
 }
 
 function createGlyphAtlas() {
-  var atlasW = GLYPH_COLS * GLYPH_TILE;
-  var atlasH = GLYPH_TILE;
+  var atlasW = GLYPH_COLS * GLYPH_TILE_W;
+  var atlasH = GLYPH_TILE_H;
   var c = document.createElement('canvas');
   c.width = atlasW; c.height = atlasH;
   var ctx = c.getContext('2d');
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, atlasW, atlasH);
   ctx.fillStyle = '#fff';
-  ctx.font = (GLYPH_TILE - 2) + 'px monospace';
+  ctx.font = (GLYPH_TILE_H - 4) + 'px monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (var i = 0; i < GLYPH_CHARS.length; i++) {
-    ctx.fillText(GLYPH_CHARS[i], i * GLYPH_TILE + GLYPH_TILE / 2, GLYPH_TILE / 2 + 1);
+    ctx.fillText(GLYPH_CHARS[i], i * GLYPH_TILE_W + GLYPH_TILE_W / 2, GLYPH_TILE_H / 2 + 1);
   }
-  var tex = new THREE.CanvasTexture(c);
+  // Flip atlas horizontally to compensate for GPU texture sampling direction
+  var flipCanvas = document.createElement('canvas');
+  flipCanvas.width = atlasW; flipCanvas.height = atlasH;
+  var flipCtx = flipCanvas.getContext('2d');
+  flipCtx.translate(atlasW, 0);
+  flipCtx.scale(-1, 1);
+  flipCtx.drawImage(c, 0, 0);
+  var tex = new THREE.CanvasTexture(flipCanvas);
   tex.magFilter = THREE.NearestFilter;
   tex.minFilter = THREE.NearestFilter;
   tex.flipY = false;
@@ -325,9 +332,14 @@ function renderTslascii2() {
 
   if (visibleCanvas) {
     var ctx = visibleCanvas.getContext('2d');
+    // Flip vertically to correct WebGPU Y-axis orientation
+    ctx.save();
+    ctx.translate(0, visibleCanvas.height);
+    ctx.scale(1, -1);
     ctx.drawImage(renderer.domElement, 0, 0, visibleCanvas.width, visibleCanvas.height);
+    ctx.restore();
 
-    // Draw mode label on overlay canvas
+    // Draw mode label (after restore so it's not flipped)
     var fontSize = Math.max(10, Math.floor(visibleCanvas.height / H * 0.8));
     ctx.font = fontSize + 'px monospace';
     ctx.textBaseline = 'bottom';
