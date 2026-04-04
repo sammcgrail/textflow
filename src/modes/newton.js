@@ -94,7 +94,7 @@ function renderNewton() {
     nClickFade = 1.0;
   }
 
-  var autoRot = t * 0.12;
+  var autoRot = t * 0.45;
   if (nClickFade > 0.001) {
     nClickFade *= 0.985;
     nRotation = autoRot * (1 - nClickFade) + nClickRot * nClickFade;
@@ -109,7 +109,8 @@ function renderNewton() {
     nDirty = false;
   }
 
-  var baseHues = [0, 120, 240]; // R, G, B for three basins
+  var hueShift = t * 80;
+  var baseHues = [0 + hueShift, 120 + hueShift, 240 + hueShift]; // cycling R, G, B
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
       var iter = nImage[y * W + x];
@@ -119,7 +120,7 @@ function renderNewton() {
       if (ri >= RAMP_DENSE.length) ri = RAMP_DENSE.length - 1;
       var ch = RAMP_DENSE[ri];
       if (ch === ' ') ch = '.';
-      var hue = (baseHues[basin] + iter * 8 + t * 25) % 360;
+      var hue = (baseHues[basin] + iter * 8) % 360;
       var sat = 90;
       var lit = 55 - Math.min(v, 1) * 15;
       drawCharHSL(ch, x, y, hue | 0, sat | 0, lit | 0);
