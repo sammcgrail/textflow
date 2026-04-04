@@ -188,7 +188,17 @@ export var glows = {
   gears: { color: 'rgba(220,180,100,0.3)', blur: 12 },
   rainfall: { color: 'rgba(80,140,255,0.35)', blur: 14 },
   mycelium: { color: 'rgba(180,80,255,0.35)', blur: 14 },
-  stainedglass: { color: 'rgba(255,200,100,0.3)', blur: 12 }
+  stainedglass: { color: 'rgba(255,200,100,0.3)', blur: 12 },
+  vorospark: { color: 'rgba(255,255,150,0.45)', blur: 16 },
+  fractree: { color: 'rgba(100,255,80,0.4)', blur: 14 },
+  sierpinski: { color: 'rgba(255,100,255,0.45)', blur: 16 },
+  julia: { color: 'rgba(180,100,255,0.4)', blur: 14 },
+  vorofire: { color: 'rgba(255,120,30,0.45)', blur: 16 },
+  kochsnow: { color: 'rgba(100,220,255,0.45)', blur: 16 },
+  barnsley: { color: 'rgba(80,255,120,0.4)', blur: 14 },
+  vorostorm: { color: 'rgba(120,140,255,0.45)', blur: 18 },
+  spirograph: { color: 'rgba(255,100,220,0.45)', blur: 16 },
+  cellspark: { color: 'rgba(100,255,255,0.45)', blur: 16 }
 };
 
 var glowCanvas = null;

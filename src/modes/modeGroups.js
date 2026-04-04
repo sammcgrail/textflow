@@ -26,7 +26,9 @@ var SIMULATION_MODES = [
   'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity',
   'prism', 'phoenix', 'swarm', 'supernova', 'inferno',
   'wavelet', 'infection', 'sandcastle', 'flocking', 'runelore',
-  'antfarm', 'gears', 'rainfall', 'mycelium', 'stainedglass'
+  'antfarm', 'gears', 'rainfall', 'mycelium', 'stainedglass',
+  'vorospark', 'fractree', 'sierpinski', 'julia', 'vorofire',
+  'kochsnow', 'barnsley', 'vorostorm', 'spirograph', 'cellspark'
 ];
 
 var RETRO_MODES = [
