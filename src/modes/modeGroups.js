@@ -24,7 +24,9 @@ var SIMULATION_MODES = [
   'volcano', 'sonar', 'drops', 'tiles', 'mushroom', 'cascade', 'northern',
   'tidal', 'comet', 'circuit2', 'snakegame', 'asteroids', 'rhythm', 'neonrace',
   'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity',
-  'prism', 'phoenix', 'swarm', 'supernova', 'inferno'
+  'prism', 'phoenix', 'swarm', 'supernova', 'inferno',
+  'wavelet', 'infection', 'sandcastle', 'flocking', 'runelore',
+  'antfarm', 'gears', 'rainfall', 'mycelium', 'stainedglass'
 ];
 
 var RETRO_MODES = [
