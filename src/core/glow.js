@@ -195,10 +195,29 @@ export var glows = {
   julia: { color: 'rgba(180,100,255,0.4)', blur: 14 },
   vorofire: { color: 'rgba(255,120,30,0.45)', blur: 16 },
   kochsnow: { color: 'rgba(100,220,255,0.45)', blur: 16 },
-  barnsley: { color: 'rgba(80,255,120,0.4)', blur: 14 },
   vorostorm: { color: 'rgba(120,140,255,0.45)', blur: 18 },
   spirograph: { color: 'rgba(255,100,220,0.45)', blur: 16 },
-  cellspark: { color: 'rgba(100,255,255,0.45)', blur: 16 }
+  cellspark: { color: 'rgba(100,255,255,0.45)', blur: 16 },
+  nebula: { color: 'rgba(200,100,255,0.5)', blur: 20 },
+  vortex: { color: 'rgba(255,200,100,0.5)', blur: 18 },
+  aurora3d: { color: 'rgba(80,255,150,0.45)', blur: 18 },
+  starfield3d: { color: 'rgba(200,220,255,0.4)', blur: 14 },
+  shockwave: { color: 'rgba(100,220,255,0.5)', blur: 20 },
+  plasma3d: { color: 'rgba(255,100,200,0.5)', blur: 18 },
+  wormhole: { color: 'rgba(150,100,255,0.5)', blur: 20 },
+  quasar: { color: 'rgba(100,180,255,0.55)', blur: 22 },
+  fireball: { color: 'rgba(255,150,30,0.5)', blur: 20 },
+  cosmos: { color: 'rgba(200,180,255,0.45)', blur: 18 },
+  burning: { color: 'rgba(255,120,30,0.45)', blur: 16 },
+  tricorn: { color: 'rgba(180,100,255,0.4)', blur: 14 },
+  newton: { color: 'rgba(100,255,180,0.45)', blur: 16 },
+  lyapunov: { color: 'rgba(255,200,50,0.4)', blur: 14 },
+  phoenixfrac: { color: 'rgba(255,80,200,0.45)', blur: 16 },
+  multibrot: { color: 'rgba(100,200,255,0.45)', blur: 16 },
+  magnet2: { color: 'rgba(80,120,255,0.45)', blur: 18 },
+  collatz: { color: 'rgba(200,100,255,0.4)', blur: 14 },
+  mandeljulia: { color: 'rgba(255,150,100,0.45)', blur: 16 },
+  fractalflame: { color: 'rgba(255,100,150,0.5)', blur: 20 }
 };
 
 var glowCanvas = null;
