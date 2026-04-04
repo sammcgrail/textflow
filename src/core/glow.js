@@ -178,7 +178,17 @@ export var glows = {
   phoenix: { color: 'rgba(255,120,30,0.55)', blur: 24 },
   swarm: { color: 'rgba(180,100,255,0.5)', blur: 20 },
   supernova: { color: 'rgba(255,220,100,0.55)', blur: 26 },
-  inferno: { color: 'rgba(255,80,20,0.55)', blur: 24 }
+  inferno: { color: 'rgba(255,80,20,0.55)', blur: 24 },
+  wavelet: { color: 'rgba(100,180,255,0.35)', blur: 14 },
+  infection: { color: 'rgba(255,80,80,0.3)', blur: 10 },
+  sandcastle: { color: 'rgba(220,180,100,0.3)', blur: 10 },
+  flocking: { color: 'rgba(100,150,255,0.3)', blur: 12 },
+  runelore: { color: 'rgba(80,100,220,0.35)', blur: 14 },
+  antfarm: { color: 'rgba(200,150,50,0.3)', blur: 10 },
+  gears: { color: 'rgba(220,180,100,0.3)', blur: 12 },
+  rainfall: { color: 'rgba(80,140,255,0.35)', blur: 14 },
+  mycelium: { color: 'rgba(180,80,255,0.35)', blur: 14 },
+  stainedglass: { color: 'rgba(255,200,100,0.3)', blur: 12 }
 };
 
 var glowCanvas = null;
