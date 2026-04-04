@@ -18,9 +18,9 @@ var webcamDenied = false;
 var loadError = null;
 var loading = true;
 
-var detectInterval = 3;
-var frameCount = 0;
 var detecting = false;
+var DETECT_INTERVAL_MS = 50;
+var detectionLoopStarted = false;
 
 var hands = [];
 var smoothHands = [];
@@ -119,14 +119,34 @@ function initDetector() {
   });
 }
 
-function detectHands() {
-  if (!detector || !webcamReady || detecting || webcamEl.readyState < 2) return;
-  detecting = true;
-  detector.detect(webcamEl).then(function(result) {
-    hands = result || [];
-    updateSmoothedHands();
-    detecting = false;
-  }).catch(function() { detecting = false; });
+function startDetectionLoop() {
+  if (detectionLoopStarted) return;
+  detectionLoopStarted = true;
+  function loop() {
+    if (!detector || !webcamReady) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    if (detecting) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    if (webcamEl.readyState < 2) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    detecting = true;
+    detector.detect(webcamEl).then(function(result) {
+      hands = result || [];
+      updateSmoothedHands();
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    }).catch(function() {
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    });
+  }
+  setTimeout(loop, 0);
 }
 
 function updateSmoothedHands() {
@@ -205,8 +225,7 @@ function renderHandlaser() {
     return;
   }
 
-  frameCount++;
-  if (frameCount % detectInterval === 0 && detector) detectHands();
+  startDetectionLoop();
   updateSparks(dt);
 
   // Collect all beam endpoints for convergence detection
