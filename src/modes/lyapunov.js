@@ -66,7 +66,7 @@ function renderLyapunov() {
     lClickFade = 1.0;
   }
 
-  var autoPhase = t * 0.3;
+  var autoPhase = t * 1.2;
   if (lClickFade > 0.001) {
     lClickFade *= 0.985;
     lPhase = autoPhase * (1 - lClickFade) + lClickPhase * lClickFade;
@@ -81,9 +81,18 @@ function renderLyapunov() {
     lDirty = false;
   }
 
+  // Pulsing zoom: oscillates between 0.7x and 1.3x over ~8 seconds
+  var zoom = 1.0 + 0.3 * Math.sin(t * 0.8);
+  var cx = W * 0.5, cy = H * 0.5;
+
   for (var y = 0; y < H; y++) {
     for (var x = 0; x < W; x++) {
-      var val = lImage[y * W + x];
+      // Sample from zoomed coordinates
+      var sx = ((x - cx) / zoom + cx) | 0;
+      var sy = ((y - cy) / zoom + cy) | 0;
+      if (sx < 0) sx = 0; if (sx >= W) sx = W - 1;
+      if (sy < 0) sy = 0; if (sy >= H) sy = H - 1;
+      var val = lImage[sy * W + sx];
       var chaotic = val > 0;
       // Normalize to visual range
       var v;
@@ -97,11 +106,11 @@ function renderLyapunov() {
       if (ch === ' ') ch = '.';
       var hue, sat, lit;
       if (chaotic) {
-        hue = (v * 180 + t * 30) % 360;
+        hue = (v * 180 + t * 100) % 360;
         sat = 90;
         lit = 40 + v * 25;
       } else {
-        hue = (240 + v * 120 + t * 25) % 360;
+        hue = (240 + v * 120 + t * 80) % 360;
         sat = 85;
         lit = 35 + v * 25;
       }
