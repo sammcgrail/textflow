@@ -28,7 +28,11 @@ var SIMULATION_MODES = [
   'wavelet', 'infection', 'sandcastle', 'flocking', 'runelore',
   'antfarm', 'gears', 'rainfall', 'mycelium', 'stainedglass',
   'vorospark', 'fractree', 'sierpinski', 'julia', 'vorofire',
-  'kochsnow', 'barnsley', 'vorostorm', 'spirograph', 'cellspark'
+  'kochsnow', 'vorostorm', 'spirograph', 'cellspark',
+  'nebula', 'vortex', 'aurora3d', 'starfield3d', 'shockwave',
+  'plasma3d', 'wormhole', 'quasar', 'fireball', 'cosmos',
+  'burning', 'tricorn', 'newton', 'lyapunov', 'phoenixfrac',
+  'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame'
 ];
 
 var RETRO_MODES = [
