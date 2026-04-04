@@ -25,10 +25,10 @@ var handMask = null;      // Uint8Array grid — 1 = hand area
 var handMaskW = 0;
 var handMaskH = 0;
 
-// Detection throttle (don't detect every render frame)
-var detectInterval = 3;   // detect every N frames
-var frameCount = 0;
+// Detection loop (decoupled from render via setTimeout)
 var detecting = false;
+var DETECT_INTERVAL_MS = 50; // ~20fps detection
+var detectionLoopStarted = false;
 
 // Flowing text
 var loremText = 'The quick brown fox jumps over the lazy dog. ' +
@@ -137,18 +137,34 @@ function initDetector() {
   });
 }
 
-function detectHands() {
-  if (!detector || !webcamReady || detecting) return;
-  if (webcamEl.readyState < 2) return;
-
-  detecting = true;
-  detector.detect(webcamEl).then(function(result) {
-    hands = result || [];
-    updateHandMask();
-    detecting = false;
-  }).catch(function() {
-    detecting = false;
-  });
+function startDetectionLoop() {
+  if (detectionLoopStarted) return;
+  detectionLoopStarted = true;
+  function loop() {
+    if (!detector || !webcamReady) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    if (detecting) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    if (webcamEl.readyState < 2) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    detecting = true;
+    detector.detect(webcamEl).then(function(result) {
+      hands = result || [];
+      updateHandMask();
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    }).catch(function() {
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    });
+  }
+  setTimeout(loop, 0);
 }
 
 function updateHandMask() {
@@ -366,11 +382,8 @@ function renderHandpose() {
     return;
   }
 
-  // Detect hands periodically
-  frameCount++;
-  if (frameCount % detectInterval === 0 && detector) {
-    detectHands();
-  }
+  // Start detection loop (no-op after first call)
+  startDetectionLoop();
 
   // Sample webcam to get color data
   if (vidCanvas.width !== W || vidCanvas.height !== H) {

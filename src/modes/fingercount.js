@@ -20,8 +20,8 @@ var vidCtx = null;
 
 var hands = [];
 var detecting = false;
-var frameCount = 0;
-var detectInterval = 3;
+var DETECT_INTERVAL_MS = 50;
+var detectionLoopStarted = false;
 
 // Finger count state
 var currentFingerCount = -1;
@@ -155,26 +155,43 @@ function initDetector() {
   });
 }
 
-function detectHands() {
-  if (!detector || !webcamReady || detecting) return;
-  if (webcamEl.readyState < 2) return;
-  detecting = true;
-  detector.detect(webcamEl).then(function(result) {
-    hands = result || [];
-    if (hands.length > 0) {
-      var hand = hands[0];
-      var lm = hand.landmarks || hand.keypoints;
-      if (lm && Array.isArray(lm)) {
-        currentFingerCount = countFingers(lm);
-        handX = 1 - lm[0].x;
-      }
-    } else {
-      currentFingerCount = -1;
+function startDetectionLoop() {
+  if (detectionLoopStarted) return;
+  detectionLoopStarted = true;
+  function loop() {
+    if (!detector || !webcamReady) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
     }
-    detecting = false;
-  }).catch(function() {
-    detecting = false;
-  });
+    if (detecting) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    if (webcamEl.readyState < 2) {
+      setTimeout(loop, DETECT_INTERVAL_MS);
+      return;
+    }
+    detecting = true;
+    detector.detect(webcamEl).then(function(result) {
+      hands = result || [];
+      if (hands.length > 0) {
+        var hand = hands[0];
+        var lm = hand.landmarks || hand.keypoints;
+        if (lm && Array.isArray(lm)) {
+          currentFingerCount = countFingers(lm);
+          handX = 1 - lm[0].x;
+        }
+      } else {
+        currentFingerCount = -1;
+      }
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    }).catch(function() {
+      detecting = false;
+      setTimeout(loop, DETECT_INTERVAL_MS);
+    });
+  }
+  setTimeout(loop, 0);
 }
 
 function countFingers(lm) {
@@ -449,11 +466,8 @@ function renderFingercount() {
     sceneStartTime = t;
   }
 
-  // Detect hands
-  frameCount++;
-  if (frameCount % detectInterval === 0 && detector) {
-    detectHands();
-  }
+  // Start detection loop (no-op after first call)
+  startDetectionLoop();
 
   updateParticles(dt);
 
