@@ -49,12 +49,12 @@ function renderCymatics() {
   var W = state.COLS, H = state.ROWS;
   if (!cymParts || cymW !== W || cymH !== H) initCymatics();
 
-  // advance mode on click, or every 7s (gives particles time to settle)
+  // advance mode on click, or every 4.5s (tighter cadence, smoother transition)
   var shouldSwitch = false;
   if (pointer.clicked && state.currentMode === 'cymatics') {
     pointer.clicked = false;
     shouldSwitch = true;
-  } else if ((state.time - cymLastSwitch) > 7) {
+  } else if ((state.time - cymLastSwitch) > 4.5) {
     shouldSwitch = true;
   }
   if (shouldSwitch) {
@@ -63,7 +63,8 @@ function renderCymatics() {
     cymScatter = 1.6;
   }
 
-  if (cymScatter > 0) cymScatter = Math.max(0, cymScatter - 0.02);
+  // slower scatter decay = smoother transition (~2.2s to settle vs ~1.3s before)
+  if (cymScatter > 0) cymScatter = Math.max(0, cymScatter - 0.012);
 
   var mode = cymModes[cymCur];
   var n = mode[0], m = mode[1];

@@ -23,9 +23,12 @@ for (var id of ids) {
 
   // Check if a thumbnail exists
   var hasThumb = existsSync('static/thumbs/' + id + '.png');
+  // Use the textflow.sebland.com subdomain — the /textflow/ prefix path
+  // 301-redirects when Discord/X tries to fetch the image, which breaks the
+  // link-preview embed. Direct subdomain serves the PNG at 200.
   var ogImage = hasThumb
-    ? 'https://sebland.com/textflow/static/thumbs/' + id + '.png'
-    : 'https://sebland.com/textflow/static/og-roto.png';
+    ? 'https://textflow.sebland.com/static/thumbs/' + id + '.png'
+    : 'https://textflow.sebland.com/static/og-roto.png';
 
   var html = base
     .replace(
@@ -49,8 +52,8 @@ for (var id of ids) {
       '<title>textflow — ' + id + '</title>'
     )
     .replace(
-      /\d+ interactive ASCII art experiments/g,
-      'Over 200 interactive ASCII art experiments'
+      /(Over )?\d+ interactive ASCII art experiments/g,
+      'Over 260 interactive ASCII art experiments'
     );
 
   writeFileSync(dir + '/index.html', html);

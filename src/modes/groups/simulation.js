@@ -143,3 +143,8 @@ import '../collatz.js';
 import '../mandeljulia.js';
 import '../fractalflame.js';
 import '../cymatics.js';
+import '../voxwave.js';
+import '../tinysurv.js';
+import '../pebbin.js';
+import '../forkpick.js';
+import '../compact.js';

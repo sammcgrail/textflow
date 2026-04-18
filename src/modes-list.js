@@ -262,4 +262,9 @@ export const MODES = [
   { id: "mandeljulia", label: "mandeljulia" },
   { id: "fractalflame", label: "fractalflame" },
   { id: "cymatics", label: "cymatics" },
+  { id: "voxwave", label: "voxwave" },
+  { id: "tinysurv", label: "tinysurv" },
+  { id: "pebbin", label: "pebbin" },
+  { id: "forkpick", label: "forkpick" },
+  { id: "compact", label: "compact" },
 ];
