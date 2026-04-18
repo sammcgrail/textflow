@@ -277,4 +277,10 @@ export const MODES = [
   { id: "bdaywenk", label: "bdaywenk" },
   { id: "clawsparty", label: "clawsparty" },
   { id: "clawsfry", label: "clawsfry" },
+  { id: "yoheivortex", label: "yoheivortex" },
+  { id: "yoheiterra", label: "yoheiterra" },
+  { id: "drop1", label: "drop1" },
+  { id: "yoheifract", label: "yoheifract" },
+  { id: "yoheispiral", label: "yoheispiral" },
+  { id: "scarab", label: "scarab" },
 ];
