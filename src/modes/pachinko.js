@@ -175,19 +175,27 @@ function renderPachinko() {
 
   // ---- RENDER ----
 
-  // Slot distribution → bar heights. Normalize so tallest = slotArea height
+  // Slot distribution → bar heights. Absolute-height scale so the Galton
+  // curve visibly BUILDS over time instead of normalizing to "whichever
+  // slot happens to be tallest" (old bug: 1 ball → full-height bar).
+  // Use a generous floor denominator so 1 ball ≈ 1/16 of the slot area,
+  // then softly scale with actual max once ballots really stack up.
   var slotAreaTop = pkBotY + 2;
   var slotAreaH = Math.max(3, H - slotAreaTop - 1);
   var maxCount = 1;
   for (var mi = 0; mi < pkSlots.length; mi++) {
     if (pkSlots[mi].count > maxCount) maxCount = pkSlots[mi].count;
   }
+  // Denominator grows with observed max but never falls below 16.
+  // So the first few balls show as tiny 1-row bars, and the field
+  // gradually fills a bell curve over dozens of drops.
+  var barDenom = Math.max(16, maxCount);
 
   // Draw slot bars (from bottom up)
   for (var cx = 0; cx < W; cx++) {
     var slot = pkSlots[cx];
     if (slot.count <= 0) continue;
-    var barHeight = Math.min(slotAreaH, ((slot.count / maxCount) * slotAreaH) | 0);
+    var barHeight = Math.min(slotAreaH, ((slot.count / barDenom) * slotAreaH) | 0);
     if (barHeight < 1) barHeight = 1;
     var hue = (cx / W) * 360;
     var baseL = 35;
