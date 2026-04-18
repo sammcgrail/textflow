@@ -33,7 +33,7 @@ var SIMULATION_MODES = [
   'plasma3d', 'wormhole', 'quasar', 'fireball', 'cosmos',
   'burning', 'tricorn', 'newton', 'lyapunov', 'phoenixfrac',
   'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame',
-  'cymatics'
+  'cymatics', 'voxwave', 'tinysurv', 'pebbin', 'forkpick', 'compact'
 ];
 
 var RETRO_MODES = [

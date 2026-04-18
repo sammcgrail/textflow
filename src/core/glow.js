@@ -218,7 +218,12 @@ export var glows = {
   collatz: { color: 'rgba(200,100,255,0.4)', blur: 14 },
   mandeljulia: { color: 'rgba(255,150,100,0.45)', blur: 16 },
   fractalflame: { color: 'rgba(255,100,150,0.5)', blur: 20 },
-  cymatics: { color: 'rgba(140,220,255,0.35)', blur: 14 }
+  cymatics: { color: 'rgba(140,220,255,0.35)', blur: 14 },
+  voxwave: { color: 'rgba(255,180,80,0.4)', blur: 16 },
+  tinysurv: { color: 'rgba(100,255,150,0.45)', blur: 18 },
+  pebbin: { color: 'rgba(140,200,200,0.3)', blur: 12 },
+  forkpick: { color: 'rgba(255,120,180,0.4)', blur: 16 },
+  compact: { color: 'rgba(255,150,60,0.4)', blur: 16 }
 };
 
 var glowCanvas = null;
