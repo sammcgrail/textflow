@@ -2,6 +2,8 @@
 
 **Status:** living doc · **Authors:** seb + ulant · **Started:** 2026-04-18
 
+> *"Ugly on first pass, immortal on the tenth."* — ulant
+
 Design principles for assets meant to survive repeated aesthetic re-encoding
 (pixelification, repaints, screenshots-of-screenshots, meme spread, e-ink
 conversions, ASCII remaps, reposts, re-edits). Originated from the
@@ -108,20 +110,53 @@ Whitelist of recursion-proof primitives only:
 Blacklist: gradients, alpha blending, particle systems, dithered shading,
 fine silhouettes, any color count > 8.
 
-Goal: a textflow experiment that survives ∞ recursion cycles. Ugly on
-first pass, **immortal on the tenth**.
+Goal: a textflow experiment that survives ∞ recursion cycles.
+
+## Quantitative conjectures
+
+*(ulant, 2026-04-18)*
+
+### Palette-shift corollary
+
+Robustness requires a **fixed codebook across hops**. Different palettes
+per hop = drift regardless of palette size. Fixed 6-color = attractor
+lattice: same 6 every cycle, pixel snaps home. Variable palettes =
+moving target, **even 6-color decays**.
+
+### Glyph-thickness floor
+
+Nyquist floor for strokes along a channel chain:
+
+> `stroke_weight ≥ 2 × max(downsample_ratio)` across the chain.
+
+Below that → stroke disappears on the worst hop. Above that wastes
+pixels. **Optimal = 2–3 px at target resolution** for most channels.
+
+### Recursion-depth bound
+
+Rough closed-form for how many hops a signal survives:
+
+> `N ≈ log(signal_redundancy) / log(1 + noise_per_hop)`
+
+`signal_redundancy` = how many `(0,1)` codewords the signal is spread
+across. **Doubles** with every thick stroke; **halves** with every float
+feature. Explains why outlines compound well across hops and shading
+doesn't — they compound at different rates inside the log.
 
 ## Open questions
 
-- Does the palette-robustness law hold if the quantizer *shifts* each
-  cycle (different 6-color palette per repaint)? Or does robustness
-  require a fixed codebook across the channel?
-- Is there an optimal glyph thickness? Thicker strokes survive more
-  compression but cost silhouette legibility.
-- Can we quantify N (recursion depth before signal decoheres) as a
-  function of channel noise + palette size + stroke weight?
-- Does the "formants survive, frication dies" audio prediction hold
-  experimentally? (MP3 → MP3 → MP3 → MP3 speech corpus would confirm.)
+- Empirical calibration of the `N ≈ log(R) / log(1+ε)` bound — fit
+  against the clawsparty → cycle3 dataset and check residuals.
+- Is there a *minimum-useful* palette size (2? 3?) below which
+  silhouette collapses into solid color and semantics die faster than
+  in a 6-color world?
+- Does the "formants survive, frication dies" audio prediction hold?
+  Protocol: speech sample → MP3 64kbps × 4 hops, log spectrogram per
+  hop, expect formants at 500/1500/2500 Hz to survive 4+ hops,
+  frication >6 kHz to die by hop 2.
+- Can we extend the framework to motion (GIF → GIF recompression)?
+  Low-freq periodic motion (bobbing) as the "checker floor" of
+  animation, jitter/flicker as confetti?
 
 ## TODO
 
@@ -129,9 +164,12 @@ first pass, **immortal on the tenth**.
 - [x] Audio-channel analogues section
 - [x] Palette-quantization writeup
 - [x] Durability-mode proposal
+- [x] Quantitative conjectures (palette-shift, stroke floor, N-bound)
 - [ ] Prototype `durability-mode` textflow experiment
 - [ ] Reference: original clawsparty → clawsfry → cycle3 artifacts
-- [ ] Experimental validation of palette-shift open question
+- [ ] Fit N-bound against cycle3 dataset — residuals
+- [ ] Run MP3×4 speech experiment, log spectrograms per hop
+- [ ] Extend framework to motion / GIF recompression
 
 ---
 
