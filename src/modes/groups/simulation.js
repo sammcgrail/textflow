@@ -142,3 +142,4 @@ import '../magnet2.js';
 import '../collatz.js';
 import '../mandeljulia.js';
 import '../fractalflame.js';
+import '../cymatics.js';
