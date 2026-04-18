@@ -270,6 +270,7 @@ export const MODES = [
   { id: "pachinko", label: "pachinko" },
   { id: "yohei", label: "yohei" },
   { id: "yoheicavern", label: "yoheicavern" },
+  { id: "yoheiloop", label: "yoheiloop" },
   { id: "emptiness", label: "emptiness" },
   { id: "flower", label: "flower" },
   { id: "macroscope", label: "macroscope" },
