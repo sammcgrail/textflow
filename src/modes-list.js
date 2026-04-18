@@ -267,4 +267,5 @@ export const MODES = [
   { id: "pebbin", label: "pebbin" },
   { id: "forkpick", label: "forkpick" },
   { id: "compact", label: "compact" },
+  { id: "pachinko", label: "pachinko" },
 ];

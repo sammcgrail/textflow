@@ -223,7 +223,8 @@ export var glows = {
   tinysurv: { color: 'rgba(100,255,150,0.45)', blur: 18 },
   pebbin: { color: 'rgba(140,200,200,0.3)', blur: 12 },
   forkpick: { color: 'rgba(255,120,180,0.4)', blur: 16 },
-  compact: { color: 'rgba(255,150,60,0.4)', blur: 16 }
+  compact: { color: 'rgba(255,150,60,0.4)', blur: 16 },
+  pachinko: { color: 'rgba(255,200,80,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;
