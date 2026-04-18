@@ -230,7 +230,8 @@ export var glows = {
   yoheiloop: { color: 'rgba(255,180,120,0.45)', blur: 18 },
   emptiness: { color: 'rgba(80,220,255,0.45)', blur: 18 },
   flower: { color: 'rgba(180,255,120,0.42)', blur: 18 },
-  macroscope: { color: 'rgba(140,180,255,0.40)', blur: 16 }
+  macroscope: { color: 'rgba(140,180,255,0.40)', blur: 16 },
+  bdaywenk: { color: 'rgba(255,140,200,0.55)', blur: 22 }
 };
 
 var glowCanvas = null;

@@ -155,3 +155,4 @@ import '../yoheiloop.js';
 import '../emptiness.js';
 import '../flower.js';
 import '../macroscope.js';
+import '../bdaywenk.js';
