@@ -261,4 +261,5 @@ export const MODES = [
   { id: "collatz", label: "collatz" },
   { id: "mandeljulia", label: "mandeljulia" },
   { id: "fractalflame", label: "fractalflame" },
+  { id: "cymatics", label: "cymatics" },
 ];

@@ -32,7 +32,8 @@ var SIMULATION_MODES = [
   'nebula', 'vortex', 'aurora3d', 'starfield3d', 'shockwave',
   'plasma3d', 'wormhole', 'quasar', 'fireball', 'cosmos',
   'burning', 'tricorn', 'newton', 'lyapunov', 'phoenixfrac',
-  'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame'
+  'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame',
+  'cymatics'
 ];
 
 var RETRO_MODES = [

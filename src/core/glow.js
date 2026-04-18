@@ -217,7 +217,8 @@ export var glows = {
   magnet2: { color: 'rgba(80,120,255,0.45)', blur: 18 },
   collatz: { color: 'rgba(200,100,255,0.4)', blur: 14 },
   mandeljulia: { color: 'rgba(255,150,100,0.45)', blur: 16 },
-  fractalflame: { color: 'rgba(255,100,150,0.5)', blur: 20 }
+  fractalflame: { color: 'rgba(255,100,150,0.5)', blur: 20 },
+  cymatics: { color: 'rgba(140,220,255,0.35)', blur: 14 }
 };
 
 var glowCanvas = null;
