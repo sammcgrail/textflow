@@ -148,3 +148,4 @@ import '../tinysurv.js';
 import '../pebbin.js';
 import '../forkpick.js';
 import '../compact.js';
+import '../pachinko.js';
