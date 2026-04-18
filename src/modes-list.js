@@ -274,4 +274,5 @@ export const MODES = [
   { id: "emptiness", label: "emptiness" },
   { id: "flower", label: "flower" },
   { id: "macroscope", label: "macroscope" },
+  { id: "bdaywenk", label: "bdaywenk" },
 ];
