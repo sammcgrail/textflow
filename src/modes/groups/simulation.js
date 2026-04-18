@@ -149,3 +149,7 @@ import '../pebbin.js';
 import '../forkpick.js';
 import '../compact.js';
 import '../pachinko.js';
+import '../yohei.js';
+import '../emptiness.js';
+import '../flower.js';
+import '../macroscope.js';
