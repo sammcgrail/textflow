@@ -268,4 +268,8 @@ export const MODES = [
   { id: "forkpick", label: "forkpick" },
   { id: "compact", label: "compact" },
   { id: "pachinko", label: "pachinko" },
+  { id: "yohei", label: "yohei" },
+  { id: "emptiness", label: "emptiness" },
+  { id: "flower", label: "flower" },
+  { id: "macroscope", label: "macroscope" },
 ];

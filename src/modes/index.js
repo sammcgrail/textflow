@@ -218,3 +218,7 @@ import './wormhole.js';
 import './quasar.js';
 import './fireball.js';
 import './cosmos.js';
+import './yohei.js';
+import './emptiness.js';
+import './flower.js';
+import './macroscope.js';
