@@ -233,7 +233,13 @@ export var glows = {
   macroscope: { color: 'rgba(140,180,255,0.40)', blur: 16 },
   bdaywenk: { color: 'rgba(255,140,200,0.55)', blur: 22 },
   clawsparty: { color: 'rgba(200,120,255,0.55)', blur: 22 },
-  clawsfry: { color: 'rgba(255,80,180,0.6)', blur: 26 }
+  clawsfry: { color: 'rgba(255,80,180,0.6)', blur: 26 },
+  yoheivortex: { color: 'rgba(255,180,80,0.5)', blur: 24 },
+  yoheiterra: { color: 'rgba(140,180,160,0.4)', blur: 22 },
+  drop1: { color: 'rgba(230,80,200,0.6)', blur: 26 },
+  yoheifract: { color: 'rgba(220,210,180,0.45)', blur: 22 },
+  yoheispiral: { color: 'rgba(100,180,255,0.55)', blur: 26 },
+  scarab: { color: 'rgba(200,120,255,0.55)', blur: 24 }
 };
 
 var glowCanvas = null;
