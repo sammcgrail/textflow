@@ -220,6 +220,7 @@ import './fireball.js';
 import './cosmos.js';
 import './yohei.js';
 import './yoheicavern.js';
+import './yoheiloop.js';
 import './emptiness.js';
 import './flower.js';
 import './macroscope.js';
