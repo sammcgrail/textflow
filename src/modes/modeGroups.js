@@ -35,7 +35,7 @@ var SIMULATION_MODES = [
   'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame',
   'cymatics', 'voxwave', 'tinysurv', 'pebbin', 'forkpick', 'compact',
   'pachinko', 'yohei', 'yoheicavern', 'yoheiloop', 'emptiness', 'flower', 'macroscope',
-  'bdaywenk', 'clawsparty'
+  'bdaywenk', 'clawsparty', 'clawsfry'
 ];
 
 var RETRO_MODES = [

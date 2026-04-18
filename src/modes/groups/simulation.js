@@ -157,3 +157,4 @@ import '../flower.js';
 import '../macroscope.js';
 import '../bdaywenk.js';
 import '../clawsparty.js';
+import '../clawsfry.js';
