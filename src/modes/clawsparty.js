@@ -40,12 +40,15 @@ var TAIL = [
   'OOw.',
 ];
 
+// BIGGER claws — barnacle request 2026-04-18 ("make my claws bigger")
 var CRAB = [
-  'c  c',
-  'cReRc',
-  '.RRR.',
-  '.RRR.',
-  '.K.K.',
+  'cc     cc',
+  'cc     cc',
+  '.cc   cc.',
+  '..ReReR..',
+  '..RRRRR..',
+  '..RRRRR..',
+  '..K...K..',
 ];
 
 var TANUKI = [
@@ -204,19 +207,21 @@ function renderClawsparty() {
   var tailSway = (Math.sin(t * 4) * 0.6) | 0;
   drawSprite(TAIL, penX + penW, penY + 1 + tailSway, t, '#');
 
-  // ── crab (barnacle, left), claws wave open/closed
-  var crabX = ((W * 0.15) | 0);
-  var crabY = ((H * 0.60) | 0) + ((Math.sin(t * 4.1) * 0.5) | 0);
-  // alternate claw sprite with the wave
+  // ── crab (barnacle, left), claws wave open/closed. BIGGER claws.
+  var crabX = ((W * 0.10) | 0);
+  var crabY = ((H * 0.55) | 0) + ((Math.sin(t * 4.1) * 0.5) | 0);
+  // alternate claw sprite with the wave — "closed" pose clamps in
   var clawUp = Math.sin(t * 5) > 0;
   var CRAB_POSED = clawUp
     ? CRAB
     : [
-      '.cRc.',
-      'cReRc',
-      '.RRR.',
-      '.RRR.',
-      '.K.K.',
+      '.cc   cc.',
+      'ccc   ccc',
+      '.cc   cc.',
+      '..ReReR..',
+      '..RRRRR..',
+      '..RRRRR..',
+      '..K...K..',
     ];
   drawSprite(CRAB_POSED, crabX, crabY, t, '#');
 
