@@ -34,7 +34,7 @@ var SIMULATION_MODES = [
   'burning', 'tricorn', 'newton', 'lyapunov', 'phoenixfrac',
   'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame',
   'cymatics', 'voxwave', 'tinysurv', 'pebbin', 'forkpick', 'compact',
-  'pachinko', 'yohei', 'emptiness', 'flower', 'macroscope'
+  'pachinko', 'yohei', 'yoheicavern', 'emptiness', 'flower', 'macroscope'
 ];
 
 var RETRO_MODES = [

@@ -226,6 +226,7 @@ export var glows = {
   compact: { color: 'rgba(255,150,60,0.4)', blur: 16 },
   pachinko: { color: 'rgba(255,200,80,0.35)', blur: 14 },
   yohei: { color: 'rgba(80,200,255,0.45)', blur: 18 },
+  yoheicavern: { color: 'rgba(100,180,240,0.50)', blur: 20 },
   emptiness: { color: 'rgba(80,220,255,0.45)', blur: 18 },
   flower: { color: 'rgba(180,255,120,0.42)', blur: 18 },
   macroscope: { color: 'rgba(140,180,255,0.40)', blur: 16 }

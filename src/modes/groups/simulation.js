@@ -150,6 +150,7 @@ import '../forkpick.js';
 import '../compact.js';
 import '../pachinko.js';
 import '../yohei.js';
+import '../yoheicavern.js';
 import '../emptiness.js';
 import '../flower.js';
 import '../macroscope.js';
