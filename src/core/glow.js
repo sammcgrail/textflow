@@ -240,7 +240,8 @@ export var glows = {
   yoheifract: { color: 'rgba(220,210,180,0.45)', blur: 22 },
   yoheispiral: { color: 'rgba(100,180,255,0.55)', blur: 26 },
   scarab: { color: 'rgba(200,120,255,0.55)', blur: 24 },
-  wenkbear: { color: 'rgba(255,150,180,0.55)', blur: 22 }
+  wenkbear: { color: 'rgba(255,150,180,0.55)', blur: 22 },
+  vegas: { color: 'rgba(255,200,80,0.7)', blur: 30 }
 };
 
 var glowCanvas = null;

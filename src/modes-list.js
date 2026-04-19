@@ -284,4 +284,5 @@ export const MODES = [
   { id: "yoheispiral", label: "yoheispiral" },
   { id: "scarab", label: "scarab" },
   { id: "wenkbear", label: "wenkbear" },
+  { id: "vegas", label: "vegas" },
 ];
