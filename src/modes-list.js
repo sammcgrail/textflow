@@ -285,4 +285,5 @@ export const MODES = [
   { id: "scarab", label: "scarab" },
   { id: "wenkbear", label: "wenkbear" },
   { id: "vegas", label: "vegas" },
+  { id: "cl0v3r", label: "cl0v3r" },
 ];
