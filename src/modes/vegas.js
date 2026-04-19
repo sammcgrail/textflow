@@ -23,8 +23,17 @@ vegasEl.onloadeddata = function () { vegasReady = true; };
 
 function initVegas() {
   vegasPaused = false;
-  if (!vegasReady && !vegasEl.getAttribute('src')) {
-    vegasEl.src = '/textflow/static/vegas.mp4';
+  if (!vegasReady && !vegasEl.getAttribute('src') && !vegasEl.querySelector('source')) {
+    // Use <source> fallbacks: WebM/VP9 first (Firefox-friendly, no proprietary codec),
+    // MP4/H264 fallback for browsers that prefer it.
+    var webm = document.createElement('source');
+    webm.src = '/textflow/static/vegas.webm';
+    webm.type = 'video/webm';
+    var mp4 = document.createElement('source');
+    mp4.src = '/textflow/static/vegas.mp4';
+    mp4.type = 'video/mp4';
+    vegasEl.appendChild(webm);
+    vegasEl.appendChild(mp4);
     vegasEl.load();
   }
   vegasEl.currentTime = 0;
@@ -35,7 +44,9 @@ function renderVegas() {
   clearCanvas();
   var W = state.COLS, H = state.ROWS;
 
-  if (!vegasReady) {
+  // Check readyState directly — more reliable than event flag for cross-codec fallback
+  if (!vegasReady && vegasEl.readyState >= 2) vegasReady = true;
+  if (!vegasReady || vegasEl.readyState < 2) {
     drawFancyLoading('loading vegas');
     return;
   }
