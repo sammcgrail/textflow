@@ -164,3 +164,4 @@ import '../drop1.js';
 import '../yoheifract.js';
 import '../yoheispiral.js';
 import '../scarab.js';
+import '../wenkbear.js';
