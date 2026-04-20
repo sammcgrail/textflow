@@ -36,7 +36,8 @@ var SIMULATION_MODES = [
   'cymatics', 'voxwave', 'tinysurv', 'pebbin', 'forkpick', 'compact',
   'pachinko', 'yohei', 'yoheicavern', 'yoheiloop', 'emptiness', 'flower', 'macroscope',
   'bdaywenk', 'clawsparty', 'clawsfry', 'yoheivortex', 'yoheiterra', 'drop1',
-  'yoheifract', 'yoheispiral', 'scarab', 'wenkbear', 'vegas', 'cl0v3r'
+  'yoheifract', 'yoheispiral', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
+  'hankvor'
 ];
 
 var RETRO_MODES = [

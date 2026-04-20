@@ -167,3 +167,4 @@ import '../scarab.js';
 import '../wenkbear.js';
 import '../vegas.js';
 import '../cl0v3r.js';
+import '../hankvor.js';
