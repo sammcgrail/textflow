@@ -11,6 +11,14 @@ export function resize() {
   state.canvas.style.width = w + 'px';
   state.canvas.style.height = h + 'px';
 
+  // Measure actual nav bar height so row-0 HUDs clear the tab bar on any viewport/font-size.
+  // The hardcoded 32 was under-sized on iOS + small devices, clipping LVL/TIME text.
+  var navEl = document.querySelector('nav');
+  if (navEl && navEl.offsetHeight > 0) {
+    // +2px breathing room so text baseline doesn't kiss the nav's border-bottom
+    state.NAV_H = navEl.offsetHeight + 2;
+  }
+
   // Font metrics — use a temporary 2D canvas for measurement
   state.FONT_SIZE = Math.max(10, Math.min(16, w / 70));
   var measureCtx = state.ctx || document.createElement('canvas').getContext('2d');
