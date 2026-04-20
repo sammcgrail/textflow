@@ -296,5 +296,5 @@ export const MODES = [
   { id: "trogdor", label: "trogdor" },
   { id: "dragonflow", label: "dragonflow" },
   { id: "firebreath", label: "firebreath" },
-  { id: "baddragon", label: "baddragon" },
+  { id: "badapple", label: "badapple" },
 ];
