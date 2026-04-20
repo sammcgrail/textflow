@@ -37,7 +37,7 @@ var SIMULATION_MODES = [
   'pachinko', 'yohei', 'yoheicavern', 'yoheiloop', 'emptiness', 'flower', 'macroscope',
   'bdaywenk', 'clawsparty', 'clawsfry', 'yoheivortex', 'yoheiterra', 'drop1',
   'yoheifract', 'yoheispiral', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
-  'hankvor'
+  'hankvor', 'reactor', 'auralace', 'polyfield', 'pulsar', 'mitosis', 'brusse'
 ];
 
 var RETRO_MODES = [

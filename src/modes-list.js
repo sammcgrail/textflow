@@ -287,4 +287,10 @@ export const MODES = [
   { id: "vegas", label: "vegas" },
   { id: "cl0v3r", label: "cl0v3r" },
   { id: "hankvor", label: "hankvor" },
+  { id: "reactor", label: "reactor" },
+  { id: "auralace", label: "auralace" },
+  { id: "polyfield", label: "polyfield" },
+  { id: "pulsar", label: "pulsar" },
+  { id: "mitosis", label: "mitosis" },
+  { id: "brusse", label: "brusse" },
 ];
