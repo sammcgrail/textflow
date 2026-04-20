@@ -13,6 +13,18 @@ export default defineConfig({
         cpSync('static', 'dist-vite/static', { recursive: true });
       },
     },
+    {
+      // Vite/Rolldown's HTML parser silently strips maximum-scale=1.0 from
+      // the viewport meta. Re-inject it post-transform so the mobile
+      // baseline check passes. Anchor on "user-scalable=no" which survives.
+      name: 'fix-viewport-maximum-scale',
+      transformIndexHtml(html) {
+        return html.replace(
+          /(<meta name="viewport" content="[^"]*?)(, user-scalable=no)/,
+          '$1, maximum-scale=1.0$2'
+        );
+      },
+    },
   ],
   root: '.',
   publicDir: false,
