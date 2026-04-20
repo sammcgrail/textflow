@@ -35,6 +35,7 @@ function renderWave2d() {
     var gx = Math.floor(pointer.gx), gy = Math.floor(pointer.gy);
     if (gx > 0 && gx < W - 1 && gy > 0 && gy < H - 1) {
       if (pointer.clicked) {
+        pointer.clicked = false; // consume flag — else it re-fires every frame
         wave2dA[gy * W + gx] = 2.0;
       } else {
         // Oscillating source when held

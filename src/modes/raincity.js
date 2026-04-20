@@ -36,6 +36,7 @@ var elapsed = 0;
 // Event handlers
 var _mouseMoveHandler = null;
 var _clickHandler = null;
+var _touchMoveHandler = null;
 
 // Seeded random for deterministic building generation
 var _seed = 12345;
@@ -746,6 +747,16 @@ function attach() {
   };
   window.addEventListener('mousemove', _mouseMoveHandler);
 
+  // Touch equivalent — parallax responds to finger drag on mobile
+  _touchMoveHandler = function(e) {
+    if (state.currentMode !== 'raincity') return;
+    if (!e.touches || e.touches.length === 0) return;
+    var rect = state.canvas.getBoundingClientRect();
+    mouseX = (e.touches[0].clientX - rect.left) / rect.width;
+    mouseX = Math.max(0, Math.min(1, mouseX));
+  };
+  window.addEventListener('touchmove', _touchMoveHandler, { passive: true });
+
   _clickHandler = function(e) {
     if (state.currentMode !== 'raincity') return;
     // Trigger lightning
@@ -761,6 +772,10 @@ function cleanup() {
   if (_mouseMoveHandler) {
     window.removeEventListener('mousemove', _mouseMoveHandler);
     _mouseMoveHandler = null;
+  }
+  if (_touchMoveHandler) {
+    window.removeEventListener('touchmove', _touchMoveHandler);
+    _touchMoveHandler = null;
   }
   if (_clickHandler && state.canvas) {
     state.canvas.removeEventListener('click', _clickHandler);
