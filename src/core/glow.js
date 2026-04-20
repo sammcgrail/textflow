@@ -249,7 +249,11 @@ export var glows = {
   polyfield: { color: 'rgba(255,180,255,0.55)', blur: 24 },
   pulsar: { color: 'rgba(255,140,80,0.5)', blur: 18 },
   mitosis: { color: 'rgba(180,255,120,0.5)', blur: 18 },
-  brusse: { color: 'rgba(220,130,255,0.55)', blur: 22 }
+  brusse: { color: 'rgba(220,130,255,0.55)', blur: 22 },
+  trogdor: { color: 'rgba(255,120,40,0.5)', blur: 18 },
+  dragonflow: { color: 'rgba(255,180,60,0.5)', blur: 20 },
+  firebreath: { color: 'rgba(255,140,30,0.55)', blur: 22 },
+  baddragon: { color: 'rgba(220,80,220,0.55)', blur: 22 }
 };
 
 var glowCanvas = null;
