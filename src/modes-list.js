@@ -297,4 +297,7 @@ export const MODES = [
   { id: "dragonflow", label: "dragonflow" },
   { id: "firebreath", label: "firebreath" },
   { id: "badapple", label: "badapple" },
+  { id: "nyancat", label: "nyancat" },
+  { id: "thisisfine", label: "this is fine" },
+  { id: "babydance", label: "babydance" },
 ];

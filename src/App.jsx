@@ -110,7 +110,7 @@ export default function App() {
 
       <div id="info-bar">
         <span id="fps" ref={fpsRef}>0 fps</span>
-        <span id="version">v5.6.3</span>
+        <span id="version">v5.7.0</span>
       </div>
     </>
   );

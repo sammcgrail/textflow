@@ -8,3 +8,6 @@ import '../dial.js';
 import '../propfont.js';
 import '../brightmatch.js';
 import '../smoothfluid.js';
+import '../nyancat.js';
+import '../thisisfine.js';
+import '../babydance.js';
