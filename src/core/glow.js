@@ -243,7 +243,13 @@ export var glows = {
   wenkbear: { color: 'rgba(255,150,180,0.55)', blur: 22 },
   vegas: { color: 'rgba(255,200,80,0.7)', blur: 30 },
   cl0v3r: { color: 'rgba(180,255,120,0.45)', blur: 18 },
-  hankvor: { color: 'rgba(255,220,120,0.4)', blur: 14 }
+  hankvor: { color: 'rgba(255,220,120,0.4)', blur: 14 },
+  reactor: { color: 'rgba(255,120,200,0.5)', blur: 18 },
+  auralace: { color: 'rgba(120,255,200,0.55)', blur: 22 },
+  polyfield: { color: 'rgba(255,180,255,0.55)', blur: 24 },
+  pulsar: { color: 'rgba(255,140,80,0.5)', blur: 18 },
+  mitosis: { color: 'rgba(180,255,120,0.5)', blur: 18 },
+  brusse: { color: 'rgba(220,130,255,0.55)', blur: 22 }
 };
 
 var glowCanvas = null;
