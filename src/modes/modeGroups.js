@@ -38,7 +38,7 @@ var SIMULATION_MODES = [
   'bdaywenk', 'clawsparty', 'clawsfry', 'yoheivortex', 'yoheiterra', 'drop1',
   'yoheifract', 'yoheispiral', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
   'hankvor', 'reactor', 'auralace', 'polyfield', 'pulsar', 'mitosis', 'brusse',
-  'trogdor', 'dragonflow', 'firebreath', 'baddragon'
+  'trogdor', 'dragonflow', 'firebreath', 'badapple'
 ];
 
 var RETRO_MODES = [
