@@ -43,7 +43,7 @@ var SIMULATION_MODES = [
 
 var RETRO_MODES = [
   'tvstatic', 'crt', 'vhs', 'terminal', 'oscilloscope', 'dial', 'propfont',
-  'brightmatch', 'smoothfluid'
+  'brightmatch', 'smoothfluid', 'nyancat', 'thisisfine', 'babydance'
 ];
 
 var VIDEO_MODES = [
