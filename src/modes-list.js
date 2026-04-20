@@ -293,4 +293,8 @@ export const MODES = [
   { id: "pulsar", label: "pulsar" },
   { id: "mitosis", label: "mitosis" },
   { id: "brusse", label: "brusse" },
+  { id: "trogdor", label: "trogdor" },
+  { id: "dragonflow", label: "dragonflow" },
+  { id: "firebreath", label: "firebreath" },
+  { id: "baddragon", label: "baddragon" },
 ];

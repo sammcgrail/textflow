@@ -174,3 +174,7 @@ import '../polyfield.js';
 import '../pulsar.js';
 import '../mitosis.js';
 import '../brusse.js';
+import '../trogdor.js';
+import '../dragonflow.js';
+import '../firebreath.js';
+import '../baddragon.js';
