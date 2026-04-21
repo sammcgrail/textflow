@@ -11,3 +11,4 @@ import '../smoothfluid.js';
 import '../nyancat.js';
 import '../thisisfine.js';
 import '../babydance.js';
+import '../silencebrand.js';

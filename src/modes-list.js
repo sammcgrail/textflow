@@ -300,4 +300,5 @@ export const MODES = [
   { id: "nyancat", label: "nyancat" },
   { id: "thisisfine", label: "this is fine" },
   { id: "babydance", label: "babydance" },
+  { id: "silencebrand", label: "silence brand" },
 ];

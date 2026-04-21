@@ -257,6 +257,7 @@ export var glows = {
   nyancat: { color: 'rgba(255, 100, 200, 0.35)', blur: 14 },
   thisisfine: { color: 'rgba(255, 100, 30, 0.4)', blur: 16 },
   babydance: { color: 'rgba(255, 200, 160, 0.28)', blur: 10 },
+  silencebrand: { color: 'rgba(255, 40, 40, 0.5)', blur: 20 },
 };
 
 var glowCanvas = null;
