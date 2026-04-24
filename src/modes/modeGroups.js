@@ -34,9 +34,9 @@ var SIMULATION_MODES = [
   'burning', 'tricorn', 'newton', 'lyapunov', 'phoenixfrac',
   'multibrot', 'magnet2', 'collatz', 'mandeljulia', 'fractalflame',
   'cymatics', 'voxwave', 'tinysurv', 'pebbin', 'forkpick', 'compact',
-  'pachinko', 'yohei', 'yoheicavern', 'yoheiloop', 'emptiness', 'flower', 'macroscope',
+  'pachinko', 'triplane', 'yohei', 'yoheicavern', 'yoheiloop', 'emptiness', 'flower', 'macroscope',
   'bdaywenk', 'clawsparty', 'clawsfry', 'yoheivortex', 'yoheiterra', 'drop1',
-  'yoheifract', 'yoheispiral', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
+  'yoheifract', 'yoheispiral', 'yoheiorb', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
   'hankvor', 'reactor', 'auralace', 'polyfield', 'pulsar', 'mitosis', 'brusse',
   'trogdor', 'dragonflow', 'firebreath', 'badapple'
 ];

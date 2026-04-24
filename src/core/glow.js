@@ -239,6 +239,7 @@ export var glows = {
   drop1: { color: 'rgba(230,80,200,0.6)', blur: 26 },
   yoheifract: { color: 'rgba(220,210,180,0.45)', blur: 22 },
   yoheispiral: { color: 'rgba(100,180,255,0.55)', blur: 26 },
+  yoheiorb: { color: 'rgba(140,120,255,0.55)', blur: 24 },
   scarab: { color: 'rgba(200,120,255,0.55)', blur: 24 },
   wenkbear: { color: 'rgba(255,150,180,0.55)', blur: 22 },
   vegas: { color: 'rgba(255,200,80,0.7)', blur: 30 },
