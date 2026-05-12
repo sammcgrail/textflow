@@ -310,4 +310,9 @@ export const MODES = [
   { id: "petals", label: "petals" },
   { id: "tinyrainbows", label: "tiny rainbows" },
   { id: "echo", label: "echo" },
+  { id: "cyclical", label: "cyclical" },
+  { id: "sandpile", label: "sandpile" },
+  { id: "chladni", label: "chladni" },
+  { id: "forest", label: "forest" },
+  { id: "lenia", label: "lenia" },
 ];
