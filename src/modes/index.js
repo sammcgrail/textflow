@@ -242,3 +242,4 @@ import './marten.js';
 import './starvester.js';
 import './petals.js';
 import './tinyrainbows.js';
+import './echo.js';
