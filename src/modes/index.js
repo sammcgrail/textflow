@@ -245,6 +245,6 @@ import './tinyrainbows.js';
 import './echo.js';
 import './cyclical.js';
 import './sandpile.js';
-import './chladni.js';
 import './forest.js';
 import './lenia.js';
+import './fractalvid.js';
