@@ -165,6 +165,7 @@ import '../drop1.js';
 import '../yoheifract.js';
 import '../yoheispiral.js';
 import '../yoheiorb.js';
+import '../yoheigalaxy.js';
 import '../scarab.js';
 import '../wenkbear.js';
 import '../vegas.js';

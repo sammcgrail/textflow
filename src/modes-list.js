@@ -283,6 +283,7 @@ export const MODES = [
   { id: "yoheifract", label: "yoheifract" },
   { id: "yoheispiral", label: "yoheispiral" },
   { id: "yoheiorb", label: "yoheiorb" },
+  { id: "yoheigalaxy", label: "yoheigalaxy" },
   { id: "scarab", label: "scarab" },
   { id: "wenkbear", label: "wenkbear" },
   { id: "vegas", label: "vegas" },
