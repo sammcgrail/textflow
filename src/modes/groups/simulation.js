@@ -1,5 +1,6 @@
 // Simulation modes — lazy loaded
 import '../fluid.js';
+import '../meteor.js';
 import '../spiral.js';
 import '../cipher.js';
 import '../aurora.js';

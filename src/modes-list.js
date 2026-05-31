@@ -138,6 +138,7 @@ export const MODES = [
   { id: "northern", label: "northern" },
   { id: "tidal", label: "tidal" },
   { id: "comet", label: "comet" },
+  { id: "meteor", label: "meteor" },
   { id: "circuit2", label: "circuit2" },
   { id: "snakegame", label: "snake" },
   { id: "asteroids", label: "asteroids" },
