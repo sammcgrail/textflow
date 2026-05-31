@@ -256,6 +256,7 @@ export var glows = {
   dragonflow: { color: 'rgba(255,180,60,0.5)', blur: 20 },
   firebreath: { color: 'rgba(255,140,30,0.55)', blur: 22 },
   badapple: { color: 'rgba(240,240,240,0.45)', blur: 14 },
+  badapple60: { color: 'rgba(240,240,240,0.45)', blur: 14 },
   nyancat: { color: 'rgba(255, 100, 200, 0.35)', blur: 14 },
   thisisfine: { color: 'rgba(255, 100, 30, 0.4)', blur: 16 },
   babydance: { color: 'rgba(255, 200, 160, 0.28)', blur: 10 },

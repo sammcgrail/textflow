@@ -181,6 +181,7 @@ import '../trogdor.js';
 import '../dragonflow.js';
 import '../firebreath.js';
 import '../badapple.js';
+import '../badapple60.js';
 import '../xorvisc.js';
 import '../borromean.js';
 import '../chwazi.js';
