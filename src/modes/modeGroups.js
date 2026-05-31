@@ -22,7 +22,7 @@ var SIMULATION_MODES = [
   'piano', 'clock', 'blackhole', 'fireflies', 'vinyl', 'jellyfish',
   'campfire', 'roots', 'lightning', 'fern', 'waveform', 'neuron', 'hourglass',
   'volcano', 'sonar', 'drops', 'tiles', 'mushroom', 'cascade', 'northern',
-  'tidal', 'comet', 'circuit2', 'snakegame', 'asteroids', 'rhythm', 'neonrace',
+  'tidal', 'comet', 'meteor', 'circuit2', 'snakegame', 'asteroids', 'rhythm', 'neonrace',
   'symbiosis', 'blackholes', 'synthwave', 'aquarium', 'raincity',
   'prism', 'phoenix', 'swarm', 'supernova', 'inferno',
   'wavelet', 'infection', 'sandcastle', 'flocking', 'runelore',
