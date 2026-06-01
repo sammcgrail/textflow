@@ -2,6 +2,8 @@ import { state } from './state.js';
 
 // Glow configs per mode
 export var glows = {
+  hyperglow: { color: 'rgba(255,40,160,0.40)', blur: 22 },
+  fractseed: { color: 'rgba(120,220,255,0.35)', blur: 16 },
   lava:   { color: 'rgba(255,80,30,0.35)', blur: 12 },
   rain:   { color: 'rgba(0,220,100,0.35)', blur: 10 },
   wave:   { color: 'rgba(80,140,255,0.3)', blur: 12 },

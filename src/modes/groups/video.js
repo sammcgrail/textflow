@@ -15,3 +15,4 @@ import '../vidink.js';
 import '../vidaurora.js';
 import '../vidgyro.js';
 import '../vidstars.js';
+import '../hyperglow.js';
