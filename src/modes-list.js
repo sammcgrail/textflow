@@ -318,4 +318,6 @@ export const MODES = [
   { id: "forest", label: "forest" },
   { id: "lenia", label: "lenia" },
   { id: "fractalvid", label: "fractalvid" },
+  { id: "hyperglow", label: "hyperglow" },
+  { id: "fractseed", label: "fractseed" },
 ];
