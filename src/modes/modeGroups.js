@@ -39,7 +39,7 @@ var SIMULATION_MODES = [
   'yoheifract', 'yoheispiral', 'yoheiorb', 'yoheigalaxy', 'scarab', 'wenkbear', 'vegas', 'cl0v3r',
   'hankvor', 'reactor', 'auralace', 'polyfield', 'pulsar', 'mitosis', 'brusse',
   'trogdor', 'dragonflow', 'firebreath', 'badapple', 'badapple60', 'xorvisc', 'borromean', 'chwazi', 'marten', 'starvester', 'petals', 'tinyrainbows', 'echo',
-  'cyclical', 'sandpile', 'forest', 'lenia', 'fractalvid', 'fractseed'
+  'cyclical', 'sandpile', 'forest', 'lenia', 'fractalvid', 'fractseed', 'lanterns'
 ];
 
 var RETRO_MODES = [

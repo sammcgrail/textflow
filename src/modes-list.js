@@ -320,4 +320,5 @@ export const MODES = [
   { id: "fractalvid", label: "fractalvid" },
   { id: "hyperglow", label: "hyperglow" },
   { id: "fractseed", label: "fractseed" },
+  { id: "lanterns", label: "lanterns" },
 ];
