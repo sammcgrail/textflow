@@ -197,3 +197,4 @@ import '../forest.js';
 import '../lenia.js';
 import '../fractalvid.js';
 import '../fractseed.js';
+import '../lanterns.js';
