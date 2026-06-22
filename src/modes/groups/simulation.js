@@ -1,4 +1,7 @@
 // Simulation modes — lazy loaded
+import '../escher.js';
+import '../alhambra.js';
+import '../circlelimit.js';
 import '../fluid.js';
 import '../meteor.js';
 import '../spiral.js';
