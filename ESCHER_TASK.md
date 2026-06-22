@@ -1,6 +1,8 @@
 # ESCHER / ALHAMBRA build — continuation brief
 
-## STATUS (updated 07:43, block 1)
+## ✅ COMPLETE (block 2, 07:59): all 4 LIVE + links posted to Discord. textflow `escher`/`alhambra`/`circlelimit` (now at END of nav) + `pfive.sebland.com/escherwarp`. Playwright-verified in production, **0 console errors**. textflow@`248d042`, pfive@`dddd0a6`. **If you are the 12:49 fallback cron → everything is already done; reply a one-line confirmation and stop.** Optional follow-up: alhambra density/glow could be punched up.
+
+## STATUS (updated 07:43, block 1, superseded)
 - ✅ **TEXTFLOW DONE + LIVE**: modes `escher`, `alhambra`, `circlelimit` written, wired (all 6 files incl. glow.js), committed+pushed (master `cc90595`), docker-deployed, CF purged. Serving 200 at textflow.sebland.com/{escher,alhambra,circlelimit}. Links posted to Discord.
   - NOT visually verified: the headless screenshot harness returns a blank frame on textflow's WebGL pipeline. Run `node generate-thumbs.mjs` (needs PUBLIC url) or eyeball in a real browser; tweak palettes/params/thresholds if a mode looks off.
   - `circlelimit` font-shrink: verify `resizeWebGL()` honors the overridden COLS/ROWS/FONT_SIZE (read webgl-renderer.js). If it recomputes font itself, adapt the approach so the high-detail grid actually takes effect.
