@@ -1,4 +1,7 @@
 // Barrel file — import all modes so they self-register via registerMode().
+import './escher.js';
+import './alhambra.js';
+import './circlelimit.js';
 import './lava.js';
 import './rain.js';
 import './wave.js';

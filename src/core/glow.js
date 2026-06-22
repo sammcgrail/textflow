@@ -2,6 +2,9 @@ import { state } from './state.js';
 
 // Glow configs per mode
 export var glows = {
+  escher: { color: 'rgba(255,200,90,0.35)', blur: 14 },
+  alhambra: { color: 'rgba(80,200,200,0.35)', blur: 14 },
+  circlelimit: { color: 'rgba(120,220,255,0.4)', blur: 16 },
   hyperglow: { color: 'rgba(255,40,160,0.40)', blur: 22 },
   fractseed: { color: 'rgba(120,220,255,0.35)', blur: 16 },
   lanterns: { color: 'rgba(255,170,70,0.4)', blur: 16 },
