@@ -1,5 +1,14 @@
 # ESCHER / ALHAMBRA build — continuation brief
 
+## STATUS (updated 07:43, block 1)
+- ✅ **TEXTFLOW DONE + LIVE**: modes `escher`, `alhambra`, `circlelimit` written, wired (all 6 files incl. glow.js), committed+pushed (master `cc90595`), docker-deployed, CF purged. Serving 200 at textflow.sebland.com/{escher,alhambra,circlelimit}. Links posted to Discord.
+  - NOT visually verified: the headless screenshot harness returns a blank frame on textflow's WebGL pipeline. Run `node generate-thumbs.mjs` (needs PUBLIC url) or eyeball in a real browser; tweak palettes/params/thresholds if a mode looks off.
+  - `circlelimit` font-shrink: verify `resizeWebGL()` honors the overridden COLS/ROWS/FONT_SIZE (read webgl-renderer.js). If it recomputes font itself, adapt the approach so the high-detail grid actually takes effect.
+- ⬜ **TODO: pfive-style `escherwarp`** (GLSL Droste / Print-Gallery mind-warp). Build + deploy to box/app, add Caddy route, run check-mobile.py, CF purge, commit+push. Then post its link to this Discord channel. (Design below.)
+
+---
+
+
 Sam asked (Discord claws group `1484079826166874162`, 2026-06-22) for:
 1. A **textflow** mode `escher` — impossible-geometry illusions (Penrose stairs / Ascending-Descending).
 2. A **textflow** mode `alhambra` — Moorish wallpaper-group tessellation (azulejo jewel tones).
