@@ -4,9 +4,6 @@
 // nav bar needs all 178 entries before lazy groups load.
 // When adding a new mode: add it here AND in the appropriate group file.
 export const MODES = [
-  { id: "escher", label: "escher" },
-  { id: "alhambra", label: "alhambra" },
-  { id: "circlelimit", label: "circlelimit" },
   { id: "lava", label: "lava" },
   { id: "rain", label: "rain" },
   { id: "wave", label: "wave" },
@@ -324,4 +321,7 @@ export const MODES = [
   { id: "hyperglow", label: "hyperglow" },
   { id: "fractseed", label: "fractseed" },
   { id: "lanterns", label: "lanterns" },
+  { id: "escher", label: "escher" },
+  { id: "alhambra", label: "alhambra" },
+  { id: "circlelimit", label: "circlelimit" },
 ];
