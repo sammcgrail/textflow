@@ -232,6 +232,7 @@ export var glows = {
   forkpick: { color: 'rgba(255,120,180,0.4)', blur: 16 },
   compact: { color: 'rgba(255,150,60,0.4)', blur: 16 },
   pachinko: { color: 'rgba(255,200,80,0.35)', blur: 14 },
+  marble: { color: 'rgba(200,215,255,0.28)', blur: 11 },
   yohei: { color: 'rgba(80,200,255,0.45)', blur: 18 },
   yoheicavern: { color: 'rgba(100,180,240,0.50)', blur: 20 },
   yoheiloop: { color: 'rgba(255,180,120,0.45)', blur: 18 },
