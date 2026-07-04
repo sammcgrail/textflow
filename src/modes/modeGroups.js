@@ -40,7 +40,7 @@ var SIMULATION_MODES = [
   'hankvor', 'reactor', 'auralace', 'polyfield', 'pulsar', 'mitosis', 'brusse',
   'trogdor', 'dragonflow', 'firebreath', 'badapple', 'badapple60', 'xorvisc', 'borromean', 'chwazi', 'marten', 'starvester', 'petals', 'tinyrainbows', 'echo',
   'cyclical', 'sandpile', 'forest', 'lenia', 'fractalvid', 'fractseed', 'lanterns',
-  'escher', 'alhambra', 'circlelimit'
+  'escher', 'alhambra', 'circlelimit', 'marble'
 ];
 
 var RETRO_MODES = [
