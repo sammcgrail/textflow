@@ -35,7 +35,8 @@ function ftSpawn(sr, sa, srV, hue) {
   var ar = ftAR();
   var rCore = Math.min(state.COLS * ar, state.ROWS) * 0.5;
   var k = 3 + ((Math.random() * 3) | 0); // triangles, squares, pentagons
-  var rad = Math.max(1.2, Math.min(10, rCore * (0.13 + Math.random() * 0.15)));
+  var rad = rCore * (state.isMobile ? 0.13 + Math.random() * 0.13 : 0.09 + Math.random() * 0.11);
+  rad = Math.max(1.2, Math.min(10, rad));
   ftShards.push({
     sr: sr, sa: sa, srV: srV, saV: (Math.random() - 0.5) * 0.12,
     rad: rad, k: k, apo: Math.cos(Math.PI / k), pseg: (Math.PI * 2) / k,
@@ -58,9 +59,9 @@ function initFacet() {
   var ar = ftAR();
   var rCore = Math.min(ftW * ar, ftH) * 0.5;
   var half = Math.PI / ftSegs;
-  var n = state.isMobile ? 4 : 5;
+  var n = state.isMobile ? 3 : 4;
   for (var i = 0; i < n; i++) {
-    var sr = 1.5 + ((i + 0.5) / n) * Math.max(1, rCore * 1.15 - 1.5);
+    var sr = 1.5 + ((i + 0.5) / n) * Math.max(1, rCore * 0.95 - 1.5);
     var sa = 0.04 + ((i + Math.random() * 0.6) / n) * Math.max(0.02, half - 0.08);
     ftSpawn(sr, sa, 0, FT_HUES[i % FT_HUES.length] + (Math.random() - 0.5) * 24);
   }
@@ -113,7 +114,7 @@ function renderFacet() {
       ftSpawn(Math.max(2, Math.min(pr, rMax - 1)),
         Math.min(Math.max(paf, 0.04), Math.max(0.05, half - 0.04)),
         6, FT_HUES[(Math.random() * FT_HUES.length) | 0] + (Math.random() - 0.5) * 30);
-      var cap = state.isMobile ? 7 : 9;
+      var cap = state.isMobile ? 6 : 8;
       while (ftShards.length > cap) ftShards.shift();
       ftRings.push({ r0: pr, t0: t, soft: false });
     }
@@ -191,7 +192,7 @@ function renderFacet() {
   var nRings = ftRings.length;
 
   var LX = Math.cos(t * 0.6), LY = Math.sin(t * 0.6); // sweeping light
-  var bgThresh = state.isMobile ? 1.15 : 0.9;
+  var bgThresh = state.isMobile ? 1.25 : 1.0;
   var nsh = ftShards.length;
 
   // ---- per-cell render: fold, test shards, colour ----
