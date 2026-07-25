@@ -41,7 +41,7 @@ var SIMULATION_MODES = [
   'trogdor', 'dragonflow', 'firebreath', 'badapple', 'badapple60', 'xorvisc', 'borromean', 'chwazi', 'marten', 'starvester', 'petals', 'tinyrainbows', 'echo',
   'cyclical', 'sandpile', 'forest', 'lenia', 'fractalvid', 'fractseed', 'lanterns',
   'escher', 'alhambra', 'circlelimit', 'marble', 'facet',
-    'flux'
+    'flux', 'chasm'
   ];
 
 var RETRO_MODES = [

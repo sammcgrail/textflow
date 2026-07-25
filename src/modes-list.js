@@ -327,4 +327,5 @@ export const MODES = [
   { id: "marble", label: "marble" },
   { id: "flux", label: "flux" },
   { id: "facet", label: "facet" },
+  { id: "chasm", label: "chasm" },
 ];

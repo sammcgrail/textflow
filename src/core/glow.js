@@ -271,6 +271,7 @@ export var glows = {
   silencebrand: { color: 'rgba(255, 40, 40, 0.5)', blur: 20 },
   flux: { color: 'rgba(80,255,220,0.5)', blur: 20 },
   facet: { color: 'rgba(190,225,255,0.5)', blur: 18 },
+  chasm: { color: 'rgba(160,110,255,0.4)', blur: 15 },
 };
 
 var glowCanvas = null;

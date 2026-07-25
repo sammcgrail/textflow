@@ -204,3 +204,4 @@ import '../lanterns.js';
 import '../marble.js';
 import '../facet.js';
 import '../flux.js';
+import '../chasm.js';
