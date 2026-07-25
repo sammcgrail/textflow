@@ -202,3 +202,5 @@ import '../fractalvid.js';
 import '../fractseed.js';
 import '../lanterns.js';
 import '../marble.js';
+import '../facet.js';
+import '../flux.js';
