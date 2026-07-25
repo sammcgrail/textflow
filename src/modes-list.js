@@ -325,4 +325,6 @@ export const MODES = [
   { id: "alhambra", label: "alhambra" },
   { id: "circlelimit", label: "circlelimit" },
   { id: "marble", label: "marble" },
+  { id: "flux", label: "flux" },
+  { id: "facet", label: "facet" },
 ];

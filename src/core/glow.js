@@ -269,6 +269,8 @@ export var glows = {
   thisisfine: { color: 'rgba(255, 100, 30, 0.4)', blur: 16 },
   babydance: { color: 'rgba(255, 200, 160, 0.28)', blur: 10 },
   silencebrand: { color: 'rgba(255, 40, 40, 0.5)', blur: 20 },
+  flux: { color: 'rgba(80,255,220,0.5)', blur: 20 },
+  facet: { color: 'rgba(190,225,255,0.5)', blur: 18 },
 };
 
 var glowCanvas = null;
