@@ -205,3 +205,5 @@ import '../marble.js';
 import '../facet.js';
 import '../flux.js';
 import '../chasm.js';
+import '../loom.js';
+import '../penrose.js';
