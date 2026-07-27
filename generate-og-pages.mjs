@@ -53,7 +53,7 @@ for (var id of ids) {
     )
     .replace(
       /(Over )?\d+ interactive ASCII art experiments/g,
-      'Over 334 interactive ASCII art experiments'
+      'Over 335 interactive ASCII art experiments'
     );
 
   writeFileSync(dir + '/index.html', html);

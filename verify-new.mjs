@@ -1,10 +1,10 @@
 import { chromium } from 'playwright';
 
 const URLS = [
-  'https://sebland.com/textflow/loom',
-  'https://sebland.com/textflow/penrose',
-  'https://textflow.sebland.com/loom',
-  'https://textflow.sebland.com/penrose',
+  'https://textflow.sebland.com/foil',
+  'https://sebland.com/textflow/foil',
+  
+  
 ];
 
 const browser = await chromium.launch({ args: ['--no-sandbox'] });
@@ -32,6 +32,7 @@ for (const url of URLS) {
     setTimeout(() => res(n), 1000);
   }));
 
+  try { await page.screenshot({ path: `/tmp/tf-${want}-idle.png`, animations: 'disabled', timeout: 60000 }); } catch {}
   await page.mouse.click(195, 520);
   await page.waitForTimeout(1200);
   try { await page.screenshot({ path: `/tmp/tf-${want}.png`, animations: 'disabled', timeout: 60000 }); } catch {}
