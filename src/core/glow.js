@@ -274,6 +274,7 @@ export var glows = {
   chasm: { color: 'rgba(160,110,255,0.4)', blur: 15 },
   loom: { color: 'rgba(255,210,150,0.26)', blur: 9 },
   penrose: { color: 'rgba(190,150,255,0.34)', blur: 13 },
+  foil: { color: 'rgba(255,255,255,0.40)', blur: 14 },
 };
 
 var glowCanvas = null;
