@@ -272,7 +272,8 @@ export var glows = {
   flux: { color: 'rgba(80,255,220,0.5)', blur: 20 },
   facet: { color: 'rgba(190,225,255,0.5)', blur: 18 },
   chasm: { color: 'rgba(160,110,255,0.4)', blur: 15 },
-  loom: { color: 'rgba(255,210,150,0.26)', blur: 9 },
+  loom: { color: 'rgba(255,210,150,0.26)', blur: 9 },  // dense full-screen grid; 11 cost ~2/3 of the frame
+  phyllo: { color: 'rgba(255,190,90,0.32)', blur: 12 },
   penrose: { color: 'rgba(190,150,255,0.34)', blur: 13 },
   foil: { color: 'rgba(255,255,255,0.40)', blur: 14 },
 };
