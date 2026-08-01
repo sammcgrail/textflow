@@ -20,7 +20,13 @@ export function resize() {
   }
 
   // Font metrics — use a temporary 2D canvas for measurement
-  state.FONT_SIZE = Math.max(10, Math.min(16, w / 70));
+  // The scale multiplies the SETTLED default, not the pre-clamp value. On a
+  // phone w/70 is only ~5.6 and the max(10,...) floor is what actually applies,
+  // so scaling the raw expression would have jumped 10px straight to 5px —
+  // quadrupling the cell count instead of the intended modest step down.
+  var baseFont = Math.max(10, Math.min(16, w / 70));
+  var scale = state.FONT_SCALE || 1;
+  state.FONT_SIZE = scale === 1 ? baseFont : Math.max(6, baseFont * scale);
   var measureCtx = state.ctx || document.createElement('canvas').getContext('2d');
   measureCtx.font = state.FONT_SIZE + 'px "JetBrains Mono", monospace';
   measureCtx.textBaseline = 'top';

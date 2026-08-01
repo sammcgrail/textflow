@@ -274,6 +274,8 @@ export var glows = {
   chasm: { color: 'rgba(160,110,255,0.4)', blur: 15 },
   loom: { color: 'rgba(255,210,150,0.26)', blur: 9 },  // dense full-screen grid; 11 cost ~2/3 of the frame
   phyllo: { color: 'rgba(255,190,90,0.32)', blur: 12 },
+  yoheicoral: { color: 'rgba(210,235,255,0.26)', blur: 9 },  // tight bloom — the beads
+  // are the subject and a wide blur turns them straight back into porridge
   ulam: { color: 'rgba(120,220,255,0.30)', blur: 11 },  // 8 vs 11 measured identical (17fps) —
                                                         // glow is NOT this mode's cost, glyph count is
   penrose: { color: 'rgba(190,150,255,0.34)', blur: 13 },
