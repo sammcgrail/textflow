@@ -71,7 +71,8 @@ var THREE_MODES = [
   'tslascii',
   'tslascii2',
   'tslmatrix',
-  'tslplasma'
+  'tslplasma',
+  'threejulia', 'threebulb', 'threekifs'
 ];
 
 var WEBCAM_MODES = [
