@@ -17,3 +17,6 @@ import '../tslascii.js';
 import '../tslascii2.js';
 import '../tslmatrix.js';
 import '../tslplasma.js';
+import '../threejulia.js';
+import '../threebulb.js';
+import '../threekifs.js';
