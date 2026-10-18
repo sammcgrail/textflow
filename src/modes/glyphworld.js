@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { clearCanvas, drawChar, drawCharHSL } from '../core/draw.js';
+import { clearCanvas, drawCharHSL } from '../core/draw.js';
 import { resize } from '../core/canvas.js';
 import { pointer } from '../core/pointer.js';
 import { registerMode } from '../core/registry.js';
@@ -19,8 +19,10 @@ import { state } from '../core/state.js';
 // brightness: grass blades come out as | / \, brick courses and roof lines as
 // - and /, flat regions fall back to a density ramp. Water cells read the
 // ripple normals instead and turn the rings into ( ) / \ - around each drop.
-// The chosen glyph index rides home in the alpha byte; the cell's colour
-// (saturation-boosted) rides in rgb. One small async readback per frame.
+// The chosen glyph index goes in the alpha byte and the cell's colour
+// (saturation-boosted) in rgb. A last full-screen pass draws the glyphs
+// from a font atlas straight onto the renderer's own canvas, which sits over
+// the grid, so there is no readback and no per-cell 2D drawing per frame.
 //
 // Drag: orbit. Tap the pond: ripple. Tap the grass: a gust rolls out from it.
 
@@ -438,6 +440,52 @@ var CELL_FRAG = [
   '}'
 ].join('\n');
 
+// Final pass, straight to the visible canvas: every screen pixel finds its
+// cell, reads that cell's glyph index (alpha) and colour (rgb) from the cell
+// target, and samples the glyph out of an atlas rendered in textflow's font.
+var GLYPH_FRAG = [
+  'precision highp float;',
+  'uniform sampler2D tCell;',
+  'uniform sampler2D tAtlas;',
+  'uniform vec2 uCellPx;',
+  'uniform vec2 uGrid;',
+  'uniform float uN;',
+  'uniform vec3 uBg;',
+  'void main() {',
+  '  vec2 cf = gl_FragCoord.xy / uCellPx;',
+  // the canvas stops one row short of the bottom: that row is the footer
+  '  ivec2 cell = ivec2(floor(cf)) + ivec2(0, 1);',
+  '  if (cell.x >= int(uGrid.x) || cell.y >= int(uGrid.y)) { gl_FragColor = vec4(uBg, 1.0); return; }',
+  '  vec4 c = texelFetch(tCell, cell, 0);',
+  '  float gi = floor(c.a * 255.0 + 0.5);',
+  '  if (gi < 0.5 || gi >= uN) { gl_FragColor = vec4(uBg, 1.0); return; }',
+  '  vec2 f = fract(cf);',
+  '  float a = texture(tAtlas, vec2((gi + f.x) / uN, f.y)).a;',
+  '  gl_FragColor = vec4(mix(uBg, c.rgb, a), 1.0);',
+  '}'
+].join('\n');
+
+function buildAtlas(G) {
+  var dpr = state.dpr || 1;
+  var tw = Math.max(1, Math.round(state.CHAR_W * dpr));
+  var th = Math.max(1, Math.round(state.CHAR_H * dpr));
+  var cv = document.createElement('canvas');
+  cv.width = tw * GLYPHS.length; cv.height = th;
+  var ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = '#fff';
+  ctx.font = (state.FONT_SIZE * dpr) + 'px "JetBrains Mono", monospace';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  for (var i = 1; i < GLYPHS.length; i++) ctx.fillText(GLYPHS[i], i * tw + tw / 2, th / 2);
+  if (G.atlas) G.atlas.dispose();
+  G.atlas = new THREE.CanvasTexture(cv);
+  G.atlas.minFilter = THREE.LinearFilter;
+  G.atlas.magFilter = THREE.LinearFilter;
+  G.atlas.generateMipmaps = false;
+  G.glyphMat.uniforms.tAtlas.value = G.atlas;
+}
+
 // ---------------------------------------------------------------- scene
 
 function meshMat(shared, col, kind, id, sway) {
@@ -716,7 +764,7 @@ function sizeTargets(G) {
   var W = state.COLS, H = state.ROWS;
   if (G.W === W && G.H === H && G.rtCol) return;
   G.W = W; G.H = H;
-  var sx = state.isMobile ? 3 : 4;
+  var sx = state.isMobile ? 2 : 3;
   var sy = Math.max(2, Math.min(8, Math.round(sx * state.CHAR_H / state.CHAR_W)));
   G.sx = sx; G.sy = sy;
   var rw = W * sx, rh = H * sy;
@@ -738,12 +786,20 @@ function sizeTargets(G) {
   G.camera.fov = aspect < 1 ? 66 : 60;
   G.camera.updateProjectionMatrix();
   G.dist = aspect < 1 ? 8.5 : 9.0;
-  G.front = null; G.back = null; G.fW = 0; G.fH = 0;
+  var dpr = state.dpr || 1;
+  G.renderer.setPixelRatio(dpr);
+  G.renderer.setSize(W * state.CHAR_W, (H - 1) * state.CHAR_H, true);
+  var gu = G.glyphMat.uniforms;
+  gu.tCell.value = G.rtCell.texture;
+  gu.uCellPx.value.set(state.CHAR_W * dpr, state.CHAR_H * dpr);
+  gu.uGrid.value.set(W, H);
+  buildAtlas(G);
+  G.probeBuf = null; G.nextProbe = 0;
 }
 
 function initGlyphworld() {
   cleanupGlyphworld(true);
-  state.FONT_SCALE = state.isMobile ? 1.25 : 0.85;
+  state.FONT_SCALE = state.isMobile ? 0.85 : 0.5;
   resize();
 
   var G = {};
@@ -751,11 +807,17 @@ function initGlyphworld() {
   G.renderer = new THREE.WebGLRenderer({
     antialias: false, alpha: false, powerPreference: 'high-performance'
   });
-  G.renderer.setPixelRatio(1);
-  G.renderer.setSize(4, 4, false);
   G.renderer.autoClear = true;
-  G.renderer.setClearColor(0x000000, 0);
-  G.renderer.domElement.style.display = 'none';
+  // the renderer's own canvas IS the picture: laid over the grid area, under
+  // the nav, clicks fall through to the textflow canvas underneath
+  var el = G.renderer.domElement;
+  el.setAttribute('data-mode-overlay', MODE);
+  el.style.position = 'fixed';
+  el.style.left = '0';
+  el.style.top = state.NAV_H + 'px';
+  el.style.zIndex = '2';
+  el.style.pointerEvents = 'none';
+  document.body.appendChild(el);
 
   G.shared = {
     uPass: { value: 0 },
@@ -796,8 +858,23 @@ function initGlyphworld() {
   G.cellScene = new THREE.Scene();
   G.cellScene.add(G.cellQuad);
   G.cellCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  G.glyphMat = new THREE.ShaderMaterial({
+    vertexShader: CELL_VERT, fragmentShader: GLYPH_FRAG,
+    uniforms: {
+      tCell: { value: null }, tAtlas: { value: null },
+      uCellPx: { value: new THREE.Vector2(8, 16) },
+      uGrid: { value: new THREE.Vector2(1, 1) },
+      uN: { value: GLYPHS.length },
+      uBg: { value: new THREE.Vector3(10 / 255, 10 / 255, 15 / 255) }
+    },
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending
+  });
+  G.glyphQuad = new THREE.Mesh(cg, G.glyphMat);
+  G.glyphQuad.frustumCulled = false;
+  G.glyphScene = new THREE.Scene();
+  G.glyphScene.add(G.glyphQuad);
 
-  G.yaw = 0; G.pitch = 0.3; G.dragYaw = 0; G.dragPitch = 0;
+  G.yaw = 0; G.pitch = 0.3; G.dragYaw = 0; G.dragPitch = 0; G.yawT = 0; G.pitchT = 0; G.camT = null;
   G.lastGX = 0; G.lastGY = 0; G.dragging = false;
   G.walkA = -1.75; G.phase = 0;
   G.nextRip = 0.3; G.nextGust = 4.0;
@@ -818,7 +895,7 @@ function initGlyphworld() {
         var v = new THREE.Vector3(x, y, z).project(gw.camera);
         return { x: (v.x * 0.5 + 0.5) * gw.W * state.CHAR_W, y: (0.5 - v.y * 0.5) * gw.H * state.CHAR_H + state.NAV_H };
       },
-      orbit: function () { return gw ? { yaw: gw.dragYaw, pitch: gw.dragPitch } : null; },
+      orbit: function () { return gw ? { yaw: gw.yawT, pitch: gw.pitchT } : null; },
       tapWorld: function (x, z) { if (!gw) return null; var v = new THREE.Vector3(x, 0, z).project(gw.camera); return tapAt(gw, (v.x * 0.5 + 0.5) * gw.W, (0.5 - v.y * 0.5) * gw.H); }
     };
   }
@@ -837,6 +914,10 @@ function cleanupGlyphworld(keepScale) {
     if (G.water && G.water.dispose) G.water.dispose();
     if (G.rtCol) { G.rtCol.dispose(); G.rtNrm.dispose(); G.rtCell.dispose(); G.depthTex.dispose(); }
     if (G.cellQuad) { G.cellQuad.geometry.dispose(); G.cellMat.dispose(); }
+    if (G.glyphMat) G.glyphMat.dispose();
+    if (G.atlas) G.atlas.dispose();
+    var el = G.renderer.domElement;
+    if (el && el.parentNode) el.parentNode.removeChild(el);
     G.renderer.dispose();
     G.renderer.forceContextLoss();
     gw = null;
@@ -882,7 +963,8 @@ function updateWorld(G, t, dt) {
   G.phase += speed * dt / 0.34;
   var wx = Math.cos(G.walkA) * RX, wz = Math.sin(G.walkA) * RZ;
   var W = G.walker;
-  W.root.position.set(wx, groundH(wx, wz) + Math.abs(Math.cos(G.phase)) * 0.05, wz);
+  var cp = Math.cos(G.phase);
+  W.root.position.set(wx, groundH(wx, wz) + cp * cp * 0.05, wz);
   W.root.rotation.y = Math.atan2(sx, sz);
   W.legs[0].rotation.x = Math.sin(G.phase) * 0.55;
   W.legs[1].rotation.x = -Math.sin(G.phase) * 0.55;
@@ -906,10 +988,19 @@ function updateWorld(G, t, dt) {
   }
 
   // camera: slow sway in front of the castle, plus whatever the user dragged
+  // drag sets a target; the camera eases toward it at a frame-rate
+  // independent rate, so a 30 fps phone and a 144 Hz monitor glide alike
+  var kd = 1 - Math.exp(-dt * 9);
+  G.dragYaw += (G.yawT - G.dragYaw) * kd;
+  G.dragPitch += (G.pitchT - G.dragPitch) * kd;
   G.yaw = 0.5 * Math.sin(t * 0.05) + G.dragYaw;
   var pitch = Math.max(0.06, Math.min(1.2, 0.34 + 0.04 * Math.sin(t * 0.07) + G.dragPitch));
   // follow the wanderer, leaning a little toward the pond
-  var tx = wx * 0.7, ty = 0.7, tz = wz * 0.7 - 0.8;
+  if (!G.camT) G.camT = new THREE.Vector3(wx * 0.7, 0.7, wz * 0.7 - 0.8);
+  var kf = 1 - Math.exp(-dt * 2.5);
+  G.camT.x += (wx * 0.7 - G.camT.x) * kf;
+  G.camT.z += (wz * 0.7 - 0.8 - G.camT.z) * kf;
+  var tx = G.camT.x, ty = 0.7, tz = G.camT.z;
   var d = G.dist;
   var cam = G.camera;
   cam.position.set(tx + Math.sin(G.yaw) * Math.cos(pitch) * d, ty + Math.sin(pitch) * d, tz + Math.cos(G.yaw) * Math.cos(pitch) * d);
@@ -939,20 +1030,33 @@ function kick(G) {
   R.setRenderTarget(G.rtCell);
   R.render(G.cellScene, G.cellCam);
   R.setRenderTarget(null);
+  R.render(G.glyphScene, G.cellCam);
+}
 
-  var W = G.W, H = G.H;
-  if (!G.back || G.back.length !== W * H * 4) G.back = new Uint8Array(W * H * 4);
-  if (!R.readRenderTargetPixelsAsync) {
-    R.readRenderTargetPixels(G.rtCell, 0, 0, W, H, G.back);
-    var tmp = G.front; G.front = G.back; G.back = tmp; G.fW = W; G.fH = H;
-    return;
-  }
+// Once a second, read the cell grid back for the window.__glyphworld probe
+// (glyph histogram for automated checks). Nothing on screen depends on it.
+function probe(G, t) {
+  if (G.pending || t < G.nextProbe || !window.__glyphworld || !G.renderer.readRenderTargetPixelsAsync) return;
+  G.nextProbe = t + 1;
+  var W = G.W, H = G.H, rt = G.rtCell;
+  if (!G.probeBuf || G.probeBuf.length !== W * H * 4) G.probeBuf = new Uint8Array(W * H * 4);
+  var buf = G.probeBuf;
   G.pending = true;
-  var rt = G.rtCell;
-  R.readRenderTargetPixelsAsync(rt, 0, 0, W, H, G.back).then(function () {
-    if (!G.alive || rt !== G.rtCell) { G.pending = false; return; }
-    var tmp2 = G.front; G.front = G.back; G.back = tmp2; G.fW = W; G.fH = H;
+  G.renderer.readRenderTargetPixelsAsync(rt, 0, 0, W, H, buf).then(function () {
     G.pending = false;
+    if (!G.alive || rt !== G.rtCell || !window.__glyphworld) return;
+    var hist = {}, n = 0;
+    for (var y = 1; y < H; y++) {
+      for (var x = 0; x < W; x++) {
+        var gi = buf[(y * W + x) * 4 + 3];
+        if (gi === 0 || gi >= GLYPHS.length) continue;
+        hist[GLYPHS[gi]] = (hist[GLYPHS[gi]] || 0) + 1;
+        n++;
+      }
+    }
+    var P = window.__glyphworld;
+    P.hist = hist; P.drawn = n; P.cells = W * H;
+    P.cellPx = [state.CHAR_W, state.CHAR_H];
   }, function () { G.pending = false; });
 }
 
@@ -972,38 +1076,22 @@ function renderGlyphworld() {
     G.dragging = false;
   } else if (pointer.down && mine) {
     if (!G.dragging) { G.dragging = true; G.lastGX = pointer.gx; G.lastGY = pointer.gy; }
-    var dx = pointer.gx - G.lastGX, dy = pointer.gy - G.lastGY;
-    G.dragYaw -= dx * (state.isMobile ? 0.03 : 0.018);
-    G.dragPitch += dy * (state.isMobile ? 0.02 : 0.025);
-    G.dragPitch = Math.max(-0.25, Math.min(0.9, G.dragPitch));
+    // pointer deltas are in cells, which are now small: convert to CSS px
+    var dx = (pointer.gx - G.lastGX) * state.CHAR_W, dy = (pointer.gy - G.lastGY) * state.CHAR_H;
+    G.yawT -= dx * 0.0045;
+    G.pitchT += dy * 0.0035;
+    G.pitchT = Math.max(-0.25, Math.min(0.9, G.pitchT));
     G.lastGX = pointer.gx; G.lastGY = pointer.gy;
   } else {
     G.dragging = false;
   }
 
   updateWorld(G, t, dt);
-  if (!G.pending) kick(G);
+  kick(G);
+  probe(G, t);
+  if (window.__glyphworld) window.__glyphworld.lastTap = G.lastTap || null;
 
   var W = state.COLS, H = state.ROWS;
-  var buf = G.front;
-  if (buf && G.fW === W && G.fH === H) {
-    var hist = G.hist, nDrawn = 0;
-    for (var k in hist) hist[k] = 0;
-    for (var y = 0; y < H - 1; y++) {
-      var row = (H - 1 - y) * W * 4;
-      for (var x = 0; x < W; x++) {
-        var i = row + x * 4;
-        var gi = buf[i + 3];
-        if (gi === 0 || gi >= GLYPHS.length) continue;
-        var ch = GLYPHS[gi];
-        drawChar(ch, x, y, buf[i], buf[i + 1], buf[i + 2], 1);
-        hist[ch] = (hist[ch] || 0) + 1;
-        nDrawn++;
-      }
-    }
-    if (window.__glyphworld) { window.__glyphworld.drawn = nDrawn; window.__glyphworld.cells = W * H; window.__glyphworld.lastTap = G.lastTap || null; }
-  }
-
   var label = '[glyphworld] drag:orbit  tap:ripple/gust';
   if (W < 50) label = '[glyphworld] drag tap';
   var lx = Math.max(0, W - label.length - 1);
