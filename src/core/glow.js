@@ -184,6 +184,7 @@ export var glows = {
   threejulia: { color: 'rgba(255,120,220,0.38)', blur: 14 },
   threebulb: { color: 'rgba(120,255,230,0.38)', blur: 16 },
   threekifs: { color: 'rgba(255,170,60,0.36)', blur: 14 },
+  glyphworld: { color: 'rgba(140,220,120,0.3)', blur: 10 },
   prism: { color: 'rgba(255,255,255,0.5)', blur: 22 },
   phoenix: { color: 'rgba(255,120,30,0.55)', blur: 24 },
   swarm: { color: 'rgba(180,100,255,0.5)', blur: 20 },

@@ -20,3 +20,4 @@ import '../tslplasma.js';
 import '../threejulia.js';
 import '../threebulb.js';
 import '../threekifs.js';
+import '../glyphworld.js';
