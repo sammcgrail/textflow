@@ -60,7 +60,22 @@ for (var id of ids) {
   // (iMessage, Slack, Discord). Poster = static/videos/<id>.jpg, else the thumb above.
   // Make one with scripts/record-og-video.mjs. The mp4 must be H.264 + faststart and fetched
   // from the subdomain (the /textflow/ path 301s, which kills previews).
-  if (existsSync('static/videos/' + id + '.mp4')) {
+  // Animated share card (Sam 2026-10-23): if static/videos/<id>.og.gif exists, use it as the og:image INSTEAD of
+  // og:video. Discord autoplays a GIF og:image in the embed but never autoplays og:video (that needs a click).
+  if (existsSync('static/videos/' + id + '.og.gif')) {
+    var gurl = 'https://textflow.sebland.com/static/videos/' + id + '.og.gif';
+    var gw = 480, gh = 300;
+    try {
+      var gd = JSON.parse(readFileSync('static/videos/' + id + '.og.json', 'utf8'));
+      gw = gd.width; gh = gd.height;
+    } catch (e) {}
+    html = html
+      .replace(/<meta property="og:image" content="[^"]*">/, '<meta property="og:image" content="' + gurl + '">\n<meta property="og:image:type" content="image/gif">')
+      .replace(/<meta name="twitter:image" content="[^"]*">/, '<meta name="twitter:image" content="' + gurl + '">')
+      .replace(/<meta property="og:image:width" content="[^"]*">/, '<meta property="og:image:width" content="' + gw + '">')
+      .replace(/<meta property="og:image:height" content="[^"]*">/, '<meta property="og:image:height" content="' + gh + '">')
+      .replace(/<meta property="og:url" content="[^"]*">/, '<meta property="og:url" content="https://textflow.sebland.com/' + id + '/">');
+  } else if (existsSync('static/videos/' + id + '.mp4')) {
     var vurl = 'https://textflow.sebland.com/static/videos/' + id + '.mp4';
     var poster = existsSync('static/videos/' + id + '.jpg')
       ? 'https://textflow.sebland.com/static/videos/' + id + '.jpg' : ogImage;
