@@ -56,6 +56,36 @@ for (var id of ids) {
       'Over 330 interactive ASCII art experiments'
     );
 
+  // og:video (Sam 2026-10-23): if static/videos/<id>.mp4 exists, the share card plays it inline
+  // (iMessage, Slack, Discord). Poster = static/videos/<id>.jpg, else the thumb above.
+  // Make one with scripts/record-og-video.mjs. The mp4 must be H.264 + faststart and fetched
+  // from the subdomain (the /textflow/ path 301s, which kills previews).
+  if (existsSync('static/videos/' + id + '.mp4')) {
+    var vurl = 'https://textflow.sebland.com/static/videos/' + id + '.mp4';
+    var poster = existsSync('static/videos/' + id + '.jpg')
+      ? 'https://textflow.sebland.com/static/videos/' + id + '.jpg' : ogImage;
+    var vw = 1280, vh = 800;
+    try {
+      var dims = JSON.parse(readFileSync('static/videos/' + id + '.json', 'utf8'));
+      vw = dims.width; vh = dims.height;
+    } catch (e) {}
+    var pageUrl = 'https://textflow.sebland.com/' + id + '/';
+    html = html
+      .replace(/<meta property="og:image" content="[^"]*">/, '<meta property="og:image" content="' + poster + '">')
+      .replace(/<meta name="twitter:image" content="[^"]*">/, '<meta name="twitter:image" content="' + poster + '">')
+      .replace(/<meta property="og:image:width" content="[^"]*">/, '<meta property="og:image:width" content="' + vw + '">')
+      .replace(/<meta property="og:image:height" content="[^"]*">/, '<meta property="og:image:height" content="' + vh + '">')
+      .replace(/<meta property="og:url" content="[^"]*">/, '<meta property="og:url" content="' + pageUrl + '">')
+      .replace(/<meta property="og:type" content="[^"]*">/,
+        '<meta property="og:type" content="video.other">\n' +
+        '<meta property="og:video" content="' + vurl + '">\n' +
+        '<meta property="og:video:url" content="' + vurl + '">\n' +
+        '<meta property="og:video:secure_url" content="' + vurl + '">\n' +
+        '<meta property="og:video:type" content="video/mp4">\n' +
+        '<meta property="og:video:width" content="' + vw + '">\n' +
+        '<meta property="og:video:height" content="' + vh + '">');
+  }
+
   writeFileSync(dir + '/index.html', html);
   generated++;
 }
