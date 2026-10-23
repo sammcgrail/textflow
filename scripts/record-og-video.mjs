@@ -28,7 +28,7 @@ await page.addInitScript(() => {
   window.__step = n => { for (let i = 0; i < n; i++) { ts += 1000 / 60; const c = q; q = []; c.forEach(f => f(ts)); } };
 });
 await page.goto('https://textflow.sebland.com/' + mode + '/', { waitUntil: 'networkidle' });
-await page.addStyleTag({ content: 'nav,header,.nav,#nav,.fps,#fps{display:none!important}' });
+await page.addStyleTag({ content: 'nav,header,.nav,#nav,.fps,#fps,#version{display:none!important}' });
 for (let i = 0; i < 150; i++) { await page.evaluate(() => window.__step(1)); await page.waitForTimeout(50); }
 for (let f = 0; f < +N; f++) {
   await page.evaluate(s => window.__step(s), +STEP);
