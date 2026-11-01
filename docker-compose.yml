@@ -4,6 +4,7 @@ services:
     container_name: textflow
     restart: unless-stopped
     ports:
-      - "20004:8080"
+      - "127.0.0.1:20004:8080"
+      - "172.17.0.1:20004:8080"
     mem_limit: 32m
     cpus: 0.1
