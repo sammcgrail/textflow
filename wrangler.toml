@@ -1,0 +1,12 @@
+# Cloudflare Workers static assets (moved off the nginx container 2026-11-02).
+# Deploy: ./cf-deploy.sh  (builds the Dockerfile, extracts /usr/share/nginx/html -> dist-cf/, wrangler deploy)
+name = "sebland-textflow"
+compatibility_date = "2026-10-01"
+workers_dev = true
+routes = [{ pattern = "textflow.sebland.com/*", zone_name = "sebland.com" }]
+main = "cf/worker.js"
+
+[assets]
+directory = "dist-cf"
+not_found_handling = "single-page-application"
+binding = "ASSETS"

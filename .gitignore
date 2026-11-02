@@ -2,3 +2,5 @@ node_modules/
 dist/
 dist-vite/
 *.local.mjs
+dist-cf/
+.wrangler/

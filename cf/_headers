@@ -1,0 +1,16 @@
+# Copied into the asset dir by cf-deploy.sh. Security headers = Caddy (security_headers);
+# cache rules reproduce the old nginx.conf.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Served-By: cf-worker
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
+/textflow/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/textflow/static/*
+  Cache-Control: public, max-age=31536000, immutable
