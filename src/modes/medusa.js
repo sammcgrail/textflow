@@ -27,13 +27,13 @@ import { resize } from '../core/canvas.js';
 var MODE = 'medusa';
 var TAU = Math.PI * 2;
 
-var BELL_R = 1.0, BELL_H = 1.2, CURL = 1.68, FLARE = 0.10;
+var BELL_R = 1.0, BELL_H = 1.08, CURL = 1.78, FLARE = 0.08;
 var LAPPETS = 16, PETALS = 6;
 var RIM_LAG = 0.20, ARM_LAG = 0.55, TENT_LAG = 0.30;
-var RIM_R = BELL_R * Math.pow(Math.sin(CURL), 0.9) * (1 + FLARE);
+var RIM_R = BELL_R * Math.sin(CURL) * (1 + FLARE);
 var SPIN = 0.16;
 var N_TENT = 14, N_STRAND = 2, TENT_SEG = 110, TENT_LEN = 3.1, TENT_DROP = 1.4;
-var N_ARMS = 4, ARM_S = 72, ARM_W = 9, ARM_LEN = 2.15, ARM_WIDE = 0.36;
+var N_ARMS = 4, ARM_S = 80, ARM_W = 11, ARM_LEN = 2.15, ARM_WIDE = 0.46;
 var NU = 70, NTH = 200;
 var PERIOD = 2.3, WAVE_SPEED = 0.78;
 var T_SWIM = 2.3, T_ARMS0 = 1.5, T_ARMS1 = 3.3, T_TENT0 = 1.9, T_TENT1 = 3.3;
@@ -49,12 +49,12 @@ var ARM_CH = 'abcdeghjklmnoprstuvwxyz0123456789$%&#@?{}[]<>=+*~^';
 // inks: [bell, petal, inside, arms, tentacles]; cooler + louder than the reel
 var I_BELL = 0, I_PETAL = 1, I_IN = 2, I_ARM = 3, I_TENT = 4;
 var PALETTES = [
-  [[30, 90, 255], [215, 235, 255], [120, 70, 255], [165, 105, 255], [130, 185, 255]],   // blue / white
-  [[0, 215, 240], [255, 50, 200], [150, 60, 255], [255, 85, 215], [70, 225, 255]],      // cyan / pink / purple
-  [[255, 40, 185], [255, 235, 40], [165, 50, 255], [20, 230, 255], [255, 110, 215]],    // magenta / yellow, cyan arms
-  [[20, 235, 120], [230, 255, 50], [0, 185, 235], [255, 145, 20], [100, 255, 195]],     // green / lime, orange arms
-  [[140, 60, 255], [40, 245, 255], [255, 50, 190], [120, 255, 120], [185, 135, 255]],   // violet / aqua
-  [[0, 130, 255], [255, 95, 40], [0, 220, 220], [255, 230, 60], [110, 200, 255]],       // electric blue / tangerine
+  [[15, 65, 255], [235, 245, 255], [110, 70, 255], [70, 235, 255], [120, 185, 255]],    // deep blue / near-white, cyan arms
+  [[0, 190, 230], [255, 195, 245], [160, 70, 255], [255, 70, 210], [80, 235, 255]],     // teal / pink-white, pink arms
+  [[235, 15, 165], [255, 250, 175], [170, 60, 255], [40, 235, 255], [255, 110, 225]],   // magenta / pale gold, cyan arms
+  [[0, 195, 80], [235, 255, 195], [0, 195, 240], [255, 150, 30], [90, 255, 190]],       // green / pale lime, orange arms
+  [[110, 35, 255], [215, 255, 255], [255, 60, 200], [255, 225, 50], [180, 135, 255]],   // violet / ice, gold arms
+  [[0, 100, 255], [255, 222, 185], [0, 220, 220], [255, 120, 60], [110, 205, 255]],     // electric blue / peach, tangerine arms
 ];
 
 var K_NONE = 0, K_BELL = 1, K_RIM = 2, K_ARM = 3, K_ARME = 4, K_TENT = 5, K_BG = 6, K_SPARK = 7, K_DOT = 8;
@@ -90,17 +90,17 @@ function buildTables() {
     var u = i / (NU - 1), a = u * CURL;
     m.uU[i] = u; m.uFlare[i] = FLARE * Math.pow(u, 8); m.uTuck[i] = 0.34 * Math.pow(u, 1.6);
     m.uSa[i] = Math.sin(a); m.uCa[i] = Math.cos(a);
-    var wide0 = BELL_R * Math.pow(Math.sin(a), 0.9);
+    var wide0 = BELL_R * Math.sin(a);   // round crown; past a=pi/2 the rim curves back under
     var tall = BELL_H * (Math.cos(a) - cC) / (1 - cC);
     // the petals: wedges from just under the crown, fading out above the rim band
-    var pLo = 0.07, pHi = 0.84;
+    var pLo = 0.06, pHi = 0.9;
     for (var j = 0; j < NTH; j++) {
       var k = i * NTH + j;
       var th = (j + (i & 1) * 0.5) / NTH * TAU;   // stagger rings so samples don't stack in columns
       m.bTh[k] = th;
       m.bWide[k] = wide0 * (1 + 0.06 * Math.pow(u, 6) * Math.cos(LAPPETS * th));
       m.bTall[k] = tall;
-      var pc = Math.cos(PETALS * th + 0.12 * u);   // radial wedges, a slight swirl down the dome
+      var pc = Math.cos(PETALS * th + 0.5 * u);   // radial wedges, a slight swirl down the dome
       var inPetal = pc > -0.05 && u > pLo && u < pHi;
       if (u <= pLo) inPetal = true;                // a pale cap on the crown, as in the reel
       m.bPet[k] = inPetal ? 1 : 0;
@@ -120,10 +120,10 @@ function buildTables() {
   m.prevX = new Float32Array(Math.max(N_STRAND, ARM_W));
   m.prevY = new Float32Array(Math.max(N_STRAND, ARM_W));
   // layout: crown at about -1.15R (stretched), tentacle tips at about +3.2R
-  var frac = state.isMobile || pw < 700 ? 0.80 : 0.86;
-  m.R = Math.min(frac * ph / 4.8, 0.33 * pw);
+  var frac = state.isMobile || pw < 700 ? 0.92 : 0.94;
+  m.R = Math.min(frac * ph / 4.75, 0.355 * pw);
   m.homeX = pw * 0.5;
-  m.homeY = (ph - 4.8 * m.R) * 0.5 + 1.55 * m.R;
+  m.homeY = (ph - 4.75 * m.R) * 0.5 + 1.25 * m.R;
   m.strandGap = 1.0 * m.cw / m.R;
   // background
   var ns = Math.round(W * H / 26);
@@ -325,9 +325,9 @@ function renderMedusa() {
   S.vx *= damp; S.vy *= damp;
   S.x += S.vx * dt; S.y += S.vy * dt;
   var pw = W * M.cw, ph = H * M.ch;
-  if (S.x < 0.15 * pw) { S.x = 0.15 * pw; S.vx *= -0.3; }
-  if (S.x > 0.85 * pw) { S.x = 0.85 * pw; S.vx *= -0.3; }
-  if (S.y < 1.5 * R + 4) { S.y = 1.5 * R + 4; S.vy *= -0.3; }
+  if (S.x < Math.min(0.3 * pw, 1.15 * R)) { S.x = Math.min(0.3 * pw, 1.15 * R); S.vx *= -0.3; }
+  if (S.x > pw - Math.min(0.3 * pw, 1.15 * R)) { S.x = pw - Math.min(0.3 * pw, 1.15 * R); S.vx *= -0.3; }
+  if (S.y < 1.3 * R + 4) { S.y = 1.3 * R + 4; S.vy *= -0.3; }
   if (S.y > ph - 0.6 * R) { S.y = ph - 0.6 * R; S.vy *= -0.3; }
   var kS = 1 - Math.exp(-2.2 * dt);
   S.svx += (S.vx - S.svx) * kS;
@@ -344,7 +344,7 @@ function renderMedusa() {
   var hFrac = (t - S.hT) / HDT;   // the newest history slot is this far behind now
 
   // camera a little above, with a slow yaw swing so the depth reads
-  var pitch = -0.2 + 0.06 * Math.sin(t * 0.29);
+  var pitch = -0.1 + 0.05 * Math.sin(t * 0.29);
   cosP = Math.cos(pitch); sinP = Math.sin(pitch);
   var yaw = 0.55 * Math.sin(t * 0.21);
   cosY = Math.cos(yaw); sinY = Math.sin(yaw);
@@ -370,7 +370,6 @@ function renderMedusa() {
     var rs = 1 + flare - tuck * c;
     var tallS = 1 + 0.15 * c;
     var sa = M.uSa[i] * (1 - 0.5 * tuck * c), ca = M.uCa[i];
-    var isRim = i >= NU - 2;
     var way = 0.3 * u;
     for (j = 0; j < NTH; j++) {
       k = base + j;
@@ -409,19 +408,12 @@ function renderMedusa() {
         ink = I_IN;
       }
       lum *= 0.9 + 0.25 * (c > 0 ? c : 0) * u;
-      if (isRim) {
-        var th2 = th0 + 0.08;
-        var c2 = Math.cos(th2) * co - Math.sin(th2) * si, s2 = Math.sin(th2) * co + Math.cos(th2) * si;
-        var sx = pX, sy = pY, sz = pZ;
-        project(r * c2, y, r * s2);
-        code = strokeChar((pX - sx) / CW, (pY - sy) / CH, 95);
-        put(sx, sy, sz + 0.02, K_RIM, Math.max(lum, 0.55), way, I_PETAL, code);
-        continue;
-      }
       var flick = (seed * 97 + Math.floor(t * 0.7 + seed * 5)) | 0;
-      if (lum > 0.66) code = BELL_HI.charCodeAt(flick % gh);
-      else if (lum > 0.46) code = BELL_MID.charCodeAt(flick % gm);
-      else if (lum > 0.3) code = BELL_LO.charCodeAt(flick % gl);
+      // petals in solid block glyphs, the ground between them in letters: the stripes read by weight too
+      if (ink === I_PETAL) code = BELL_HI.charCodeAt(flick % gh);
+      else if (ink === I_BELL) code = BELL_MID.charCodeAt(flick % gm);
+      else if (lum > 0.36) code = BELL_MID.charCodeAt(flick % gm);
+      else if (lum > 0.2) code = BELL_LO.charCodeAt(flick % gl);
       else code = BELL_FAINT.charCodeAt(flick % gf);
       put(pX, pY, pZ, K_BELL, lum, way, ink, code);
     }
@@ -459,11 +451,11 @@ function renderMedusa() {
           var al = (0.55 + 0.4 * (1 - aw)) * fade;
           if (i > 0) {
             if (edge) {
-              put(pX, pY, pZ + 0.06, K_ARME, al * 0.95, armWay, I_ARM, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
+              put(pX, pY, pZ + 0.36, K_ARME, al * 0.95, armWay, I_ARM, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
             } else {
               var sd = (a * 7919 + i * 131 + j * 31) | 0;
               var fl = (sd + Math.floor(t * 1.3 + hash(sd) * 7) * 13) | 0;
-              put(pX, pY, pZ + 0.05, K_ARM, al, armWay, I_ARM, ARM_CH.charCodeAt(fl % ARM_CH.length));
+              put(pX, pY, pZ + 0.35, K_ARM, al, armWay, I_ARM, ARM_CH.charCodeAt(fl % ARM_CH.length));
             }
           }
           prevX[j] = pX; prevY[j] = pY;
@@ -504,36 +496,6 @@ function renderMedusa() {
         prevX[j] = pX; prevY[j] = pY;
       }
     }
-  }
-
-  // ---- bell silhouette strokes ------------------------------------------------
-  var edgeA = M.edge; edgeA.fill(0);
-  for (var yy2 = 1; yy2 < H - 1; yy2++) {
-    var row = yy2 * W;
-    for (var xx2 = 1; xx2 < W - 1; xx2++) {
-      var id = row + xx2;
-      if (kind[id] !== K_BELL) continue;
-      var L = kind[id - 1], Rr = kind[id + 1], U = kind[id - W], D = kind[id + W];
-      var eL = L !== K_BELL && L !== K_RIM, eR = Rr !== K_BELL && Rr !== K_RIM;
-      var eU = U !== K_BELL && U !== K_RIM, eD = D !== K_BELL && D !== K_RIM;
-      if (!(eL || eR || eU || eD)) continue;
-      var UL = kind[id - W - 1], UR = kind[id - W + 1], DL = kind[id + W - 1], DR = kind[id + W + 1];
-      var eUL = UL !== K_BELL && UL !== K_RIM, eUR = UR !== K_BELL && UR !== K_RIM;
-      var eDL = DL !== K_BELL && DL !== K_RIM, eDR = DR !== K_BELL && DR !== K_RIM;
-      var gx = (eR ? 2 : 0) - (eL ? 2 : 0) + (eUR ? 1 : 0) + (eDR ? 1 : 0) - (eUL ? 1 : 0) - (eDL ? 1 : 0);
-      var gy = (eD ? 2 : 0) - (eU ? 2 : 0) + (eDL ? 1 : 0) + (eDR ? 1 : 0) - (eUL ? 1 : 0) - (eUR ? 1 : 0);
-      var agx = gx < 0 ? -gx : gx, agy = gy < 0 ? -gy : gy;
-      var ec;
-      if (agx === 0 && agy === 0) continue;
-      if (agx > 2.2 * agy) ec = 124;
-      else if (agy > 2.2 * agx) ec = gy < 0 ? 45 : 95;
-      else ec = (gx * gy > 0) ? 47 : 92;
-      edgeA[id] = 1;
-      M.gch[id] = ec;
-    }
-  }
-  for (var e = 0; e < W * H; e++) {
-    if (edgeA[e]) { kind[e] = K_RIM; if (M.lum[e] < 0.55) M.lum[e] = 0.55; }
   }
 
   // ---- glints: a ring of sparkles leaves the rim after each stroke --------------
@@ -665,24 +627,29 @@ function renderMedusa() {
       rr = o[0] + (n2[0] - o[0]) * on;
       gg = o[1] + (n2[1] - o[1]) * on;
       bb = o[2] + (n2[2] - o[2]) * on;
-      if (kd === K_RIM || kd === K_ARME) {  // pale edges: PALE(ink, 0.45)
-        rr += (255 - rr) * 0.45; gg += (255 - gg) * 0.45; bb += (255 - bb) * 0.45;
+      if (kd === K_ARME) {  // pale ribbon edges: PALE(ink, 0.35)
+        rr += (255 - rr) * 0.35; gg += (255 - gg) * 0.35; bb += (255 - bb) * 0.35;
       } else if (kd === K_DOT) {
         rr += (255 - rr) * 0.3; gg += (255 - gg) * 0.3; bb += (255 - bb) * 0.3;
       }
       // brightness scales the ink but never greys it out
-      var lit = 0.7 + 0.5 * lm;
-      rr *= lit; gg *= lit; bb *= lit;
-      if (lm > 0.8 && kd === K_BELL) {
-        var spw = (lm - 0.8) * 1.2;
-        rr += (255 - rr) * spw; gg += (255 - gg) * spw; bb += (255 - bb) * spw;
+      var dp = M.dep[ci], lit;
+      if (kd === K_BELL) {
+        // shade the bell by its normal, but keep the ink saturated (no grey)
+        lit = (0.72 + 0.45 * lm) * (0.7 + 0.3 * dp);
+        if (inkI === I_PETAL && lm > 0.75) {
+          var spw = (lm - 0.75) * 0.8;
+          rr += (255 - rr) * spw; gg += (255 - gg) * spw; bb += (255 - bb) * spw;
+        }
+      } else {
+        // arms + tentacles stay full-saturation and bright; back ones a touch dimmer
+        lit = 1.05 * (0.82 + 0.18 * dp) * (0.55 + 0.45 * clamp01(lm / 0.6));   // tips fade
       }
-      var fog = 0.45 + 0.55 * M.dep[ci];
-      rr *= fog; gg *= fog; bb *= fog;
+      rr *= lit; gg *= lit; bb *= lit;
       if (band > 0.01) {
         rr += (255 - rr) * band; gg += (255 - gg) * band; bb += (255 - bb) * band;
       }
-      al2 = (0.62 + 0.35 * lm) * (0.7 + 0.3 * M.dep[ci]) + band * 0.55;
+      al2 = (kd === K_BELL ? 0.8 + 0.2 * lm : 0.9 + 0.1 * dp) + band * 0.55;
       if (al2 > 1) al2 = 1;
       if (rr > 255) rr = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
       drawChar(String.fromCharCode(code2), xc, yc, rr | 0, gg | 0, bb | 0, al2);
