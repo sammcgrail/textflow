@@ -5,6 +5,7 @@
 // a fake clock and every captured frame advances the mode by STEP 60-fps ticks.
 //
 //   node scripts/record-og-video.mjs <mode> [frames=450] [step=3] [outdir=/tmp/tfrec-<mode>]
+//   env: VW/VH viewport, WARM warm-up ticks, TAPS="frame:xfrac:yfrac,..." canvas clicks during recording
 //   then: ffmpeg -framerate 30 -i <outdir>/f%04d.png -c:v libx264 -preset slow -crf 22 \
 //           -pix_fmt yuv420p -movflags +faststart static/videos/<mode>.mp4
 //   and a poster: static/videos/<mode>.jpg; dims in static/videos/<mode>.json {"width","height"}.
@@ -32,7 +33,11 @@ await page.addInitScript(() => {
 await page.goto('https://textflow.sebland.com/' + mode + '/', { waitUntil: 'networkidle' });
 await page.addStyleTag({ content: 'nav,header,.nav,#nav,.fps,#fps,#version{display:none!important}' });
 for (let i = 0; i < +(process.env.WARM||150); i++) { await page.evaluate(() => window.__step(1)); await page.waitForTimeout(50); }
+// TAPS="frame:xfrac:yfrac,...": click the canvas at those recorded frames (e.g. knight arrows)
+const taps = new Map((process.env.TAPS || '').split(',').filter(Boolean).map(t => { const [f, x, y] = t.split(':'); return [+f, [+x, +y]]; }));
+const vw = +(process.env.VW || 640), vh = +(process.env.VH || 400);
 for (let f = 0; f < +N; f++) {
+  if (taps.has(f)) { const [x, y] = taps.get(f); await page.mouse.click(vw * x, vh * y); }
   await page.evaluate(s => window.__step(s), +STEP);
   await page.screenshot({ path: `${out}/f${String(f).padStart(4, '0')}.png` });
 }
