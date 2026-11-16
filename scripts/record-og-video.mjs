@@ -12,15 +12,17 @@
 // Viewport 640x400 @2x = 1280x800 output: big enough cells to read on a phone.
 // Needs a long warm-up (150 ticks) at 2x before GPU modes draw anything.
 import { createRequire } from 'module';
-import { mkdirSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
+import { sandboxed } from '/root/seb/scripts/lib/sebbrowser.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const [mode, N = 450, STEP = 3, out = '/tmp/tfrec-' + mode] = process.argv.slice(2);
 if (!mode) { console.error('usage: record-og-video.mjs <mode> [frames] [step] [outdir]'); process.exit(2); }
 mkdirSync(out, { recursive: true });
-const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined,
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-const page = await (await browser.newContext({ viewport: { width: 640, height: 400 }, deviceScaleFactor: 2 })).newPage();
+const want = chromium.executablePath();
+const bt = existsSync(want) ? chromium : { executablePath: () => '/root/.cache/ms-playwright/chromium-1255/chrome-linux-arm64/chrome' };
+const browser = await chromium.launch(sandboxed(bt, { args: ['--disable-dev-shm-usage', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }));
+const page = await (await browser.newContext({ viewport: { width: +(process.env.VW||640), height: +(process.env.VH||400) }, deviceScaleFactor: 2 })).newPage();
 await page.addInitScript(() => {
   let q = [], ts = 1000;
   window.requestAnimationFrame = cb => { q.push(cb); return q.length; };
@@ -29,7 +31,7 @@ await page.addInitScript(() => {
 });
 await page.goto('https://textflow.sebland.com/' + mode + '/', { waitUntil: 'networkidle' });
 await page.addStyleTag({ content: 'nav,header,.nav,#nav,.fps,#fps,#version{display:none!important}' });
-for (let i = 0; i < 150; i++) { await page.evaluate(() => window.__step(1)); await page.waitForTimeout(50); }
+for (let i = 0; i < +(process.env.WARM||150); i++) { await page.evaluate(() => window.__step(1)); await page.waitForTimeout(50); }
 for (let f = 0; f < +N; f++) {
   await page.evaluate(s => window.__step(s), +STEP);
   await page.screenshot({ path: `${out}/f${String(f).padStart(4, '0')}.png` });
