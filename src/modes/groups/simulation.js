@@ -213,3 +213,5 @@ import '../ulam.js';
 import '../yoheicoral.js';
 import '../lighthouse.js';
 import '../medusa.js';
+import '../xmastree.js';
+import '../carousel.js';
