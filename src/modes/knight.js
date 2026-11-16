@@ -124,10 +124,10 @@ export function buildKnight() {
 
   // ---- sword (planted) --------------------------------------------------------------
   var tip = swordPt(0), guard = swordPt(1.0), gripTop = swordPt(1.21);
-  mb.tube([tip, swordPt(0.2), swordPt(0.6), swordPt(0.98)], [0.004, 0.022, 0.028, 0.032],
-    { col: BLADE, mat: M_BLADE, group: 'sword', segs: 8, sx: 1, sz: 0.28, square: 0.35, cap: 0.3 });
+  mb.tube([tip, swordPt(0.2), swordPt(0.6), swordPt(0.98)], [0.006, 0.042, 0.05, 0.055],
+    { col: BLADE, mat: M_BLADE, group: 'sword', segs: 8, sx: 1, sz: 0.45, square: 0.35, cap: 0.3 });
   var gAx = norm3([0.45, 0, -1]);
-  mb.tube([add(guard, gAx, -0.19), add(guard, gAx, -0.06), add(guard, gAx, 0.06), add(guard, gAx, 0.19)], [0.016, 0.022, 0.022, 0.016],
+  mb.tube([add(guard, gAx, -0.19), add(guard, gAx, -0.06), add(guard, gAx, 0.06), add(guard, gAx, 0.19)], [0.022, 0.03, 0.03, 0.022],
     { col: GOLD, mat: M_GOLD, group: 'sword', segs: 8 });
   mb.ellipsoid(add(guard, gAx, -0.2), [0.024, 0.024, 0.024], null, { col: GOLD, mat: M_GOLD, group: 'sword', nu: 8, nv: 6 });
   mb.ellipsoid(add(guard, gAx, 0.2), [0.024, 0.024, 0.024], null, { col: GOLD, mat: M_GOLD, group: 'sword', nu: 8, nv: 6 });
@@ -186,7 +186,7 @@ function cloakFn(u, v, out) {
 // ---------------------------------------------------------------------------
 function buildField() {
   var poppies = [], i;
-  var n = state.isMobile ? 420 : 560;
+  var n = state.isMobile ? 420 : 400;
   for (i = 0; i < n; i++) {
     // denser near the knight, scattered across the whole field
     var r = 0.6 + Math.pow(hash1(i * 3.1 + 0.7), 1.3) * 9.5, a = hash1(i * 7.3 + 1.9) * TAU;
@@ -223,22 +223,24 @@ function initKnight() {
   if (state.FONT_SCALE !== want) { state.FONT_SCALE = want; resize(); }
   if (!s3) {
     s3 = new Scene3D();
-    s3.material(M_STEEL, { kd: 1.1, ks: 0.7, shin: 34, rim: 0.28, dark: [64, 80, 140], glowAt: 0.93, glow: 0.5, expo: 1.25, ramp: ' .:-=+*#%@' });
-    s3.material(M_MAIL, { kd: 0.85, ks: 0.35, shin: 12, rim: 0.4, dark: [20, 26, 60], ramp: ' .:;=+x%#' });
+    s3.material(M_STEEL, { kd: 1.15, ks: 0.8, shin: 30, rim: 0.4, dark: [70, 85, 160], glowAt: 0.95, glow: 0.45, expo: 1.7, ramp: ' .:-=+*#%@' });
+    s3.material(M_MAIL, { kd: 1.0, ks: 0.45, shin: 12, rim: 0.45, dark: [50, 60, 120], expo: 2.0, ramp: ' .:;=+x%#' });
     s3.material(M_CLOTH, { kd: 1.0, ks: 0.08, shin: 6, rim: 0.35, dark: [22, 20, 80], ramp: ' .:-=+*%#', glowAt: 2, expo: 1.8 });
     s3.material(M_LEATHER, { kd: 0.9, ks: 0.2, shin: 10, rim: 0.3, dark: [40, 14, 8] });
     s3.material(M_GOLD, { kd: 1.0, ks: 0.9, shin: 30, rim: 0.4, dark: [90, 40, 6], glowAt: 0.9, glow: 0.8 });
-    s3.material(M_BLADE, { kd: 1.0, ks: 1.3, shin: 46, rim: 0.45, dark: [40, 60, 120], glowAt: 0.85, glow: 0.9 });
+    s3.material(M_BLADE, { kd: 1.1, ks: 1.3, shin: 40, rim: 0.5, dark: [110, 130, 190], emit: 0.25, expo: 2.2, minLum: 0.3, glowAt: 0.9, glow: 0.8 });
     s3.material(M_VISOR, { kd: 0.15, ks: 0.1, rim: 0, dark: [0, 0, 0], minLum: 0.6 });
     s3.material(M_DUST, { kd: 0.5, ks: 0, rim: 0.5, emit: 0.55, dark: [80, 180, 255], glowAt: 0.6, glow: 0.8, ramp: ' .:*+' });
     s3.light.dir = norm3([-0.35, 0.62, 0.7]);
-    s3.light.amb = 0.16;
-    s3.light.fill = 0.16; s3.light.fillDir = norm3([0.8, 0.25, -0.2]);
+    s3.light.amb = 0.18;
+    s3.light.fill = 0.24; s3.light.fillDir = norm3([0.8, 0.25, -0.2]);
     s3.light.rimCol = [0.5, 0.66, 1];
     s3.bloom = 0.85;
+    s3.glowFill = 0;   // WebGL bloom does the halo; no glyphs in empty background cells
   }
   if (!K) K = buildKnight();
   G = layout();
+  G.grassK = 0.3 * Math.min(1, Math.sqrt(10000 / (G.w * G.h)), Math.sqrt(2600 / (G.w * G.h)) * 1.4);
   var f = buildField();
   G.poppies = f.poppies; G.stars = f.stars;
   if (!S || state.time < 0.05) {
@@ -275,6 +277,7 @@ function gustAt(x, t) {
 // render
 // ---------------------------------------------------------------------------
 var _o = [0, 0, 0, 0], _p = [0, 0, 0], _q = [0, 0, 0], _wv = { on: 0, band: 0 }, _tmp = [0, 0, 0];
+var CAM_YAW0 = -0.15;   // front three-quarter: sword column at his side, bowed helm, cloak + arrow behind (as reel 4)
 var MODEL = matYaw(new Float32Array(12), KNIGHT_YAW, 0, 0, 0);
 var GROW = new Float32Array(16);
 
@@ -311,7 +314,7 @@ function renderKnight() {
   // ---- camera -------------------------------------------------------------------
   var cam = {
     target: [0.0, 0.76, 0], dist: G.dist, fov: G.fov,
-    yaw: 0.3 + 0.14 * Math.sin(t * 0.16) + S.yawOff, pitch: -0.035 + 0.015 * Math.sin(t * 0.11) + S.pitchOff,
+    yaw: CAM_YAW0 + 0.14 * Math.sin(t * 0.16) + S.yawOff, pitch: -0.035 + 0.015 * Math.sin(t * 0.11) + S.pitchOff,
     shiftX: 0, shiftY: G.shiftY,
   };
   s3.begin(cam);
@@ -511,7 +514,7 @@ function drops(t, dt, path) {
 function drawArrow(t) {
   var w = woundLocal();
   var dir = norm3([-0.45, 0.65, -0.35]);
-  var tail = add(w, dir, 0.62);
+  var tail = add(w, dir, 0.44);
   var a0 = xformPoint(MODEL, add(w, dir, -0.02), [0, 0, 0]), a1 = xformPoint(MODEL, tail, [0, 0, 0]);
   s3.lineWorld(a0[0], a0[1], a0[2], a1[0], a1[1], a1[2], 236, 150, 62, 1, 0.25);
   // a second pass slightly offset so the shaft reads as two cells wide when close
@@ -626,7 +629,9 @@ function drawGround(t, W, H, path) {
       // grass: one blade per ~4 cm cell of the field, leaning with breeze + gusts
       var gxw = Math.floor(wx / 0.045), gzw = Math.floor(wz / 0.045);
       var h = hash2(gxw + ix * 0.37, gzw + iy * 0.61);
-      var dens = 0.66 + 0.24 * Math.sin(wx * 1.3 + wz * 0.7) * Math.sin(wz * 1.9 - wx * 0.4);
+      // sparse field: ~1 blade in 3 cells on a phone, fewer on big screens, dark gaps between tufts
+      var dens = G.grassK * (0.85 + 0.6 * Math.sin(wx * 1.3 + wz * 0.7) * Math.sin(wz * 1.9 - wx * 0.4));
+      if (dist > 14) dens *= 0.45;
       if (solid) {   // blades in front of his knee/boot/cloak hem
         if (h > 0.45) continue;
         dens = 1;
