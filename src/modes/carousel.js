@@ -15,8 +15,9 @@ import { resize } from '../core/canvas.js';
 //   "run": it spins up, the horses gallop up and down, the bulbs chase and
 //   fireworks go off.
 // Drag sideways: push the carousel round (it coasts back to cruising speed).
-// Drag up/down: tilt the camera. Tap the sky: a firework there. Tap the
-// carousel: replay the build.
+// Drag up/down: tilt the camera. Tap the sky: a firework there. Tap a horse:
+// it spins up fast (then coasts back) with a sparkle burst. Tap the rest of
+// the ride: a shower of coloured bulbs and stars falls from the canopy edge.
 
 var MODE = 'carousel';
 var TAU = Math.PI * 2;
@@ -35,7 +36,7 @@ var STAGE = {
 };
 var BUILD_END = 9.4;
 
-var K_SKY = 1, K_RIDE = 2;
+var K_SKY = 1, K_RIDE = 2, K_HORSE = 3;
 
 var PY0 = -0.95;         // platform top
 var PR = 1.3;            // platform radius
@@ -259,7 +260,7 @@ function initCarousel() {
   M = buildLayout();
   if (!S) {
     S = { lastT: state.time, t: 0, tb: 0, ang: 0, omega: 0.3, push: 0, tilt: 0.13,
-      dragging: false, lastGx: 0, lastGy: 0, hintT: 0, fw: [], nextFw: 1.5 };
+      dragging: false, lastGx: 0, lastGy: 0, hintT: 0, fw: [], nextFw: 1.5, bits: [] };
   }
 }
 
@@ -442,7 +443,7 @@ function layerHorses() {
       // glossy paint
       var rz = 2 * (RX * LX + p[4] * LY + RZ * LZ) * RZ - LZ;
       var sp = 230 * Math.pow(clamp(rz, 0, 1), 14);
-      putSolid(px, y, pz, p[6] * sh + sp, p[7] * sh + sp, p[8] * sh + sp, K_RIDE);
+      putSolid(px, y, pz, p[6] * sh + sp, p[7] * sh + sp, p[8] * sh + sp, K_HORSE);
     }
   }
 }
@@ -520,6 +521,20 @@ function layerFireworks(t, dt) {
   }
 }
 
+// sparkle bursts and falling bulbs from taps on the ride
+function layerBits(dt) {
+  for (var i = S.bits.length - 1; i >= 0; i--) {
+    var p = S.bits[i];
+    if (p.delay > 0) { p.delay -= dt; continue; }
+    p.life -= dt;
+    if (p.life <= 0) { S.bits.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy -= p.g * dt;
+    var b = Math.min(1, p.life / p.max * 1.8);
+    skyGlow(p.x, p.y, p.z, p.c[0] * b * 1.4, p.c[1] * b * 1.4, p.c[2] * b * 1.4, 0.25);
+  }
+}
+
 // ---------------------------------------------------------------- compose
 function compose(t) {
   var W = M.w, H = M.h;
@@ -567,16 +582,41 @@ function handleInput(dt) {
   if (pointer.clicked) {
     pointer.clicked = false;
     S.hintT = 99;
-    var cx = Math.floor(pointer.gx), cy = Math.floor(pointer.gy), hit = false;
-    for (var dy = -1; dy <= 1 && !hit; dy++) {
+    var cx = Math.floor(pointer.gx), cy = Math.floor(pointer.gy), hit = false, horse = false;
+    for (var dy = -1; dy <= 1; dy++) {
       for (var dx = -1; dx <= 1; dx++) {
         var x = cx + dx, y = cy + dy;
         if (x < 0 || y < 0 || x >= M.w || y >= M.h) continue;
-        if (M.kind[y * M.w + x] === K_RIDE) { hit = true; break; }
+        var kd = M.kind[y * M.w + x];
+        if (kd === K_HORSE) horse = true;
+        if (kd === K_RIDE || kd === K_HORSE) hit = true;
       }
     }
     if (hit) {
-      S.tb = 0; S.fw = []; S.omega = 0.3; S.push = 0;
+      var bz = horse ? 1.3 : 0.4, bp = CAMD / (CAMD - bz);
+      var bx = (pointer.gx * M.cw - M.OX) / (M.SC * bp);
+      var by = -(pointer.gy * M.ch - M.OY) / (M.SC * bp);
+      var cols = [PINK, CYAN, GOLD, LIME, VIOLET, ORANGE, WHITE, RED, MINT];
+      if (horse) {
+        // spin up hard; the cruise easing in render brings it back down
+        var dir = S.omega < 0 ? -1 : 1;
+        S.omega = dir * Math.min(6.5, Math.abs(S.omega) + 4.5);
+        S.push = 0;
+        for (var i = 0; i < 28; i++) {
+          var an = Math.random() * TAU, v = 0.3 + Math.random() * 0.6;
+          S.bits.push({ x: bx, y: by, z: bz, vx: Math.cos(an) * v, vy: Math.sin(an) * v + 0.2, g: 1.2,
+            c: cols[(Math.random() * cols.length) | 0], life: 0.6 + Math.random() * 0.5, max: 1.1 });
+        }
+      } else {
+        // shower of bulbs and stars from the canopy rim, around the tap
+        for (var j = 0; j < 36; j++) {
+          var sx = clamp(bx + (Math.random() - 0.5) * 1.4, -CR * 0.95, CR * 0.95);
+          var zr = Math.sqrt(CR * CR - sx * sx);
+          S.bits.push({ x: sx, y: CY0 * CT - zr * ST, z: CY0 * ST + zr * CT, vx: (Math.random() - 0.5) * 0.3,
+            vy: -Math.random() * 0.3, g: 2.4, c: cols[(Math.random() * cols.length) | 0],
+            life: 1.2 + Math.random() * 0.9 - Math.random() * 0.0, max: 1.5, delay: Math.random() * 0.5 });
+        }
+      }
     } else {
       // firework in the sky at the tap, a little behind the carousel
       var z1 = -1.5, p = CAMD / (CAMD - z1);
@@ -632,6 +672,7 @@ function renderCarousel() {
   layerFlag(t);
   layerBulbs(t);
   layerFireworks(t, dt);
+  layerBits(dt);
   resolveGlow();
   compose(t);
 
@@ -640,8 +681,8 @@ function renderCarousel() {
   var built = Math.round(clamp(S.tb / BUILD_END, 0, 1) * 100);
   drawText('turn ' + deg.toFixed(1) + 'deg  rpm ' + rpm.toFixed(1) + '  built ' + built + '%', 1, M.h - 1, CYAN, 0.9);
   if (S.hintT < 9) {
-    var hint = state.isMobile ? 'drag: spin+tilt  tap sky: firework  tap ride: rebuild'
-      : 'drag: spin + tilt · click sky: firework · click carousel: rebuild';
+    var hint = state.isMobile ? 'drag: spin+tilt  tap sky: firework  tap horse: spin  tap ride: shower'
+      : 'drag: spin + tilt · click sky: firework · click horse: spin · click ride: shower';
     if (hint.length > M.w - 2) hint = 'drag: spin · tap sky/ride';
     drawText(hint, Math.max(1, ((M.w - hint.length) / 2) | 0), M.h - 2, PINK, 0.85);
   }

@@ -13,7 +13,7 @@ import { resize } from '../core/canvas.js';
 //   ground -> tree (white swirl climbs it, tip flashes) -> ornaments pop one by
 //   one -> bulb string switches on from the bottom -> star -> hearts -> gifts
 //   rise out of the snow -> snow -> "run": the bulbs chase.
-// Tap the tree: hang an ornament there. Tap anywhere else: replay the build.
+// Tap the tree: hang an ornament there. Tap anywhere else: sparkles and a present drops to the snow.
 // Drag: wind that blows the snow.
 
 var MODE = 'xmastree';
@@ -236,7 +236,7 @@ function initXmas() {
   M = buildLayout();
   if (!S) {
     S = { lastT: state.time, t: 0, tb: 0, wind: 0, wx: 0, extra: [], lastGx: -1, lastGy: -1,
-      dragging: false, hintT: 0, nextCol: 0, sparks: [] };
+      dragging: false, hintT: 0, nextCol: 0, sparks: [], drops: [] };
   }
 }
 
@@ -562,6 +562,64 @@ function layerGifts() {
   }
 }
 
+// presents dropped by tapping the sky: fall, land on the snow, stay
+var DROP_BODY = [[255, 70, 70], [255, 205, 60], [70, 210, 255], [255, 110, 190], [150, 255, 120], [190, 130, 255], [255, 150, 50]];
+var DROP_RIB = [[255, 255, 255], [255, 215, 80], [255, 60, 60], [40, 90, 255], [255, 255, 255]];
+function makeDrop(x, y, z) {
+  var bi = (Math.random() * DROP_BODY.length) | 0, body = DROP_BODY[bi];
+  var rib = DROP_RIB[(Math.random() * DROP_RIB.length) | 0];
+  if (rib === body || (rib[0] === body[0] && rib[1] === body[1])) rib = [255, 255, 255];
+  var w = (0.2 + Math.random() * 0.2) * 0.85, hh = (0.16 + Math.random() * 0.2) * 0.85, d = (0.2 + Math.random() * 0.15) * 0.85;
+  var NRM = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
+  var pts = [], i;
+  for (i = 0; i < 320; i++) {
+    var f = (Math.random() * 5) | 0, p = Math.random() - 0.5, q = Math.random() - 0.5, loc;
+    if (f === 0) loc = [p * w, hh, q * d];
+    else if (f === 1) loc = [w / 2, (p + 0.5) * hh, q * d];
+    else if (f === 2) loc = [-w / 2, (p + 0.5) * hh, q * d];
+    else if (f === 3) loc = [p * w, (q + 0.5) * hh, d / 2];
+    else loc = [p * w, (q + 0.5) * hh, -d / 2];
+    var isRib = Math.abs(loc[0]) < w * 0.09 || Math.abs(loc[2]) < d * 0.09;
+    pts.push([loc[0], loc[1], loc[2], NRM[f], isRib ? rib : body]);
+  }
+  for (i = 0; i < 40; i++) {
+    var kk = i / 40 * TAU, sg = Math.sign(Math.sin(kk)) || 1;
+    pts.push([0.07 * Math.cos(kk) * sg + 0.06 * sg, hh + 0.05 + 0.04 * Math.sin(2 * kk), 0, NRM[0], rib]);
+  }
+  return { x: x, y: y, z: z, vy: 0, a: Math.random() * TAU, pts: pts, rest: false };
+}
+
+function layerDrops(dt) {
+  for (var k = 0; k < S.drops.length; k++) {
+    var D = S.drops[k];
+    if (!D.rest) {
+      D.vy -= 4.5 * dt; D.y += D.vy * dt;
+      if (D.y <= -1) {
+        D.y = -1;
+        if (D.vy < -0.8) { D.vy = -D.vy * 0.28; } else { D.vy = 0; D.rest = true; }
+        for (var q = 0; q < 6; q++) {
+          var a = Math.random() * TAU;
+          spin(D.x, D.z);
+          S.sparks.push({ x: RX, y: -0.95, z: RZ, vx: Math.cos(a) * 0.4, vy: 0.3 + Math.random() * 0.3, vz: 0.1,
+            c: [220, 235, 255], life: 0.4, max: 0.5 });
+        }
+      }
+    }
+    var c = Math.cos(D.a), sn = Math.sin(D.a);
+    for (var i = 0; i < D.pts.length; i++) {
+      var e = D.pts[i];
+      var x = e[0] * c + e[2] * sn + D.x, y = e[1] + D.y, z = -e[0] * sn + e[2] * c + D.z;
+      var n = e[3];
+      var nx = n[0] * c + n[2] * sn, nz = -n[0] * sn + n[2] * c;
+      spin(x, z);
+      var px = RX, pz = RZ;
+      var nnx = nx * CA + nz * SA, nnz = -nx * SA + nz * CA;
+      var sh = 0.55 + 0.5 * lambert(nnx, n[1], nnz);
+      putSolid(px, y, pz, e[4][0] * sh, e[4][1] * sh, e[4][2] * sh, K_GIFT, -1);
+    }
+  }
+}
+
 function layerSnow(t, dt) {
   var n = Math.floor(grown('snow') * G.ns * 0.6);
   if (n === 0) return;
@@ -667,8 +725,21 @@ function handleInput(dt) {
       }
     }
     if (hit === -1) {
-      // replay the build
-      S.tb = 0; S.extra = []; S.sparks = [];
+      // tap off the tree: sparkle burst + a present dropped from the tap point
+      var dz = 0.9 + (Math.random() - 0.5) * 0.4;
+      var u = (M.OY - (cy + 0.5) * M.ch) / M.SC;
+      var yy = (u * (CAMD - dz * CT) + dz * ST * CAMD) / (CT * CAMD + u * ST);
+      var z1 = yy * ST + dz * CT, pp = CAMD / (CAMD - z1);
+      var xx = ((cx + 0.5) * M.cw - M.OX) / (M.SC * pp);
+      var sc = [RED, GOLD, SILVER, PINK, CYAN, VIOLET];
+      for (var s2 = 0; s2 < 26; s2++) {
+        var a2 = Math.random() * TAU, v2 = 0.3 + Math.random() * 0.7;
+        S.sparks.push({ x: xx, y: yy, z: dz, vx: Math.cos(a2) * v2, vy: Math.sin(a2) * v2 + 0.2, vz: 0.2,
+          c: sc[(Math.random() * sc.length) | 0], life: 0.6 + Math.random() * 0.5, max: 1.1 });
+      }
+      // camera space -> world (undo the spin) so the gift turns with the scene
+      S.drops.push(makeDrop(xx * CA - dz * SA, Math.max(yy, -0.3), xx * SA + dz * CA));
+      if (S.drops.length > 12) S.drops.shift();
     } else {
       var id = hit >= 0 ? hit : (Math.random() * G.nt) | 0;
       var tx = G.tx[id], ty = G.ty[id], tz = G.tz[id];
@@ -731,6 +802,7 @@ function renderXmas() {
   layerStar(t);
   layerHearts(t);
   layerGifts();
+  layerDrops(dt);
   layerSnow(t, dt);
   layerSparks(dt);
   resolveGlow();
@@ -742,8 +814,8 @@ function renderXmas() {
   var built = Math.round(clamp(S.tb / BUILD_END, 0, 1) * 100);
   drawText('spin ' + deg + 'deg  built ' + built + '%', 1, M.h - 1, CYAN, 0.9);
   if (S.hintT < 9) {
-    var hint = state.isMobile ? 'tap tree: ornament  tap sky: rebuild  drag: wind'
-      : 'click tree: hang ornament · click sky: rebuild · drag: wind';
+    var hint = state.isMobile ? 'tap tree: ornament  tap sky: present  drag: wind'
+      : 'click tree: hang ornament · click sky: present · drag: wind';
     if (hint.length > M.w - 2) hint = 'tap tree/sky · drag: wind';
     drawText(hint, Math.max(1, ((M.w - hint.length) / 2) | 0), M.h - 2, PINK, 0.85);
   }
