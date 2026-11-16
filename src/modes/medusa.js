@@ -5,27 +5,40 @@ import { state } from '../core/state.js';
 import { resize } from '../core/canvas.js';
 
 // medusa: a 3D point-cloud jellyfish projected onto the character grid with
-// a per-cell z-buffer, after dwcminh.ascii's "ASCII Jellyfish" reel.
-//   bell      : a scalloped dome shell sampled in (u down the dome, theta round
-//               it), lit from the upper left, glyph density by brightness, the
-//               silhouette re-stroked with / \ | _ - from the mask gradient
-//   oral arms : four twisting ribbons of random text, edged with | / \
-//   tentacles : fourteen 4-strand ribbons drawn with slash glyphs picked from
-//               the projected stroke angle, waves lagging behind each pulse
+// a per-cell z-buffer, ported from dwcminh.ascii's jellyfish.py reel.
+//   bell      : bell_shape/bell_pose. A rounded dome (u down from the crown,
+//               theta round it) painted with PETALS radial stripes and a
+//               scalloped LAPPETS rim. squeeze(t) is a swim stroke: it starts
+//               at the crown and reaches the rim RIM_LAG later; it pulls the
+//               rim in (tuck) and stretches the dome taller, then the bell
+//               relaxes past rest and flares wide before settling.
+//   oral arms : arm(): four frilly twisted ribbons, trailing the squeeze by
+//               ARM_LAG per unit down the arm, pale at the ribbon edges
+//   tentacles : tentacle(): thin strands from the rim, trailing by TENT_LAG
+//   carry     : every part is placed relative to where the body WAS at its
+//               own lagged time, so arms and tentacles trail each stroke
 //   colour    : every beat sends a wave from the crown to the tentacle tips;
-//               the wave front is white-hot and behind it the animal wears the
-//               next palette (every second beat, and on every tap)
+//               the front is white-hot and behind it the next palette
+//   glints    : a ring of sparkles leaves the rim after every stroke
+//   intro     : scattered dots assemble into the bell, then the arms unfurl
+//               and the tentacles drop
 // Tap: pulse + colour wave + a burst of sparks. Drag: it swims after you.
 
 var MODE = 'medusa';
 var TAU = Math.PI * 2;
 
-var N_TENT = 14, N_STRAND = 4, TENT_SEG = 96;
-var N_ARMS = 4, ARM_S = 64, ARM_W = 9;
-var NU = 64, NTH = 196;
-var BELL_H = 0.92, A1 = 1.48;
-var LAPPETS = 16;
-var BEAT_EVERY = 3.3, WAVE_SPEED = 0.62;
+var BELL_R = 1.0, BELL_H = 1.2, CURL = 1.68, FLARE = 0.10;
+var LAPPETS = 16, PETALS = 6;
+var RIM_LAG = 0.20, ARM_LAG = 0.55, TENT_LAG = 0.30;
+var RIM_R = BELL_R * Math.pow(Math.sin(CURL), 0.9) * (1 + FLARE);
+var SPIN = 0.16;
+var N_TENT = 14, N_STRAND = 2, TENT_SEG = 110, TENT_LEN = 3.1, TENT_DROP = 1.4;
+var N_ARMS = 4, ARM_S = 72, ARM_W = 9, ARM_LEN = 2.15, ARM_WIDE = 0.36;
+var NU = 70, NTH = 200;
+var PERIOD = 2.3, WAVE_SPEED = 0.78;
+var T_SWIM = 2.3, T_ARMS0 = 1.5, T_ARMS1 = 3.3, T_TENT0 = 1.9, T_TENT1 = 3.3;
+var GLINT_LIFE = 1.9, N_GLINTS = 16;
+var HDT = 1 / 40, HN = 160;   // pose history: 4 s at 40 Hz
 
 var BELL_HI = '#%&8B$@0Q#%8B$&@';
 var BELL_MID = 'xrtjz{}[]<>uoneavc=+?';
@@ -33,17 +46,18 @@ var BELL_LO = ':;1il!|;:i1';
 var BELL_FAINT = ".:',`-";
 var ARM_CH = 'abcdeghjklmnoprstuvwxyz0123456789$%&#@?{}[]<>=+*~^';
 
-// [bell, oral arms, tentacles]
+// inks: [bell, petal, inside, arms, tentacles]; cooler + louder than the reel
+var I_BELL = 0, I_PETAL = 1, I_IN = 2, I_ARM = 3, I_TENT = 4;
 var PALETTES = [
-  [[40, 220, 255], [255, 60, 200], [90, 200, 255]],    // electric cyan, hot pink core
-  [[170, 90, 255], [255, 80, 230], [150, 120, 255]],    // bright violet
-  [[30, 255, 210], [255, 110, 150], [60, 235, 255]],    // aqua, coral core
-  [[60, 140, 255], [255, 70, 255], [110, 170, 255]],    // electric blue, magenta
-  [[255, 70, 190], [255, 210, 90], [255, 110, 220]],    // hot pink, gold core
-  [[150, 255, 90], [255, 160, 40], [90, 255, 200]],     // lime, amber core
+  [[30, 90, 255], [215, 235, 255], [120, 70, 255], [165, 105, 255], [130, 185, 255]],   // blue / white
+  [[0, 215, 240], [255, 50, 200], [150, 60, 255], [255, 85, 215], [70, 225, 255]],      // cyan / pink / purple
+  [[255, 40, 185], [255, 235, 40], [165, 50, 255], [20, 230, 255], [255, 110, 215]],    // magenta / yellow, cyan arms
+  [[20, 235, 120], [230, 255, 50], [0, 185, 235], [255, 145, 20], [100, 255, 195]],     // green / lime, orange arms
+  [[140, 60, 255], [40, 245, 255], [255, 50, 190], [120, 255, 120], [185, 135, 255]],   // violet / aqua
+  [[0, 130, 255], [255, 95, 40], [0, 220, 220], [255, 230, 60], [110, 200, 255]],       // electric blue / tangerine
 ];
 
-var K_NONE = 0, K_BELL = 1, K_RIM = 2, K_ARM = 3, K_ARME = 4, K_TENT = 5, K_BG = 6, K_SPARK = 7;
+var K_NONE = 0, K_BELL = 1, K_RIM = 2, K_ARM = 3, K_ARME = 4, K_TENT = 5, K_BG = 6, K_SPARK = 7, K_DOT = 8;
 
 var M = null;     // geometry tables + buffers (rebuilt on resize)
 var S = null;     // simulation state (survives resize)
@@ -63,42 +77,54 @@ function buildTables() {
     way: new Float32Array(n), ink: new Uint8Array(n), dep: new Float32Array(n),
     gch: new Uint16Array(n), edge: new Uint8Array(n),
   };
-  // bell parameter table
+  // bell_shape(u, th): the part of the bell that never changes
   var nb = NU * NTH;
   m.bWide = new Float32Array(nb); m.bTall = new Float32Array(nb);
-  m.bU = new Float32Array(nb); m.bTh = new Float32Array(nb);
-  m.bSa = new Float32Array(nb); m.bCa = new Float32Array(nb); m.bSeed = new Float32Array(nb);
-  var sA1 = Math.pow(Math.sin(A1), 0.9), cA1 = Math.cos(A1);
+  m.bTh = new Float32Array(nb); m.bPet = new Uint8Array(nb);
+  m.bSeed = new Float32Array(nb); m.bSx = new Float32Array(nb); m.bSy = new Float32Array(nb);
+  m.uU = new Float32Array(NU); m.uFlare = new Float32Array(NU); m.uTuck = new Float32Array(NU);
+  m.uSa = new Float32Array(NU); m.uCa = new Float32Array(NU);
+  var cC = Math.cos(CURL);
+  var pw = W * m.cw, ph = H * m.ch;
   for (var i = 0; i < NU; i++) {
-    var u = i / (NU - 1), a = u * A1;
-    var wide = Math.pow(Math.sin(a), 0.9) / sA1;
-    var tall = BELL_H * (Math.cos(a) - cA1) / (1 - cA1);
+    var u = i / (NU - 1), a = u * CURL;
+    m.uU[i] = u; m.uFlare[i] = FLARE * Math.pow(u, 8); m.uTuck[i] = 0.34 * Math.pow(u, 1.6);
+    m.uSa[i] = Math.sin(a); m.uCa[i] = Math.cos(a);
+    var wide0 = BELL_R * Math.pow(Math.sin(a), 0.9);
+    var tall = BELL_H * (Math.cos(a) - cC) / (1 - cC);
+    // the petals: wedges from just under the crown, fading out above the rim band
+    var pLo = 0.07, pHi = 0.84;
     for (var j = 0; j < NTH; j++) {
       var k = i * NTH + j;
-      // stagger alternate rings so the samples don't line up in columns
-      var th = (j + (i & 1) * 0.5) / NTH * TAU;
-      m.bU[k] = u; m.bTh[k] = th; m.bWide[k] = wide; m.bTall[k] = tall;
-      m.bSa[k] = Math.sin(a); m.bCa[k] = Math.cos(a);
+      var th = (j + (i & 1) * 0.5) / NTH * TAU;   // stagger rings so samples don't stack in columns
+      m.bTh[k] = th;
+      m.bWide[k] = wide0 * (1 + 0.06 * Math.pow(u, 6) * Math.cos(LAPPETS * th));
+      m.bTall[k] = tall;
+      var pc = Math.cos(PETALS * th + 0.12 * u);   // radial wedges, a slight swirl down the dome
+      var inPetal = pc > -0.05 && u > pLo && u < pHi;
+      if (u <= pLo) inPetal = true;                // a pale cap on the crown, as in the reel
+      m.bPet[k] = inPetal ? 1 : 0;
       m.bSeed[k] = hash(k * 1.7 + 3.1);
+      m.bSx[k] = hash(k * 0.37 + 11.3) * pw;
+      m.bSy[k] = hash(k * 0.91 + 5.7) * ph * 0.75;
     }
   }
   // tentacle constants
-  m.tTh = new Float32Array(N_TENT); m.tLen = new Float32Array(N_TENT); m.tPh = new Float32Array(N_TENT);
+  m.tTh = new Float32Array(N_TENT); m.tPh = new Float32Array(N_TENT); m.tT0 = new Float32Array(N_TENT);
   for (var t = 0; t < N_TENT; t++) {
-    m.tTh[t] = (t + 0.5) / N_TENT * TAU + (hash(t + 9) - 0.5) * 0.25;
-    m.tLen[t] = 3.0 + 0.9 * hash(t * 3.3 + 1);
+    m.tTh[t] = (t + 0.5) / N_TENT * TAU + (hash(t + 9) - 0.5) * 0.2;
     m.tPh[t] = hash(t * 7.7 + 2) * TAU;
+    // TENT_T0: they drop one after another, in a shuffled order round the rim
+    m.tT0[t] = T_TENT0 + (T_TENT1 - T_TENT0) * ((t * 5) % N_TENT) / (N_TENT - 1);
   }
-  // projected scratch for stroke direction (one row of previous positions)
   m.prevX = new Float32Array(Math.max(N_STRAND, ARM_W));
   m.prevY = new Float32Array(Math.max(N_STRAND, ARM_W));
-  // layout: animal spans -0.92R (crown) .. ~+3.35R (tentacle tips)
-  var pw = W * m.cw, ph = H * m.ch;
-  var frac = state.isMobile || pw < 700 ? 0.74 : 0.84;
-  m.R = Math.min(frac * ph / 4.8, 0.36 * pw);
+  // layout: crown at about -1.15R (stretched), tentacle tips at about +3.2R
+  var frac = state.isMobile || pw < 700 ? 0.80 : 0.86;
+  m.R = Math.min(frac * ph / 4.8, 0.33 * pw);
   m.homeX = pw * 0.5;
-  m.homeY = (ph - 4.8 * m.R) * 0.5 + 0.95 * m.R;
-  m.strandGap = 1.05 * m.cw / m.R;  // ~1 column between strands, in R units
+  m.homeY = (ph - 4.8 * m.R) * 0.5 + 1.55 * m.R;
+  m.strandGap = 1.0 * m.cw / m.R;
   // background
   var ns = Math.round(W * H / 26);
   m.stars = [];
@@ -107,14 +133,13 @@ function buildTables() {
       c: Math.random() < 0.22 ? '+' : '.', p: Math.random() * TAU, a: 0.18 + Math.random() * 0.3 });
   }
   m.minis = [];
-  var nm = 3;
-  for (var q = 0; q < nm; q++) {
+  for (var q = 0; q < 3; q++) {
     m.minis.push({
       x: q === 1 ? W * 0.86 : W * (0.06 + 0.06 * q),
       y: q === 2 ? H * 0.82 : H * (0.25 + 0.4 * Math.random()),
       vy: -(0.25 + Math.random() * 0.3), vx: (Math.random() - 0.5) * 0.3,
       ph: Math.random() * TAU,
-      col: [[120, 150, 230], [230, 120, 150], [150, 120, 230]][q % 3],
+      col: [[90, 150, 255], [255, 90, 190], [150, 100, 255]][q % 3],
     });
   }
   return m;
@@ -129,14 +154,17 @@ function initMedusa() {
   if (!S || state.time < 0.05) {
     S = {
       lastT: state.time, t: 0,
-      x: M.homeX, y: M.homeY, vx: 0, vy: 0, svx: 0, svy: 0, roll: 0,
-      beats: [-99, -99, -99], nBeats: 0, nextBeat: 0.7,
+      x: M.homeX, y: M.homeY, vx: 0, vy: 0, svx: 0, roll: 0,
+      beats: [-99, -99, -99], nBeats: 0, nextBeat: T_SWIM,
       pal: 0, wave: null, colours: 0,
-      sparks: [], nSparks: 0, swimT: -99,
+      sparks: [], nSparks: 0, swimT: -99, rings: [],
+      hx: new Float32Array(HN), hy: new Float32Array(HN), hr: new Float32Array(HN),
+      hHead: 0, hCount: 0, hT: 0,
     };
   } else {
     S.x = Math.min(Math.max(S.x, 0), M.w * M.cw);
     S.y = Math.min(Math.max(S.y, 0), M.h * M.ch);
+    S.hCount = 0;
   }
 }
 
@@ -148,25 +176,31 @@ function cleanupMedusa() {
   M = null; S = null;
 }
 
-function pulseShape(p) {
-  if (p < 0) return 0;
-  if (p < 0.3) { var k = p / 0.3; return k * k * (3 - 2 * k); }
-  return Math.exp(-(p - 0.3) * 2.3);
+// one stroke, by time since the beat: a quick contraction (the bell narrows
+// and stretches), then a damped recoil that swings past rest (negative =
+// the bell relaxes wide and flat) before settling
+function stroke(a) {
+  if (a <= 0) return 0;
+  if (a < 0.36) { var k = a / 0.36; return k * k * (3 - 2 * k); }
+  var r = a - 0.36;
+  if (r > 3.2) return 0;
+  return Math.exp(-1.5 * r) * Math.cos(4.3 * r);
 }
 function squeeze(td) {
   var b = S.beats, v = 0;
-  for (var i = 0; i < 3; i++) { var q = pulseShape(td - b[i]); if (q > v) v = q; }
-  return v;
+  for (var i = 0; i < 3; i++) v += stroke(td - b[i]);
+  return v < -0.6 ? -0.6 : v > 1.15 ? 1.15 : v;
 }
 
 function beat(changeColour) {
   S.beats[0] = S.beats[1]; S.beats[1] = S.beats[2]; S.beats[2] = S.t;
   S.nBeats++;
-  S.vy -= 0.55 * M.R;  // the stroke pushes it up
   if (S.wave) S.pal = S.wave.nw;
   var nw = changeColour ? (S.pal + 1) % PALETTES.length : S.pal;
   if (changeColour) S.colours++;
-  S.wave = { t0: S.t, old: S.pal, nw: nw };
+  S.wave = { t0: S.t, old: S.pal, nw: nw, change: changeColour };
+  S.rings.push({ t0: S.t + 0.30, seed: S.nBeats * 13.7 });
+  if (S.rings.length > 4) S.rings.shift();
 }
 
 function spawnSparks(cx, cy, n, speed, col) {
@@ -182,15 +216,32 @@ function spawnSparks(cx, cy, n, speed, col) {
 // ---- splat helpers ------------------------------------------------------
 var CW = 0, CH = 0, GW = 0, GH = 0;
 var pX = 0, pY = 0, pZ = 0;
-var cosP = 1, sinP = 0, cosR = 1, sinR = 0, OX = 0, OY = 0, SC = 1;
+var cosP = 1, sinP = 0, cosR = 1, sinR = 0, cosY = 1, sinY = 0, OX = 0, OY = 0, SC = 1;
+var PERSP = 0.2;
+
+// carry(): pose the body as it was at time td (pose history, 40 Hz)
+function carry(back) {
+  var f = back / HDT;
+  if (f < 0) f = 0;
+  var maxB = S.hCount - 1;
+  if (maxB < 1) { OX = S.x; OY = S.y; cosR = Math.cos(S.roll); sinR = Math.sin(S.roll); return; }
+  if (f > maxB - 1) f = maxB - 1;
+  var i0 = f | 0, fr = f - i0;
+  var a = (S.hHead - i0 + HN) % HN, b = (S.hHead - i0 - 1 + HN) % HN;
+  OX = S.hx[a] + (S.hx[b] - S.hx[a]) * fr;
+  OY = S.hy[a] + (S.hy[b] - S.hy[a]) * fr;
+  var rl = S.hr[a] + (S.hr[b] - S.hr[a]) * fr;
+  cosR = Math.cos(rl); sinR = Math.sin(rl);
+}
 
 // model (R units, y down, z toward viewer) -> screen px in pX,pY and depth pZ
-function project(x, y, z) {
+function project(x0, y, z0) {
+  var x = x0 * cosY + z0 * sinY, z = z0 * cosY - x0 * sinY;   // camera yaw
   var y1 = y * cosP - z * sinP;
   var z1 = y * sinP + z * cosP;
   var x2 = x * cosR - y1 * sinR;
   var y2 = x * sinR + y1 * cosR;
-  var persp = 1 / (1 - 0.1 * z1);
+  var persp = 1 / (1 - PERSP * z1);
   pX = OX + SC * x2 * persp;
   pY = OY + SC * y2 * persp;
   pZ = z1;
@@ -213,7 +264,7 @@ function strokeChar(dx, dy, flat) {
   return (dx * dy > 0) ? 92 : 47;          // \ or /
 }
 
-var LX = -0.75, LY = -0.5, LZ = 0.45;
+var LX = -0.7, LY = -0.6, LZ = 0.5;
 (function () { var l = Math.hypot(LX, LY, LZ); LX /= l; LY /= l; LZ /= l; })();
 
 function renderMedusa() {
@@ -228,168 +279,191 @@ function renderMedusa() {
   if (dt > 0.05) dt = 0.05;
   S.t += dt;
   var t = S.t, R = M.R;
+  // stroke phase for the screenshot harness (seconds since the last beat)
+  if (typeof window !== 'undefined') { window.__medusaPhase = S.nBeats ? t - S.beats[2] : -1; window.__medusaBeats = S.nBeats; }
 
   // ---- input -------------------------------------------------------------
   if (pointer.clicked && state.currentMode === MODE) {
     pointer.clicked = false;
     beat(true);
-    S.nextBeat = t + BEAT_EVERY;
+    S.nextBeat = t + PERIOD;
     var pal = PALETTES[S.wave.nw];
-    spawnSparks(pointer.gx, pointer.gy, 46, 16, pal[0]);
-    spawnSparks(pointer.gx, pointer.gy, 14, 9, pal[1]);
+    spawnSparks(pointer.gx, pointer.gy, 46, 16, pal[I_PETAL]);
+    spawnSparks(pointer.gx, pointer.gy, 14, 9, pal[I_ARM]);
   } else if (pointer.down && state.currentMode === MODE) {
-    // swim toward the finger: bell centre follows, beats come faster
+    // swim toward the finger: bell follows, strokes come faster
     var tx = pointer.gx * M.cw, ty = pointer.gy * M.ch + 0.45 * R;
     S.vx += (tx - S.x) * 2.6 * dt;
     S.vy += (ty - S.y) * 2.6 * dt;
     S.swimT = t;
-    if (S.nextBeat - t > 1.3) S.nextBeat = t + 0.15;
+    if (S.nextBeat - t > 1.2) S.nextBeat = t + 0.15;
   }
 
   // ---- beats + colour waves -------------------------------------------------
   if (t >= S.nextBeat) {
-    beat(S.nBeats > 0 && S.nBeats % 2 === 1);
-    S.nextBeat = t + (t - S.swimT < 0.5 ? 1.25 : BEAT_EVERY);
-    // rim glints
-    var gp = PALETTES[S.wave.nw][0];
-    for (var gi = 0; gi < 3; gi++) {
-      var ga = Math.random() * TAU;
-      spawnSparks((S.x + Math.cos(ga) * R * 0.9) / M.cw, (S.y + Math.sin(ga) * R * 0.15) / M.ch, 2, 5, gp);
-    }
+    beat(S.nBeats > 0);           // the first stroke is a white flash, then a new palette every beat
+    S.nextBeat = t + (t - S.swimT < 0.5 ? 1.3 : PERIOD);
   }
-  var wf = -9, wOld = S.pal, wNew = S.pal;
+  var wf = -9, wOld = S.pal, wNew = S.pal, bandAmp = 0.85;
   if (S.wave) {
     wf = (t - S.wave.t0) * WAVE_SPEED - 0.05;
     wOld = S.wave.old; wNew = S.wave.nw;
-    if (wf > 1.6) { S.pal = S.wave.nw; S.wave = null; wf = -9; wOld = wNew = S.pal; }
+    bandAmp = S.wave.change ? 0.85 : 1.0;
+    if (wf > 1.5) { S.pal = S.wave.nw; S.wave = null; wf = -9; wOld = wNew = S.pal; }
   }
 
   // ---- body motion ----------------------------------------------------------
-  var homeX = M.homeX + Math.sin(t * 0.13) * 0.1 * W * M.cw;
-  var homeY = M.homeY + Math.sin(t * 0.21) * 0.05 * H * M.ch;
+  var homeX = M.homeX + Math.sin(t * 0.13) * 0.08 * W * M.cw;
+  var homeY = M.homeY + Math.sin(t * 0.21) * 0.04 * H * M.ch;
   var spring = t - S.swimT < 1.5 ? 0.05 : 0.55;
   S.vx += (homeX - S.x) * spring * dt;
-  S.vy += (homeY - S.y) * spring * dt + 0.16 * R * dt;  // slow sink between strokes
-  var damp = Math.exp(-1.6 * dt);
+  S.vy += (homeY - S.y) * spring * dt + 0.22 * R * dt;  // slow sink between strokes
+  // the power stroke: thrust while the bell is contracting
+  var ab = t - S.beats[2];
+  if (ab > 0.04 && ab < 0.55) S.vy -= 1.9 * R * Math.sin(Math.PI * (ab - 0.04) / 0.51) * dt;
+  var damp = Math.exp(-1.7 * dt);
   S.vx *= damp; S.vy *= damp;
   S.x += S.vx * dt; S.y += S.vy * dt;
   var pw = W * M.cw, ph = H * M.ch;
   if (S.x < 0.15 * pw) { S.x = 0.15 * pw; S.vx *= -0.3; }
   if (S.x > 0.85 * pw) { S.x = 0.85 * pw; S.vx *= -0.3; }
-  if (S.y < 0.95 * R + 4) { S.y = 0.95 * R + 4; S.vy *= -0.3; }
+  if (S.y < 1.5 * R + 4) { S.y = 1.5 * R + 4; S.vy *= -0.3; }
   if (S.y > ph - 0.6 * R) { S.y = ph - 0.6 * R; S.vy *= -0.3; }
   var kS = 1 - Math.exp(-2.2 * dt);
-  S.svx += (S.vx - S.svx) * kS; S.svy += (S.vy - S.svy) * kS;
-  var rollT = Math.max(-0.45, Math.min(0.45, S.svx / R * 0.35)) + 0.06 * Math.sin(t * 0.37);
+  S.svx += (S.vx - S.svx) * kS;
+  var rollT = Math.max(-0.45, Math.min(0.45, S.svx / R * 0.35)) + 0.05 * Math.sin(t * 0.37);
   S.roll += (rollT - S.roll) * kS;
+  // record the pose history that carry() reads
+  if (S.hCount === 0) { S.hT = t; S.hx[0] = S.x; S.hy[0] = S.y; S.hr[0] = S.roll; S.hHead = 0; S.hCount = 1; }
+  while (S.hT + HDT <= t) {
+    S.hT += HDT;
+    S.hHead = (S.hHead + 1) % HN;
+    S.hx[S.hHead] = S.x; S.hy[S.hHead] = S.y; S.hr[S.hHead] = S.roll;
+    if (S.hCount < HN) S.hCount++;
+  }
+  var hFrac = (t - S.hT) / HDT;   // the newest history slot is this far behind now
 
-  var pitch = -0.30 + 0.07 * Math.sin(t * 0.29);
+  // camera a little above, with a slow yaw swing so the depth reads
+  var pitch = -0.2 + 0.06 * Math.sin(t * 0.29);
   cosP = Math.cos(pitch); sinP = Math.sin(pitch);
-  cosR = Math.cos(S.roll); sinR = Math.sin(S.roll);
-  OX = S.x; OY = S.y; SC = R;
+  var yaw = 0.55 * Math.sin(t * 0.21);
+  cosY = Math.cos(yaw); sinY = Math.sin(yaw);
+  SC = R;
   CW = M.cw; CH = M.ch; GW = W; GH = H;
 
   var zb = M.zbuf, kind = M.kind;
   zb.fill(-1e9); kind.fill(0);
 
-  var spin = 0.16 * t;
-  var unfurl = smooth((t - 0.2) / 2.4);
-  var RIM_LAG = 0.12;
-  var trailX = -S.svx / R * 0.32, trailY = -S.svy / R * 0.2;
   var i, j, k;
+  var build = smooth((t - 0.1) / 2.1);   // intro: 0 scattered .. 1 assembled
 
   // ---- bell -----------------------------------------------------------------
-  var cosSpin = Math.cos(spin), sinSpin = Math.sin(spin);
-  var cRim = squeeze(t - RIM_LAG);
+  OX = S.x; OY = S.y; cosR = Math.cos(S.roll); sinR = Math.sin(S.roll);
+  var co = Math.cos(SPIN * t), si = Math.sin(SPIN * t);
+  var gl = BELL_LO.length, gm = BELL_MID.length, gh = BELL_HI.length, gf = BELL_FAINT.length;
   for (i = 0; i < NU; i++) {
     var base = i * NTH;
-    var u = M.bU[base];
+    var u = M.uU[i];
+    // bell_pose: the squeeze starts at the crown and reaches the rim RIM_LAG later
     var c = squeeze(t - RIM_LAG * u);
-    var tuck = 0.3 * Math.pow(u, 1.6) * c;
-    var flare = 0.07 * Math.pow(u, 8);
-    var tallScale = 1 + 0.12 * c;
-    var sa = M.bSa[base], ca = M.bCa[base];
-    var gl = BELL_LO.length, gm = BELL_MID.length, gh = BELL_HI.length, gf = BELL_FAINT.length;
+    var flare = M.uFlare[i], tuck = M.uTuck[i];
+    var rs = 1 + flare - tuck * c;
+    var tallS = 1 + 0.15 * c;
+    var sa = M.uSa[i] * (1 - 0.5 * tuck * c), ca = M.uCa[i];
     var isRim = i >= NU - 2;
-    var way = 0.25 * u;
+    var way = 0.3 * u;
     for (j = 0; j < NTH; j++) {
       k = base + j;
       var th0 = M.bTh[k];
-      var lap = 1 + 0.06 * Math.pow(u, 6) * Math.cos(LAPPETS * th0);
-      var th = th0 + spin;
-      var ct = Math.cos(th), st = Math.sin(th);
-      var r = M.bWide[k] * (1 + flare - tuck) * lap;
-      var x = r * ct, z = r * st, y = -M.bTall[k] * tallScale;
-      project(x, y, z);
-      // normal (model) -> view: rotate the same way
-      var nx = sa * ct, ny = -ca, nz = sa * st;
+      var c0 = Math.cos(th0), s0 = Math.sin(th0);
+      var ct = c0 * co - s0 * si, st = s0 * co + c0 * si;
+      var r = M.bWide[k] * rs;
+      var y = -M.bTall[k] * tallS;
+      project(r * ct, y, r * st);
+      var seed = M.bSeed[k];
+      // intro: dots fly in from where they were scattered
+      if (build < 1) {
+        var q = smooth((t - 0.15 - 1.3 * seed) / 0.85);
+        if (q < 1) {
+          if (q < 0.8 && (k % 23) !== 0) continue;
+          var dx = M.bSx[k], dy = M.bSy[k];
+          var sxp = dx + (pX - dx) * q, syp = dy + (pY - dy) * q;
+          put(sxp, syp, pZ - 3 + q, K_DOT, 0.35 + 0.6 * q, way, I_PETAL, q < 0.5 ? 46 : 58);
+          continue;
+        }
+      }
+      // normal (model) -> view
+      var nxm = sa * ct, ny = -ca, nzm = sa * st;
+      var nx = nxm * cosY + nzm * sinY, nz = nzm * cosY - nxm * sinY;
       var ny1 = ny * cosP - nz * sinP, nz1 = ny * sinP + nz * cosP;
       var nx2 = nx * cosR - ny1 * sinR, ny2 = nx * sinR + ny1 * cosR;
-      var lum, code;
-      var seed = M.bSeed[k];
+      var lum, code, ink;
       if (nz1 >= 0) {
         var dif = nx2 * LX + ny2 * LY + nz1 * LZ;
-        lum = 0.2 + 0.75 * (dif > 0 ? dif : 0) + 0.08 * nz1;
+        lum = 0.28 + 0.7 * (dif > 0 ? dif : 0) + 0.1 * nz1;
+        if (M.bPet[k]) { ink = I_PETAL; lum += 0.1; } else ink = I_BELL;
       } else {
-        // inner surface of the far side, seen through the open bell
+        // the inside of the far wall, seen through the opening
         var dif2 = -(nx2 * LX + ny2 * LY + nz1 * LZ);
-        lum = 0.08 + 0.3 * (dif2 > 0 ? dif2 : 0);
+        lum = 0.22 + 0.4 * (dif2 > 0 ? dif2 : 0);
+        ink = I_IN;
       }
-      lum *= 0.85 + 0.3 * c * u;
+      lum *= 0.9 + 0.25 * (c > 0 ? c : 0) * u;
       if (isRim) {
-        // rim stroke: direction from the neighbouring sample round the rim
-        var th2 = th + 0.08;
-        var r2 = M.bWide[k] * (1 + flare - tuck);
+        var th2 = th0 + 0.08;
+        var c2 = Math.cos(th2) * co - Math.sin(th2) * si, s2 = Math.sin(th2) * co + Math.cos(th2) * si;
         var sx = pX, sy = pY, sz = pZ;
-        project(r2 * Math.cos(th2), y, r2 * Math.sin(th2));
+        project(r * c2, y, r * s2);
         code = strokeChar((pX - sx) / CW, (pY - sy) / CH, 95);
-        put(sx, sy, sz + 0.02, K_RIM, Math.max(lum, 0.45), way, 0, code);
+        put(sx, sy, sz + 0.02, K_RIM, Math.max(lum, 0.55), way, I_PETAL, code);
         continue;
       }
       var flick = (seed * 97 + Math.floor(t * 0.7 + seed * 5)) | 0;
-      if (lum > 0.68) code = BELL_HI.charCodeAt(flick % gh);
+      if (lum > 0.66) code = BELL_HI.charCodeAt(flick % gh);
       else if (lum > 0.46) code = BELL_MID.charCodeAt(flick % gm);
-      else if (lum > 0.26) code = BELL_LO.charCodeAt(flick % gl);
+      else if (lum > 0.3) code = BELL_LO.charCodeAt(flick % gl);
       else code = BELL_FAINT.charCodeAt(flick % gf);
-      put(pX, pY, pZ, K_BELL, lum, way, 0, code);
+      put(pX, pY, pZ, K_BELL, lum, way, ink, code);
     }
   }
 
-  // ---- oral arms ----------------------------------------------------------
-  var armLen = 2.2 * unfurl;
+  // ---- oral arms: arm(k, s, w, t, g) ------------------------------------------
+  var g = smooth((t - T_ARMS0) / (T_ARMS1 - T_ARMS0));
   var prevX = M.prevX, prevY = M.prevY;
-  if (armLen > 0.02) {
+  if (g > 0.01) {
     for (var a = 0; a < N_ARMS; a++) {
       for (i = 0; i < ARM_S; i++) {
         var s = i / (ARM_S - 1);
-        var td = t - RIM_LAG - 0.55 * s;
+        var back = RIM_LAG + ARM_LAG * s * g;
+        var td = t - back;
+        carry(back - hFrac * HDT);
         var ca2 = squeeze(td);
-        var thA = a * TAU / N_ARMS + 0.4 + spin + 1.4 * s + 0.3 * Math.sin(0.9 * t - 2.5 * s + a);
-        var out = (0.05 + 0.13 * Math.sin(Math.PI * Math.pow(s, 0.8))) * (1 - 0.45 * ca2);
-        var ay = -0.28 + armLen * s * (1 + 0.1 * ca2);
-        var wide = 0.24 * (0.4 + 0.6 * Math.pow(1 - s, 0.55)) + 0.04;
-        var twist = thA + Math.PI / 2 + 0.9 * Math.sin(1.8 * s - 0.6 * t + a * 1.3);
+        var thA = a * TAU / N_ARMS + 0.4 + SPIN * td + 1.5 * s * g + 0.30 * Math.sin(0.9 * t - 2.5 * s + a);
+        var out = (0.04 + 0.12 * Math.sin(Math.PI * Math.pow(s, 0.8))) * (1 - 0.45 * ca2);
+        var ay = -0.12 + ARM_LEN * g * s * (1 + 0.10 * ca2);
+        var twist = thA + 1.2 + 2.6 * s;
+        var wide = ARM_WIDE * (0.35 + 0.65 * g) * Math.pow(clamp01(1 - s), 0.55) * smooth((s + 0.04) / 0.25);
         var cw2 = Math.cos(twist), sw2 = Math.sin(twist);
-        var frill = 0.035 * Math.sin(11 * s - 2.6 * t + a);
-        var trail = Math.pow(s, 1.5);
-        var cx0 = out * Math.cos(thA) + trailX * trail, cz0 = out * Math.sin(thA);
-        var armWay = 0.25 + 0.5 * s;
-        var fade = 1 - 0.65 * s * s;
+        var cx0 = out * Math.cos(thA), cz0 = out * Math.sin(thA);
+        var armWay = 0.3 + 0.45 * s;
+        var fade = 1 - 0.55 * s * s;
         for (j = 0; j < ARM_W; j++) {
           var w = j / (ARM_W - 1) * 2 - 1;
+          var aw = w < 0 ? -w : w;
+          var frill = 0.05 * Math.pow(aw, 1.5) * Math.sin(13 * s - 3.2 * t + 2.6 * w + 2 * a);
           var xx = cx0 + wide * w * cw2 - frill * sw2;
           var zz = cz0 + wide * w * sw2 + frill * cw2;
-          var yy = ay + trailY * trail + 0.02 * Math.abs(w) * Math.sin(9 * s - 2 * t + a);
+          var yy = ay - 0.025 * aw * Math.sin(9 * s - 2 * t + a);
           project(xx, yy, zz);
-          var edge = j === 0 || j === ARM_W - 1;
-          var al = (0.55 + 0.35 * (1 - Math.abs(w))) * fade;
+          var edge = aw > 0.95;
+          var al = (0.55 + 0.4 * (1 - aw)) * fade;
           if (i > 0) {
             if (edge) {
-              put(pX, pY, pZ + 0.76, K_ARME, al * 0.9, armWay, 1, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
+              put(pX, pY, pZ + 0.06, K_ARME, al * 0.95, armWay, I_ARM, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
             } else {
               var sd = (a * 7919 + i * 131 + j * 31) | 0;
               var fl = (sd + Math.floor(t * 1.3 + hash(sd) * 7) * 13) | 0;
-              put(pX, pY, pZ + 0.75, K_ARM, al, armWay, 1, ARM_CH.charCodeAt(fl % ARM_CH.length));
+              put(pX, pY, pZ + 0.05, K_ARM, al, armWay, I_ARM, ARM_CH.charCodeAt(fl % ARM_CH.length));
             }
           }
           prevX[j] = pX; prevY[j] = pY;
@@ -398,35 +472,34 @@ function renderMedusa() {
     }
   }
 
-  // ---- tentacles ------------------------------------------------------------
+  // ---- tentacles: tentacle(s, t, g) -------------------------------------------
   var gap = M.strandGap;
   for (var tn = 0; tn < N_TENT; tn++) {
-    var tlen = M.tLen[tn] * unfurl, tph = M.tPh[tn];
-    if (tlen < 0.03) break;
+    var gT = clamp01((t - M.tT0[tn]) / TENT_DROP);
+    gT = 1 - (1 - gT) * (1 - gT);           // dropped(): falls fast, then eases
+    if (gT < 0.01) continue;
+    var tph = M.tPh[tn];
     for (i = 0; i < TENT_SEG; i++) {
       var s2 = i / (TENT_SEG - 1);
-      var reach = tlen * s2;
-      var tdT = t - RIM_LAG - 0.42 * reach;
+      var reach = TENT_LEN * gT * s2;
+      var backT = RIM_LAG + TENT_LAG * reach;
+      var tdT = t - backT;
+      carry(backT - hFrac * HDT);
       var cT = squeeze(tdT);
-      var thT = M.tTh[tn] + spin + 0.5 * s2 * Math.sin(0.8 * t - 2.4 * reach + tph);
-      var rT = 0.97 * (1 - 0.3 * cT * (1 - 0.6 * s2)) * (1 - 0.22 * smooth(reach / 2.0) + 0.3 * smooth((reach - 1.6) / 1.8));
-      rT += 0.12 * Math.pow(s2, 0.7) * Math.sin(1.7 * t - 6.0 * reach / 2.8 * 2.2 + 3 * tph);
-      var yT = 0.02 + reach * (1 + 0.07 * cT);
-      var trT = Math.pow(s2, 1.5);
-      var bx = rT * Math.cos(thT) + trailX * trT + 0.07 * Math.pow(s2, 1.3) * Math.sin(1.25 * t - 4 * s2 + tph);
-      var bz = rT * Math.sin(thT);
-      var by = yT + trailY * trT;
-      var taper = 1 - 0.55 * s2;
-      var tf = s2 > 0.72 ? 1 - smooth((s2 - 0.72) / 0.28) * 0.9 : 1;
-      var tWay = 0.25 + 0.75 * s2;
+      var thT = M.tTh[tn] + SPIN * tdT + 0.55 * s2 * Math.sin(0.8 * t - 2.6 * reach + tph);
+      var rT = 0.97 * RIM_R * (1 - 0.34 * cT) * (1 - 0.30 * smooth(1.1 * reach));
+      rT += 0.13 * Math.pow(s2, 0.7) * Math.sin(1.7 * t - 6.5 * reach / TENT_LEN * 2 + 3 * tph);
+      var yT = reach * (1 + 0.08 * cT) + 0.02 * s2 * Math.sin(2.3 * t - 7 * reach + tph);
+      var bx = rT * Math.cos(thT), bz = rT * Math.sin(thT);
+      var tf = s2 > 0.7 ? 1 - smooth((s2 - 0.7) / 0.3) * 0.85 : 1;
+      var tWay = 0.3 + 0.62 * s2;
+      var taper = 1 - 0.6 * s2;
       for (j = 0; j < N_STRAND; j++) {
         var off = (j - (N_STRAND - 1) / 2) * gap * taper;
-        // strands wander a little against each other so the ribbon braids
-        var wob = 0.25 * gap * Math.sin(5 * s2 - 1.9 * t + j * 1.7 + tph);
-        project(bx + off + wob, by, bz);
+        var wob = 0.2 * gap * Math.sin(5 * s2 - 1.9 * t + j * 1.7 + tph);
+        project(bx - off * Math.sin(thT) + wob, yT, bz + off * Math.cos(thT));
         if (i > 0) {
-          var dl = (0.5 + 0.35 * (j === 1 || j === 2 ? 1 : 0.6)) * tf;
-          put(pX, pY, pZ, K_TENT, dl, tWay, 2, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
+          put(pX, pY, pZ, K_TENT, 0.75 * tf, tWay, I_TENT, strokeChar((pX - prevX[j]) / CW, (pY - prevY[j]) / CH));
         }
         prevX[j] = pX; prevY[j] = pY;
       }
@@ -447,21 +520,46 @@ function renderMedusa() {
       var UL = kind[id - W - 1], UR = kind[id - W + 1], DL = kind[id + W - 1], DR = kind[id + W + 1];
       var eUL = UL !== K_BELL && UL !== K_RIM, eUR = UR !== K_BELL && UR !== K_RIM;
       var eDL = DL !== K_BELL && DL !== K_RIM, eDR = DR !== K_BELL && DR !== K_RIM;
-      // outward normal from the empty neighbours
       var gx = (eR ? 2 : 0) - (eL ? 2 : 0) + (eUR ? 1 : 0) + (eDR ? 1 : 0) - (eUL ? 1 : 0) - (eDL ? 1 : 0);
       var gy = (eD ? 2 : 0) - (eU ? 2 : 0) + (eDL ? 1 : 0) + (eDR ? 1 : 0) - (eUL ? 1 : 0) - (eUR ? 1 : 0);
       var agx = gx < 0 ? -gx : gx, agy = gy < 0 ? -gy : gy;
       var ec;
       if (agx === 0 && agy === 0) continue;
-      if (agx > 2.2 * agy) ec = 124;                       // side wall |
-      else if (agy > 2.2 * agx) ec = gy < 0 ? 45 : 95;     // crown - / underside _
-      else ec = (gx * gy > 0) ? 47 : 92;                   // up-left & down-right: '/'
+      if (agx > 2.2 * agy) ec = 124;
+      else if (agy > 2.2 * agx) ec = gy < 0 ? 45 : 95;
+      else ec = (gx * gy > 0) ? 47 : 92;
       edgeA[id] = 1;
       M.gch[id] = ec;
     }
   }
   for (var e = 0; e < W * H; e++) {
-    if (edgeA[e]) { kind[e] = K_RIM; if (M.lum[e] < 0.5) M.lum[e] = 0.5; }
+    if (edgeA[e]) { kind[e] = K_RIM; if (M.lum[e] < 0.55) M.lum[e] = 0.55; }
+  }
+
+  // ---- glints: a ring of sparkles leaves the rim after each stroke --------------
+  var rings = S.rings;
+  for (var rn = 0; rn < rings.length; rn++) {
+    var rg = rings[rn], age = t - rg.t0;
+    if (age < 0 || age >= GLINT_LIFE) continue;
+    carry(t - rg.t0 - hFrac * HDT);
+    var rr0 = 0.9 * RIM_R + 1.15 * (1 - Math.exp(-1.5 * age));
+    var fadeG = Math.pow(1 - age / GLINT_LIFE, 0.6);
+    var gyd = 0.10 * age + 0.05 * age * age;
+    for (var gn = 0; gn < N_GLINTS; gn++) {
+      var g0 = hash(rg.seed + gn * 3.1), g1 = hash(rg.seed + gn * 7.3 + 1);
+      var ang = (g0 + gn) * TAU / N_GLINTS;
+      project(rr0 * Math.cos(ang), gyd, rr0 * Math.sin(ang));
+      var tw = Math.sin(t * (5 + 6 * g1) + g0 * 50);
+      tw = tw < 0 ? 0 : tw;
+      var gb = fadeG * (0.35 + 0.65 * tw);
+      if (gb < 0.12) continue;
+      var gcx = (pX / CW) | 0, gcy = (pY / CH) | 0;
+      if (gcx < 0 || gcy < 0 || gcx >= W || gcy >= H) continue;
+      var gid = gcy * W + gcx;
+      if (kind[gid] && kind[gid] !== K_BG && pZ < zb[gid]) continue;
+      kind[gid] = K_SPARK; M.gch[gid] = gb > 0.7 ? 42 : gb > 0.4 ? 43 : 46;
+      M.lum[gid] = gb; M.dep[gid] = 1; M.way[gid] = 0;
+    }
   }
 
   // ---- background (only into empty cells) ------------------------------------
@@ -501,36 +599,36 @@ function renderMedusa() {
         if (mx < 0 || mx >= W) continue;
         var mid = my * W + mx;
         if (kind[mid] && kind[mid] !== K_BG) continue;
-        kind[mid] = K_BG; M.gch[mid] = chm; M.lum[mid] = 0.32 - ly * 0.03; M.ink[mid] = 10 + i;
+        kind[mid] = K_BG; M.gch[mid] = chm; M.lum[mid] = 0.36 - ly * 0.03; M.ink[mid] = 10 + i;
       }
     }
   }
 
-  // ---- sparks ------------------------------------------------------------
+  // ---- tap sparks ------------------------------------------------------------
   var sp = S.sparks, alive = 0;
   for (i = 0; i < sp.length; i++) {
     var p = sp[i];
     p.life += dt;
     if (p.life >= p.max) continue;
     var dr = Math.exp(-2.2 * dt);
-    p.vx *= dr; p.vy = p.vy * dr + 1.2 * dt;  // slow sink
+    p.vx *= dr; p.vy = p.vy * dr + 1.2 * dt;
     p.x += p.vx * dt; p.y += p.vy * dt;
     sp[alive++] = p;
     var pxi = p.x | 0, pyi = p.y | 0;
     if (pxi < 0 || pyi < 0 || pxi >= W || pyi >= H) continue;
     var pid = pyi * W + pxi, f = p.life / p.max;
     kind[pid] = K_SPARK;
-    M.gch[pid] = f < 0.25 ? 42 : f < 0.6 ? 43 : 46;  // * + .
+    M.gch[pid] = f < 0.25 ? 42 : f < 0.6 ? 43 : 46;
     M.lum[pid] = 1 - f;
     M.dep[pid] = 1; M.way[pid] = 0;
-    M.ink[pid] = 20 + (i % 8);
   }
   sp.length = alive;
 
-  // ---- composite -------------------------------------------------------------
+  // ---- composite: lit(way, inks, lum) -------------------------------------------
   var po = PALETTES[wOld], pn = PALETTES[wNew];
   var hudRow = H - 2;
   var chars = 0;
+  var spc = PALETTES[S.wave ? wNew : S.pal][I_PETAL];
   for (var yc = 0; yc < H; yc++) {
     for (var xc = 0; xc < W; xc++) {
       var ci = yc * W + xc;
@@ -542,17 +640,16 @@ function renderMedusa() {
       var rr, gg, bb, al2;
       if (kd === K_BG) {
         var ik = M.ink[ci];
-        if (ik === 9) { rr = 125; gg = 145; bb = 195; }
+        if (ik === 9) { rr = 125; gg = 150; bb = 210; }
         else { var mc = minis[ik - 10].col; rr = mc[0]; gg = mc[1]; bb = mc[2]; }
         drawChar(String.fromCharCode(code2), xc, yc, rr, gg, bb, lm);
         continue;
       }
       if (kd === K_SPARK) {
-        var sc = PALETTES[S.wave ? wNew : S.pal][1];
-        var wh = Math.sqrt(lm);
+        var wh = Math.sqrt(lm) * 0.8;
         drawChar(String.fromCharCode(code2), xc, yc,
-          (sc[0] + (255 - sc[0]) * wh) | 0, (sc[1] + (255 - sc[1]) * wh) | 0, (sc[2] + (255 - sc[2]) * wh) | 0,
-          0.6 + 0.4 * lm);
+          (spc[0] + (255 - spc[0]) * wh) | 0, (spc[1] + (255 - spc[1]) * wh) | 0, (spc[2] + (255 - spc[2]) * wh) | 0,
+          0.55 + 0.45 * lm);
         chars++;
         continue;
       }
@@ -561,32 +658,32 @@ function renderMedusa() {
       var wy = M.way[ci];
       var on = 0, band = 0;
       if (wf > -5) {
-        on = smooth((wf - wy) / 0.18 + 0.5);
-        var bd = (wf - wy) / 0.13;
-        band = Math.exp(-bd * bd);
+        on = smooth((wf - wy) / 0.2 + 0.5);
+        var bd = (wf - wy) / 0.09;
+        band = bandAmp * Math.exp(-bd * bd);
       }
       rr = o[0] + (n2[0] - o[0]) * on;
       gg = o[1] + (n2[1] - o[1]) * on;
       bb = o[2] + (n2[2] - o[2]) * on;
-      if (kd === K_RIM || kd === K_ARME) {  // pale edges
-        rr += (235 - rr) * 0.35; gg += (240 - gg) * 0.35; bb += (255 - bb) * 0.35;
+      if (kd === K_RIM || kd === K_ARME) {  // pale edges: PALE(ink, 0.45)
+        rr += (255 - rr) * 0.45; gg += (255 - gg) * 0.45; bb += (255 - bb) * 0.45;
+      } else if (kd === K_DOT) {
+        rr += (255 - rr) * 0.3; gg += (255 - gg) * 0.3; bb += (255 - bb) * 0.3;
       }
-      var lit = 0.78 + 0.45 * lm;
+      // brightness scales the ink but never greys it out
+      var lit = 0.7 + 0.5 * lm;
       rr *= lit; gg *= lit; bb *= lit;
-      if (lm > 0.6) {  // specular: the lit front goes icy white
-        var spw = (lm - 0.6) * 1.1;
+      if (lm > 0.8 && kd === K_BELL) {
+        var spw = (lm - 0.8) * 1.2;
         rr += (255 - rr) * spw; gg += (255 - gg) * spw; bb += (255 - bb) * spw;
       }
-      // depth: far layers keep their hue, just a little darker (no grey mud)
-      var fog = 1 - (1 - M.dep[ci]) * 0.35;
+      var fog = 0.45 + 0.55 * M.dep[ci];
       rr *= fog; gg *= fog; bb *= fog;
       if (band > 0.01) {
-        var bw = band * 0.95;
-        rr += (255 - rr) * bw; gg += (255 - gg) * bw; bb += (255 - bb) * bw;
+        rr += (255 - rr) * band; gg += (255 - gg) * band; bb += (255 - bb) * band;
       }
-      al2 = 0.78 + 0.35 * lm + band * 0.5;
+      al2 = (0.62 + 0.35 * lm) * (0.7 + 0.3 * M.dep[ci]) + band * 0.55;
       if (al2 > 1) al2 = 1;
-      al2 *= 0.85 + 0.15 * M.dep[ci];
       if (rr > 255) rr = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
       drawChar(String.fromCharCode(code2), xc, yc, rr | 0, gg | 0, bb | 0, al2);
       chars++;
