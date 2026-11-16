@@ -342,4 +342,5 @@ export const MODES = [
   { id: "medusa", label: "medusa" },
   { id: "xmastree", label: "xmastree" },
   { id: "carousel", label: "carousel" },
+  { id: "knight", label: "knight" },
 ];

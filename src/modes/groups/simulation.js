@@ -215,3 +215,4 @@ import '../lighthouse.js';
 import '../medusa.js';
 import '../xmastree.js';
 import '../carousel.js';
+import '../knight.js';
