@@ -212,3 +212,4 @@ import '../phyllo.js';
 import '../ulam.js';
 import '../yoheicoral.js';
 import '../lighthouse.js';
+import '../medusa.js';
