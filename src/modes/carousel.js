@@ -37,14 +37,14 @@ var BUILD_END = 9.4;
 
 var K_SKY = 1, K_RIDE = 2;
 
-var PY0 = -0.9;          // platform top
+var PY0 = -0.95;         // platform top
 var PR = 1.3;            // platform radius
-var CY0 = 0.78;          // canopy rim height
+var CY0 = 0.62;          // canopy rim height
 var CR = 1.48;           // canopy rim radius
-var APEX = 1.3;          // canopy apex
-var POLE_R = 0.98;
-var NH = 6;              // horses / poles
-var HS = 1.75;           // horse scale
+var APEX = 1.42;         // canopy apex
+var POLE_R = 0.95;
+var NH = 4;              // horses / poles
+var HS = 1.9;           // horse scale
 
 // ---------------------------------------------------------------- helpers
 function mulberry(seed) {
@@ -85,34 +85,44 @@ function rod(out, rng, n, x0, y0, z0, x1, y1, z1, rad, col, tag) {
   }
 }
 
+// chain of spheres along a segment (neck, head, legs, tail)
+function limb(out, rng, n, x0, y0, x1, y1, r0, r1, col) {
+  for (var i = 0; i < n; i++) {
+    var u = rng(), r = r0 + (r1 - r0) * u;
+    var x = gauss(rng), y = gauss(rng), z = gauss(rng), l = Math.hypot(x, y, z) || 1;
+    x /= l; y /= l; z /= l;
+    out.push([x0 + (x1 - x0) * u + x * r, y0 + (y1 - y0) * u + y * r, z * r, x, y, z, col[0], col[1], col[2], 0]);
+  }
+}
+
 function buildHorse(rng, body, mane) {
-  // local frame: x = nose direction (tangent), y up, z outward; origin = saddle
+  // side-profile carousel horse; local x = nose direction, y up, z outward;
+  // origin = the pole through the saddle
   var P = [];
-  ellipsoid(P, rng, 260, 0, 0, 0, 0.21, 0.085, 0.075, body, 0);
-  ellipsoid(P, rng, 90, 0.17, 0.1, 0, 0.065, 0.11, 0.05, body, 0);       // neck
-  ellipsoid(P, rng, 80, 0.25, 0.19, 0, 0.095, 0.042, 0.045, body, 0);    // head
-  ellipsoid(P, rng, 50, 0.0, 0.085, 0, 0.07, 0.02, 0.08, RED, 0);        // saddle
-  // legs: front pair prancing forward, back pair straight
-  rod(P, rng, 34, 0.13, -0.05, 0.04, 0.24, -0.13, 0.04, 0.018, body, 0);
-  rod(P, rng, 34, 0.13, -0.05, -0.04, 0.2, -0.19, -0.04, 0.018, body, 0);
-  rod(P, rng, 34, -0.13, -0.05, 0.04, -0.17, -0.22, 0.04, 0.018, body, 0);
-  rod(P, rng, 34, -0.13, -0.05, -0.04, -0.12, -0.22, -0.04, 0.018, body, 0);
-  // hooves
-  ellipsoid(P, rng, 10, 0.24, -0.14, 0.04, 0.02, 0.015, 0.02, GOLD, 0);
-  ellipsoid(P, rng, 10, 0.2, -0.2, -0.04, 0.02, 0.015, 0.02, GOLD, 0);
-  ellipsoid(P, rng, 10, -0.17, -0.23, 0.04, 0.02, 0.015, 0.02, GOLD, 0);
-  ellipsoid(P, rng, 10, -0.12, -0.23, -0.04, 0.02, 0.015, 0.02, GOLD, 0);
-  // mane along the neck and a sweeping tail, in the accent colour
-  for (var i = 0; i < 60; i++) {
-    var u = rng();
-    P.push([0.11 + 0.14 * u + 0.01 * gauss(rng), 0.2 - 0.12 * u + 0.05 + 0.01 * gauss(rng), 0.02 * gauss(rng), -0.5, 0.8, 0,
-      mane[0], mane[1], mane[2], 0]);
-  }
-  for (i = 0; i < 70; i++) {
-    u = rng();
-    P.push([-0.21 - 0.1 * u, 0.02 - 0.16 * u * u + 0.015 * gauss(rng), 0.02 * gauss(rng), -0.7, 0.3, 0,
-      mane[0], mane[1], mane[2], 0]);
-  }
+  ellipsoid(P, rng, 650, 0, 0, 0, 0.2, 0.085, 0.07, body, 0);            // barrel
+  ellipsoid(P, rng, 200, 0.12, 0.015, 0, 0.09, 0.085, 0.068, body, 0);   // chest
+  ellipsoid(P, rng, 200, -0.13, 0.01, 0, 0.09, 0.088, 0.07, body, 0);    // rump
+  limb(P, rng, 260, 0.15, 0.05, 0.23, 0.21, 0.058, 0.042, body);         // neck, up and forward
+  limb(P, rng, 200, 0.23, 0.22, 0.34, 0.15, 0.045, 0.028, body);         // head, muzzle down
+  limb(P, rng, 24, 0.215, 0.25, 0.205, 0.3, 0.012, 0.006, body);         // ear
+  limb(P, rng, 24, 0.235, 0.25, 0.235, 0.3, 0.012, 0.006, body);         // ear
+  // front legs prancing (one bent at the knee), back legs planted
+  limb(P, rng, 70, 0.13, -0.05, 0.22, -0.12, 0.024, 0.018, body);
+  limb(P, rng, 60, 0.22, -0.12, 0.2, -0.21, 0.018, 0.014, body);
+  limb(P, rng, 90, 0.11, -0.05, 0.15, -0.27, 0.022, 0.015, body);
+  limb(P, rng, 90, -0.13, -0.05, -0.17, -0.27, 0.026, 0.015, body);
+  limb(P, rng, 90, -0.1, -0.05, -0.09, -0.27, 0.026, 0.015, body);
+  // gold hooves
+  limb(P, rng, 14, 0.19, -0.21, 0.21, -0.22, 0.016, 0.016, GOLD);
+  limb(P, rng, 14, 0.15, -0.27, 0.17, -0.28, 0.016, 0.016, GOLD);
+  limb(P, rng, 14, -0.17, -0.27, -0.15, -0.28, 0.016, 0.016, GOLD);
+  limb(P, rng, 14, -0.09, -0.27, -0.07, -0.28, 0.016, 0.016, GOLD);
+  // mane along the top of the neck, tail streaming back
+  limb(P, rng, 140, 0.13, 0.12, 0.22, 0.27, 0.028, 0.02, mane);
+  limb(P, rng, 140, -0.2, 0.04, -0.31, -0.12, 0.03, 0.012, mane);
+  // red saddle with a gold blanket edge
+  ellipsoid(P, rng, 90, 0.0, 0.08, 0, 0.075, 0.022, 0.075, RED, 0);
+  ellipsoid(P, rng, 60, 0.0, 0.055, 0, 0.09, 0.012, 0.074, GOLD, 0);
   return P;
 }
 
@@ -126,7 +136,7 @@ function buildGeometry() {
     r = PR * Math.sqrt(rng()); a = rng() * TAU;
     var seg = Math.floor((a / TAU) * 16);
     var ring = Math.floor(r / PR * 5);
-    var col = (seg + ring) % 2 ? [40, 200, 255] : [90, 80, 255];
+    var col = (seg + ring) % 2 ? [40, 200, 255] : [80, 90, 255];
     if (r > PR * 0.93) col = GOLD;
     var k = 0.3 + 0.14 * rng();
     g.platform.push([r * Math.cos(a), PY0, r * Math.sin(a), 0, 1, 0, col[0] * k, col[1] * k, col[2] * k, r / PR]);
@@ -144,7 +154,7 @@ function buildGeometry() {
     var y = PY0 + (CY0 - PY0) * u;
     var chk = (Math.floor(a / TAU * 10) + Math.floor(u * 9)) % 2;
     var c3 = chk ? CYAN : [235, 250, 255];
-    g.column.push([0.2 * Math.cos(a), y, 0.2 * Math.sin(a), Math.cos(a), 0, Math.sin(a), c3[0], c3[1], c3[2], u]);
+    g.column.push([0.15 * Math.cos(a), y, 0.15 * Math.sin(a), Math.cos(a), 0, Math.sin(a), c3[0], c3[1], c3[2], u]);
   }
   // poles: golden barber-striped rods
   g.poles = [];
@@ -154,8 +164,8 @@ function buildGeometry() {
       u = rng(); a = rng() * TAU;
       var yy = PY0 + (CY0 - PY0) * u;
       var stripe = Math.floor((a / TAU) * 2 + u * 9) % 2;
-      var c4 = stripe ? GOLD : WHITE;
-      pts.push([POLE_R * Math.cos(pa) + 0.022 * Math.cos(a), yy, POLE_R * Math.sin(pa) + 0.022 * Math.sin(a),
+      var c4 = stripe ? GOLD : [255, 240, 150];
+      pts.push([POLE_R * Math.cos(pa) + 0.028 * Math.cos(a), yy, POLE_R * Math.sin(pa) + 0.028 * Math.sin(a),
         Math.cos(a), 0, Math.sin(a), c4[0], c4[1], c4[2], u]);
     }
     g.poles.push(pts);
@@ -164,12 +174,12 @@ function buildGeometry() {
   var stripes = [PINK, CYAN, GOLD, VIOLET, MINT, ORANGE, BLUE, LIME];
   g.canopy = [];
   var slope = (APEX - CY0) / CR;
-  for (i = 0; i < 4200; i++) {
+  for (i = 0; i < 6500; i++) {
     u = Math.sqrt(rng());                    // more points toward the rim
     a = rng() * TAU;
     r = CR * u;
     var sg = Math.floor(a / TAU * 16);
-    var c5 = sg % 2 ? [235, 235, 255] : stripes[(sg >> 1) % stripes.length];
+    var c5 = sg % 2 ? WHITE : RED;
     var nl = Math.hypot(slope, 1);
     g.canopy.push([r * Math.cos(a), APEX - (APEX - CY0) * u, r * Math.sin(a),
       slope * Math.cos(a) / nl, 1 / nl, slope * Math.sin(a) / nl, c5[0], c5[1], c5[2], a]);
@@ -186,18 +196,18 @@ function buildGeometry() {
       c6[0], c6[1], c6[2], a]);
   }
   // horses
-  var bodies = [WHITE, PINK, GOLD, LIME, ORANGE, CYAN];
-  var manes = [PINK, GOLD, VIOLET, RED, BLUE, PINK];
+  var bodies = [WHITE, PINK, CYAN, GOLD];
+  var manes = [GOLD, GOLD, PINK, RED];
   g.horses = [];
   for (h = 0; h < NH; h++) g.horses.push(buildHorse(rng, bodies[h], manes[h]));
   // bulbs: rim (48), canopy rib lines (8 x 9), platform edge (40)
   g.bulbs = [];
   var bc = [GOLD, PINK, CYAN, WHITE];
-  for (i = 0; i < 48; i++) {
-    a = i / 48 * TAU;
+  for (i = 0; i < 24; i++) {
+    a = i / 24 * TAU;
     g.bulbs.push({ p: [CR * 1.01 * Math.cos(a), CY0 + 0.005, CR * 1.01 * Math.sin(a)], a: a, c: bc[i % 4], ring: 0, i: i });
   }
-  for (var l = 0; l < 8; l++) {
+  for (var l = 0; l < 0; l++) {
     a = (l * 2 + 1) / 16 * TAU;
     for (i = 1; i <= 9; i++) {
       u = i / 10;
@@ -205,8 +215,8 @@ function buildGeometry() {
         c: i % 2 ? GOLD : WHITE, ring: 1, i: i });
     }
   }
-  for (i = 0; i < 40; i++) {
-    a = i / 40 * TAU;
+  for (i = 0; i < 16; i++) {
+    a = i / 16 * TAU;
     g.bulbs.push({ p: [PR * 1.01 * Math.cos(a), PY0 - 0.07, PR * 1.01 * Math.sin(a)], a: a, c: bc[(i + 2) % 4], ring: 2, i: i });
   }
   return g;
@@ -226,7 +236,7 @@ function buildLayout() {
   };
   var pw = W * m.cw, ph = H * m.ch;
   m.pw = pw; m.ph = ph;
-  m.SC = Math.min(0.25 * ph, pw / 3.1);
+  m.SC = Math.min(0.25 * ph, pw / 3.15);
   m.OX = pw * 0.5;
   m.OY = ph * 0.55;
   var rng = mulberry(W * 77 + H);
@@ -248,7 +258,7 @@ function initCarousel() {
   if (!G) G = buildGeometry();
   M = buildLayout();
   if (!S) {
-    S = { lastT: state.time, t: 0, tb: 0, ang: 0, omega: 0.3, push: 0, tilt: 0.24,
+    S = { lastT: state.time, t: 0, tb: 0, ang: 0, omega: 0.3, push: 0, tilt: 0.13,
       dragging: false, lastGx: 0, lastGy: 0, hintT: 0, fw: [], nextFw: 1.5 };
   }
 }
@@ -280,8 +290,11 @@ function putSolid(x, y, z, r, g, b, kind) {
   if (PX < 0 || PY < 0 || cx >= M.w || cy >= M.h) return;
   var i = cy * M.w + cx;
   if (PZ <= M.zb[i]) return;
+  // depth fog: the far side of the ride drops to sparse glyphs so the near
+  // horses and poles read against it
+  var f = 0.22 + 0.78 * smooth((PZ + 1.1) / 2.2);
   M.zb[i] = PZ; M.kind[i] = kind;
-  M.sr[i] = r; M.sg[i] = g; M.sb[i] = b;
+  M.sr[i] = r * f; M.sg[i] = g * f; M.sb[i] = b * f;
 }
 function putGlow(x, y, z, r, g, b, halo) {
   if (M.gn >= 12000) return;
@@ -390,7 +403,7 @@ function layerCanopy() {
       var a = p[9];
       if (a > sweep) continue;                   // unfurls round the circle
       var tip = g < 1 ? clamp(1 - (sweep - a) / 0.5, 0, 1) : 0;
-      litPoint(p, p[0], p[1], p[2], 0.35, 0.85, tip);
+      litPoint(p, p[0], p[1], p[2], 0.45, 0.95, tip);
     }
   }
   var v = grown('valance');
@@ -411,9 +424,9 @@ function layerHorses() {
     if (s <= 0) continue;
     var pa = h / NH * TAU;
     var cx = POLE_R * Math.cos(pa), cz = POLE_R * Math.sin(pa);
-    var cy = -0.32 + horseLift(h);
+    var cy = -0.3 + horseLift(h);
     // horse faces along the direction of travel (tangent)
-    var tx = -Math.sin(pa), tz = Math.cos(pa);   // local x
+    var tx = Math.sin(pa), tz = -Math.cos(pa);   // local x: nose along the direction of travel
     var ox = Math.cos(pa), oz = Math.sin(pa);    // local z (outward)
     var P = G.horses[h];
     for (var i = 0; i < P.length; i++) {

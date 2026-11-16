@@ -57,7 +57,7 @@ function ease(x) {
 function silhouette(y) {
   var h = clamp((y + 0.86) / 1.86, 0, 1);
   var f = (h * 6) % 1;
-  return Math.max(0, 0.97 * (1 - h) * (0.84 + 0.16 * (1 - f)));
+  return Math.max(0, 0.8 * (1 - h) * (0.86 + 0.14 * (1 - f)));
 }
 
 // ---------------------------------------------------------------- geometry (once)
@@ -66,24 +66,23 @@ function buildGeometry() {
   var rng = mulberry(20261225);
   var g = {};
   // TREE: surface point cloud with outward normals, greens + snow dust
-  var NT = 8000;
+  var NT = 12500;
   g.nt = NT;
   g.tx = new Float32Array(NT); g.ty = new Float32Array(NT); g.tz = new Float32Array(NT);
   g.nx = new Float32Array(NT); g.ny = new Float32Array(NT); g.nz = new Float32Array(NT);
   g.cr = new Float32Array(NT); g.cg = new Float32Array(NT); g.cb = new Float32Array(NT);
   g.dust = new Uint8Array(NT);
-  var greens = [GREEN, [30, 225, 90], [130, 255, 70], [0, 255, 175], [70, 255, 40]];
+  var greens = [[20, 235, 70]];
   for (var i = 0; i < NT; i++) {
     var h = 1 - Math.sqrt(rng());
     var y = -0.86 + 1.86 * h;
     var a = rng() * TAU;
     var r = silhouette(y) * (0.86 + 0.14 * Math.sqrt(rng()));
     g.tx[i] = r * Math.sin(a); g.ty[i] = y; g.tz[i] = r * Math.cos(a);
-    var nx = Math.sin(a) + 0.3 * gauss(rng), ny = 0.55 + 0.3 * gauss(rng), nz = Math.cos(a) + 0.3 * gauss(rng);
+    var nx = Math.sin(a) + 0.12 * gauss(rng), ny = 0.5 + 0.12 * gauss(rng), nz = Math.cos(a) + 0.12 * gauss(rng);
     var nl = Math.hypot(nx, ny, nz); g.nx[i] = nx / nl; g.ny[i] = ny / nl; g.nz[i] = nz / nl;
     var c, k;
-    if (rng() < 0.07) { c = SNOW; k = 0.9; g.dust[i] = 1; }      // TREE_C[DUST] = SNOW * .9
-    else { c = greens[(rng() * greens.length) | 0]; k = 0.55 + 0.35 * rng(); }
+    c = greens[0]; k = 0.88 + 0.12 * rng();    // one saturated green; light does the shading
     g.cr[i] = c[0] * k; g.cg[i] = c[1] * k; g.cb[i] = c[2] * k;
   }
   // TRUNK = np.c_[.11 sin(i), uniform(-1, -.8), .11 cos(i)]
@@ -114,16 +113,16 @@ function buildGeometry() {
   // 5. star: 10 tips, filled by triangle sampling
   var tips = [];
   for (i = 0; i < 10; i++) {
-    var ang = Math.PI / 2 + i * Math.PI / 5, rad = i % 2 === 0 ? 0.26 : 0.11;
+    var ang = Math.PI / 2 + i * Math.PI / 5, rad = i % 2 === 0 ? 0.34 : 0.145;
     tips.push([rad * Math.cos(ang), rad * Math.sin(ang)]);
   }
   g.star = [];
-  for (i = 0; i < 1800; i++) {
+  for (i = 0; i < 2600; i++) {
     var u = rng(), v = rng();
     if (u + v > 1) { u = 1 - u; v = 1 - v; }
     var tri = (rng() * 10) | 0, A = tips[tri], B = tips[(tri + 1) % 10];
     var sx = A[0] * u + B[0] * v, sy = A[1] * u + B[1] * v;
-    g.star.push([sx, sy, Math.hypot(sx, sy) / 0.26]);
+    g.star.push([sx, sy, Math.hypot(sx, sy) / 0.34]);
   }
   // 6. hearts: five, on the surface
   var HY = [-0.55, -0.2, 0.12, 0.45, 0.72], HA = [0.4, 2.6, 4.6, 1.5, 3.6];
@@ -136,7 +135,7 @@ function buildGeometry() {
   var GIFTS = [
     [0.75, 1.12, 0.34, 0.26, 0.3, WHITE, PINK],
     [-0.4, 1.08, 0.44, 0.32, 0.38, RED, GOLD],
-    [1.75, 1.0, 0.3, 0.22, 0.3, GREEN, RED],
+    [1.75, 1.0, 0.3, 0.22, 0.3, CYAN, RED],
     [2.8, 1.1, 0.48, 0.36, 0.4, GOLD, RED],
     [-1.7, 1.05, 0.36, 0.42, 0.32, BLUE, WHITE],
     [-2.6, 0.98, 0.28, 0.2, 0.28, RED, WHITE],
@@ -144,16 +143,16 @@ function buildGeometry() {
   var NRM = [[0, 1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
   g.box = [];
   for (var b = 0; b < GIFTS.length; b++) {
-    var G6 = GIFTS[b], w = G6[2], hh = G6[3], d = G6[4];
+    var G6 = GIFTS[b], w = G6[2] * 0.85, hh = G6[3] * 0.85, d = G6[4] * 0.85;
     var pts = [];
-    for (i = 0; i < 900; i++) {
+    for (i = 0; i < 1500; i++) {
       var f = (rng() * 5) | 0, p = rng() - 0.5, q = rng() - 0.5, loc;
       if (f === 0) loc = [p * w, hh, q * d];
       else if (f === 1) loc = [w / 2, (p + 0.5) * hh, q * d];
       else if (f === 2) loc = [-w / 2, (p + 0.5) * hh, q * d];
       else if (f === 3) loc = [p * w, (q + 0.5) * hh, d / 2];
       else loc = [p * w, (q + 0.5) * hh, -d / 2];
-      var rib = Math.abs(loc[0]) < 0.03 || Math.abs(loc[2]) < 0.03;
+      var rib = Math.abs(loc[0]) < w * 0.09 || Math.abs(loc[2]) < d * 0.09;
       pts.push([loc[0], loc[1], loc[2], NRM[f], rib ? G6[6] : G6[5]]);
     }
     // two ribbon loops on top
@@ -162,14 +161,14 @@ function buildGeometry() {
       pts.push([0.07 * Math.cos(kk) * sg + 0.06 * sg, hh + 0.05 + 0.04 * Math.sin(2 * kk), 0, NRM[0],
         [Math.min(255, G6[6][0] * 1.1), Math.min(255, G6[6][1] * 1.1), Math.min(255, G6[6][2] * 1.1)]]);
     }
-    g.box.push({ a: G6[0], dist: G6[1], pts: pts });
+    g.box.push({ a: G6[0], dist: G6[1] * 0.88, pts: pts });
   }
   // ground: a snowy disc
   g.ground = [];
   for (i = 0; i < 4200; i++) {
     var gr = 2.0 * Math.sqrt(rng()), ga = rng() * TAU;
     var nx2 = 0.35 * gauss(rng), nz2 = 0.35 * gauss(rng);
-    g.ground.push([gr * Math.sin(ga), -1 + 0.015 * gauss(rng), gr * Math.cos(ga), nx2, nz2, 0.16 + 0.24 * rng(), rng() < 0.12]);
+    g.ground.push([gr * Math.sin(ga), -1 + 0.015 * gauss(rng), gr * Math.cos(ga), nx2, nz2, 0.13 + 0.15 * rng(), false]);
   }
   // 8. snow: NS = 420
   var NS = 420; g.ns = NS;
@@ -196,9 +195,9 @@ function buildLayout() {
   };
   var pw = W * m.cw, ph = H * m.ch;
   m.pw = pw; m.ph = ph;
-  m.SC = Math.min(0.245 * ph, pw / 2.05);
+  m.SC = Math.min(0.26 * ph, pw / 1.8);
   m.OX = pw * 0.5;
-  m.OY = 0.2 * ph + 1.62 * m.SC;
+  m.OY = 0.13 * ph + 1.5 * m.SC;
   m.snowW = Math.max(2.6, pw / (2 * m.SC) * 0.9);
   var portrait = ph > pw;
   var mr = 0.11 * Math.min(pw, ph * 0.6);
@@ -250,7 +249,7 @@ function cleanupXmas() {
 var CA = 1, SA = 0;                        // spin
 var TILT = 0.16, CT = Math.cos(TILT), ST = Math.sin(TILT);
 var CAMD = 10;
-var LX = -0.5, LY = 0.62, LZ = 0.62;
+var LX = -0.4, LY = 0.5, LZ = 0.78;
 (function () { var l = Math.hypot(LX, LY, LZ); LX /= l; LY /= l; LZ /= l; })();
 var PX = 0, PY = 0, PZ = 0;
 var RX = 0, RZ = 0;
@@ -385,7 +384,7 @@ function layerGround() {
     spin(p[0], p[2]);
     var lam = 0.45 + 0.55 * lambert(p[3], 1, p[4]);
     var k = p[5] * lam * g;
-    var c = p[6] ? CYAN : SNOW;
+    var c = [200, 225, 255];
     putSolid(RX, p[1], RZ, c[0] * k, c[1] * k, c[2] * k, K_GROUND, -1);
   }
 }
@@ -399,7 +398,7 @@ function layerTree(t) {
     if (y >= top) continue;
     spin(G.tx[i], G.tz[i]);
     var nx = G.nx[i] * CA + G.nz[i] * SA, nz = -G.nx[i] * SA + G.nz[i] * CA;
-    var sh = (0.4 + 0.6 * lambert(nx, G.ny[i], nz)) * 1.25;
+    var sh = (0.2 + 0.95 * lambert(nx, G.ny[i], nz)) * 1.1;
     var r = G.cr[i] * sh, gg = G.cg[i] * sh, b = G.cb[i] * sh;
     if (G.dust[i]) { var tw = 0.75 + 0.45 * Math.sin(t * 3 + i); r *= tw; gg *= tw; b *= tw; }
     var tip = clamp(1 - (top - y) / 0.1, 0, 1);   // freshly grown -> white
@@ -471,14 +470,15 @@ function layerOrnaments() {
   var K = G.balls.length;
   var g = grown('deco') * K;
   for (var k = 0; k < K; k++) {
-    var s = ease(g - k) * 0.08;
+    if (k % 5 !== 0 && k % 5 !== 2) continue;          // sparse: 14 of the 34
+    var s = ease(g - k) * 0.045;
     if (s <= 0) continue;
     drawBall(G.balls[k].p, G.balls[k].c, s, K_DECO);
   }
   // hand-hung ornaments
   for (var e = 0; e < S.extra.length; e++) {
     var o = S.extra[e];
-    var se = ease((S.t - o.born) * 2.2) * 0.1;
+    var se = ease((S.t - o.born) * 2.2) * 0.05;
     if (se > 0) drawBall(o.p, o.c, se, K_DECO);
   }
 }
@@ -487,6 +487,7 @@ function layerLights(t) {
   var on = grown('bulbs'), fin = grown('run');
   var B = G.bulbs, NB = B.length;
   for (var i = 0; i < NB; i++) {
+    if (i % 3 !== 0) continue;             // every third bulb: one clean dot each
     if (!(B[i].s < on)) continue;          // switch on from the bottom
     var tw = 0.55 + 0.45 * Math.sin(t * 3 + i * 1.7);
     var ch = (((i - t * 40) % 24) + 24) % 24;
@@ -494,10 +495,10 @@ function layerLights(t) {
     var b = (tw + 1.2 * chase) * 1.1;
     var p = B[i].p, c = B[i].c;
     spin(p[0], p[2]);
-    putGlow(RX, p[1], RZ, c[0] * b, c[1] * b, c[2] * b, 0.3 + 0.2 * chase);
-    for (var dx = -0.025; dx <= 0.026; dx += 0.05) {
-      putGlow(RX + dx, p[1], RZ, c[0] * b * 0.35, c[1] * b * 0.35, c[2] * b * 0.35, 0);
-    }
+    var m = clamp(0.5 + 0.5 * b, 0.5, 1.6);
+    var hot = chase > 0.5;
+    putMark(RX, p[1], RZ, hot ? '@' : 'o', hot ? [Math.min(255, c[0] * m + 90), Math.min(255, c[1] * m + 90), Math.min(255, c[2] * m + 90)]
+      : [c[0] * m, c[1] * m, c[2] * m]);
   }
 }
 
@@ -505,21 +506,24 @@ function layerStar(t) {
   var s = ease(grown('star') * 1.4);
   if (s <= 0) return;
   // the star faces the camera but wobbles about its axis
-  var w = 0.7 + 0.3 * Math.cos(t * 0.9);   // slow spin wobble, always face-on
+  var w = 0.86 + 0.14 * Math.cos(t * 0.9);   // slow spin wobble, always face-on
   var st = G.star;
+  var fl0 = Math.pow(Math.sin(t * 5), 2);   // flicker
   for (var i = 0; i < st.length; i++) {
     var e = st[i];
-    var k = 1.25 - 0.5 * e[2];
-    putSolid(e[0] * s * w, 1.17 + e[1] * s, 0.05, GOLD[0] * k, GOLD[1] * k, GOLD[2] * k, K_DECO, -1);
+    var k = (1.05 - 0.5 * e[2]) * (0.85 + 0.25 * fl0);
+    putSolid(e[0] * s * w, 1.24 + e[1] * s, 0.05, GOLD[0] * k, GOLD[1] * k, GOLD[2] * k, K_DECO, -1);
   }
   var fl = 0.6 + 0.4 * Math.pow(Math.sin(t * 5), 2);
   var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.6, 0.6], [-0.6, 0.6], [0.6, -0.6], [-0.6, -0.6]];
   for (var d = 0; d < dirs.length; d++) {
     var dx = dirs[d][0], dy = dirs[d][1];
-    var L = (dx * dy === 0 ? 0.42 : 0.26) * s * fl;
+    if (dx * dy !== 0 || dy === 0) continue;   // only a short glint above and below the star
+    var L = 0.42 * s * fl;
     for (var q = 0; q < 30; q++) {
       var kk = q / 29;
-      putGlow(dx * kk * L, 1.17 + dy * kk * L / 2, 0.1, WARM[0] * (1 - kk), WARM[1] * (1 - kk), WARM[2] * (1 - kk), 0);
+      if (kk < 0.6) continue;
+      putGlow(dx * kk * L, 1.24 + dy * kk * L, 0.1, WARM[0] * (1 - kk) * 1.6, WARM[1] * (1 - kk) * 1.6, WARM[2] * (1 - kk) * 1.6, 0);
     }
   }
 }
@@ -552,14 +556,14 @@ function layerGifts() {
       spin(x, z);
       var px = RX, pz = RZ;
       var nnx = nx * CA + nz * SA, nnz = -nx * SA + nz * CA;
-      var sh = 0.35 + 0.65 * lambert(nnx, n[1], nnz);
-      putSolid(px, y, pz, e[4][0] * sh * 1.15, e[4][1] * sh * 1.15, e[4][2] * sh * 1.15, K_GIFT, -1);
+      var sh = 0.55 + 0.5 * lambert(nnx, n[1], nnz);
+      putSolid(px, y, pz, e[4][0] * sh, e[4][1] * sh, e[4][2] * sh, K_GIFT, -1);
     }
   }
 }
 
 function layerSnow(t, dt) {
-  var n = Math.floor(grown('snow') * G.ns);
+  var n = Math.floor(grown('snow') * G.ns * 0.6);
   if (n === 0) return;
   for (var k = 0; k < n; k++) {
     var y = 2.0 - ((G.sph[k] + t * G.ssp[k]) % 3.0);
