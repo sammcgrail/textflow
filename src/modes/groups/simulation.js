@@ -217,3 +217,4 @@ import '../xmastree.js';
 import '../carousel.js';
 import '../knight.js';
 import '../superknight.js';
+import '../babymobile.js';

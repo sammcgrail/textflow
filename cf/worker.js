@@ -41,6 +41,14 @@ export default {
       return finish(new Response("", { status: 200, headers: { "Content-Type": "application/octet-stream" } }), { "Cache-Control": "no-store" });
     if (STRICT && STRICT.test(url.pathname))
       return finish(new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } }));
+    // icon probes under a mode path (/<mode>/favicon.ico, /<mode>/apple-touch-icon.png) get the
+    // root icon, never the HTML shell (an HTML favicon keeps iOS Safari's progress bar spinning)
+    const icon = url.pathname.match(/\/(favicon\.(?:ico|png)|apple-touch-icon(?:-precomposed)?\.png)$/);
+    if (icon) {
+      const r = await env.ASSETS.fetch(new Request(new URL("/" + icon[1], url), req));
+      if (r.status === 200 && (r.headers.get("content-type") || "").startsWith("image/"))
+        return finish(r, { "Cache-Control": "public, max-age=86400" });
+    }
     // nginx: try_files $uri $uri/ /index.html
     return finish(await env.ASSETS.fetch(new Request(new URL("/", url), req)), { "Cache-Control": "no-cache" });
   },
