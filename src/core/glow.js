@@ -13,6 +13,7 @@ export var glows = {
   xmastree: { color: 'rgba(255,200,90,0.42)', blur: 15 },
   carousel: { color: 'rgba(255,110,210,0.42)', blur: 15 },
   knight: { color: 'rgba(255,90,110,0.3)', blur: 12 },
+  superknight: { color: 'rgba(255,90,110,0.3)', blur: 12 },
   lava:   { color: 'rgba(255,80,30,0.35)', blur: 12 },
   rain:   { color: 'rgba(0,220,100,0.35)', blur: 10 },
   wave:   { color: 'rgba(80,140,255,0.3)', blur: 12 },

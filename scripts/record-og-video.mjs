@@ -5,7 +5,8 @@
 // a fake clock and every captured frame advances the mode by STEP 60-fps ticks.
 //
 //   node scripts/record-og-video.mjs <mode> [frames=450] [step=3] [outdir=/tmp/tfrec-<mode>]
-//   env: VW/VH viewport, WARM warm-up ticks, TAPS="frame:xfrac:yfrac,..." canvas clicks during recording
+//   env: VW/VH viewport, WARM warm-up ticks, TAPS="frame:xfrac:yfrac,..." canvas clicks during recording,
+//        DRAG="f0:f1:px" a leftward drag spread over frames f0..f1, BASE another origin (default the live site)
 //   then: ffmpeg -framerate 30 -i <outdir>/f%04d.png -c:v libx264 -preset slow -crf 22 \
 //           -pix_fmt yuv420p -movflags +faststart static/videos/<mode>.mp4
 //   and a poster: static/videos/<mode>.jpg; dims in static/videos/<mode>.json {"width","height"}.
@@ -30,14 +31,23 @@ await page.addInitScript(() => {
   window.cancelAnimationFrame = () => {};
   window.__step = n => { for (let i = 0; i < n; i++) { ts += 1000 / 60; const c = q; q = []; c.forEach(f => f(ts)); } };
 });
-await page.goto('https://textflow.sebland.com/' + mode + '/', { waitUntil: 'networkidle' });
+await page.goto((process.env.BASE || 'https://textflow.sebland.com/') + mode + '/', { waitUntil: 'networkidle' });
 await page.addStyleTag({ content: 'nav,header,.nav,#nav,.fps,#fps,#version{display:none!important}' });
 for (let i = 0; i < +(process.env.WARM||150); i++) { await page.evaluate(() => window.__step(1)); await page.waitForTimeout(50); }
 // TAPS="frame:xfrac:yfrac,...": click the canvas at those recorded frames (e.g. knight arrows)
 const taps = new Map((process.env.TAPS || '').split(',').filter(Boolean).map(t => { const [f, x, y] = t.split(':'); return [+f, [+x, +y]]; }));
 const vw = +(process.env.VW || 640), vh = +(process.env.VH || 400);
+// DRAG="f0:f1:px": drag left by px in total between frames f0 and f1 (orbit modes), in strokes
+// that stay on screen (lift and re-grab near the right edge)
+const [d0, d1, dpx] = (process.env.DRAG || '').split(':').map(Number);
+let dx = null;
 for (let f = 0; f < +N; f++) {
   if (taps.has(f)) { const [x, y] = taps.get(f); await page.mouse.click(vw * x, vh * y); }
+  if (process.env.DRAG && f >= d0 && f < d1) {
+    if (dx === null) { dx = vw * 0.9; await page.mouse.move(dx, vh * 0.6); await page.mouse.down(); }
+    dx -= dpx / (d1 - d0); await page.mouse.move(dx, vh * 0.6);
+    if (dx < vw * 0.1 || f === d1 - 1) { await page.mouse.up(); dx = null; }
+  }
   await page.evaluate(s => window.__step(s), +STEP);
   await page.screenshot({ path: `${out}/f${String(f).padStart(4, '0')}.png` });
 }

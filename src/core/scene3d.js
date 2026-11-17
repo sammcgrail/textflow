@@ -249,6 +249,66 @@ MeshBuilder.prototype.build = function () {
     sx: new Float32Array(nv), sy: new Float32Array(nv), iz: new Float32Array(nv),
   };
 };
+// ---------------------------------------------------------------------------
+// baked meshes: a scanned / generated model shipped as a small binary buffer
+// ---------------------------------------------------------------------------
+// decode a base64 string to bytes (browser atob, or Buffer under node)
+export function b64bytes(s) {
+  if (typeof atob === 'function') {
+    var bin = atob(s), n = bin.length, out = new Uint8Array(n);
+    for (var i = 0; i < n; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(s, 'base64'));
+}
+// Build a drawable mesh (same shape as MeshBuilder.build()) from plain arrays:
+//   o.pos  Float32Array nv*3 (metres)   o.idx  Uint16/Uint32Array nt*3
+//   o.col  Float32Array nv*3 (0..1) or Uint8Array nv*3 (0..255)
+//   o.vmat Uint8Array nv (material per vertex; a triangle takes its first vertex's)
+//   o.vgrp Uint8Array nv (group per vertex)   o.groupNames ['body', 'sword', ...]
+// Normals are area-weighted smooth normals; o.flip reverses them (inward winding).
+export function meshFromArrays(o) {
+  var nv = o.pos.length / 3, nt = o.idx.length / 3, i;
+  var col = o.col instanceof Float32Array ? o.col : new Float32Array(nv * 3);
+  if (!(o.col instanceof Float32Array)) for (i = 0; i < nv * 3; i++) col[i] = o.col[i] / 255;
+  var vg = o.vgrp || new Uint8Array(nv), vm = o.vmat || new Uint8Array(nv);
+  var idx = o.idx instanceof Uint32Array ? o.idx : new Uint32Array(o.idx);
+  var nrm = new Float32Array(nv * 3);
+  accumulateNormals(o.pos, nrm, idx, 0, nv, 0, nt);
+  if (o.flip) for (i = 0; i < nv * 3; i++) nrm[i] = -nrm[i];
+  var tm = new Uint8Array(nt), tg = new Uint8Array(nt);
+  for (var t = 0; t < nt; t++) { var a = idx[t * 3]; tm[t] = vm[a]; tg[t] = vg[a]; }
+  var names = o.groupNames || ['main'], groups = {};
+  for (i = 0; i < names.length; i++) groups[names[i]] = i;
+  return {
+    nv: nv, nt: nt, pos: o.pos, nrm: nrm, col: col, vg: vg, idx: idx,
+    tmat: tm, tflag: new Uint8Array(nt), tgrp: tg, groups: groups, groupNames: names, sheets: [],
+    wp: new Float32Array(nv * 3), wn: new Float32Array(nv * 3),
+    sx: new Float32Array(nv), sy: new Float32Array(nv), iz: new Float32Array(nv),
+  };
+}
+// blur vertex normals over the triangle graph (iters passes): a dense scanned surface has
+// more wrinkles than a character cell can show, and per-cell normal noise reads as glyph noise
+export function smoothNormals(mesh, iters, keep) {
+  var N = mesh.nrm, I = mesh.idx, nv = mesh.nv, nt = mesh.nt, A = new Float32Array(nv * 3), k = keep === undefined ? 0.5 : keep;
+  for (var it = 0; it < iters; it++) {
+    for (var v = 0; v < nv * 3; v++) A[v] = N[v] * k;
+    for (var t = 0; t < nt; t++) {
+      var a = I[t * 3] * 3, b = I[t * 3 + 1] * 3, c = I[t * 3 + 2] * 3;
+      for (var q = 0; q < 3; q++) { var s = N[a + q] + N[b + q] + N[c + q]; A[a + q] += s; A[b + q] += s; A[c + q] += s; }
+    }
+    for (v = 0; v < nv; v++) {
+      var l = Math.hypot(A[v * 3], A[v * 3 + 1], A[v * 3 + 2]) || 1;
+      N[v * 3] = A[v * 3] / l; N[v * 3 + 1] = A[v * 3 + 1] / l; N[v * 3 + 2] = A[v * 3 + 2] / l;
+    }
+  }
+  return mesh;
+}
+// recompute smooth normals for a vertex range after moving vertices (cloth sway on a baked mesh)
+export function refreshNormals(mesh, t0, t1, v0, v1) {
+  accumulateNormals(mesh.pos, mesh.nrm, mesh.idx, v0 || 0, v1 === undefined ? mesh.nv : v1, t0 || 0, t1 === undefined ? mesh.nt : t1);
+}
+
 // re-evaluate a sheet's positions (e.g. a cloak in the wind) and its normals
 export function updateSheet(mesh, h, fn) {
   var s = mesh.sheets[h], tmp = [0, 0, 0], P = mesh.pos;

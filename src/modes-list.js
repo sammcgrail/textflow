@@ -343,4 +343,5 @@ export const MODES = [
   { id: "xmastree", label: "xmastree" },
   { id: "carousel", label: "carousel" },
   { id: "knight", label: "knight" },
+  { id: "superknight", label: "superknight" },
 ];
