@@ -38,6 +38,13 @@ export default {
       }
       return finish(new Response(req.method === "HEAD" ? null : buf, { status: 200, headers: { ...h, "Content-Length": String(size) } }));
     }
+    // images next to the videos (poster jpg, share gif): run_worker_first would otherwise
+    // fall through to the SPA shell below, so hand them straight to the asset layer
+    if ((req.method === "GET" || req.method === "HEAD") && /^(\/textflow)?\/static\/videos\/[^/]+\.(gif|jpg|jpeg|png|webp)$/.test(url.pathname)) {
+      const a = await env.ASSETS.fetch(req);
+      if (a.status !== 200 || !(a.headers.get("content-type") || "").startsWith("image/")) return finish(new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } }));
+      return finish(a, { "Cache-Control": "public, max-age=31536000, immutable" });
+    }
     if (QD && url.pathname === "/") {
       const d = url.searchParams.get("d");
       if (d && /^[A-Za-z0-9_-]+$/.test(d)) {
