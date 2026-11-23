@@ -10,3 +10,4 @@ main = "cf/worker.js"
 directory = "dist-cf"
 not_found_handling = "single-page-application"
 binding = "ASSETS"
+run_worker_first = ["/static/videos/*", "/textflow/static/videos/*"]

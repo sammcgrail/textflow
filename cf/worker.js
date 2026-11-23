@@ -19,6 +19,25 @@ function finish(res, extra = {}) {
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    // Workers static assets ignore Range (always 200, no Accept-Ranges); iMessage/Discord video
+    // previews need 206. Serve /static/videos/* with byte-range support (files are a few MB).
+    if ((req.method === "GET" || req.method === "HEAD") && /^(\/textflow)?\/static\/videos\/[^/]+\.(mp4|webm|mov)$/.test(url.pathname)) {
+      const a = await env.ASSETS.fetch(new Request(url, { method: "GET" }));
+      const ct = a.headers.get("content-type") || "";
+      if (a.status !== 200 || !ct.startsWith("video/")) return finish(new Response("Not Found", { status: 404, headers: { "Content-Type": "text/plain" } }));
+      const buf = await a.arrayBuffer();
+      const size = buf.byteLength;
+      const h = { "Content-Type": ct, "Accept-Ranges": "bytes", "Cache-Control": "public, max-age=31536000, immutable" };
+      const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.get("range") || "");
+      if (m && (m[1] || m[2])) {
+        let start, end;
+        if (m[1] === "") { start = Math.max(0, size - Number(m[2])); end = size - 1; }
+        else { start = Number(m[1]); end = m[2] === "" ? size - 1 : Math.min(Number(m[2]), size - 1); }
+        if (start >= size || start > end) return finish(new Response(null, { status: 416, headers: { ...h, "Content-Range": `bytes */${size}` } }));
+        return finish(new Response(req.method === "HEAD" ? null : buf.slice(start, end + 1), { status: 206, headers: { ...h, "Content-Range": `bytes ${start}-${end}/${size}`, "Content-Length": String(end - start + 1) } }));
+      }
+      return finish(new Response(req.method === "HEAD" ? null : buf, { status: 200, headers: { ...h, "Content-Length": String(size) } }));
+    }
     if (QD && url.pathname === "/") {
       const d = url.searchParams.get("d");
       if (d && /^[A-Za-z0-9_-]+$/.test(d)) {
