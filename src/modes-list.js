@@ -345,4 +345,5 @@ export const MODES = [
   { id: "knight", label: "knight" },
   { id: "superknight", label: "superknight" },
   { id: "babymobile", label: "babymobile" },
+  { id: "clownfish", label: "clownfish" },
 ];

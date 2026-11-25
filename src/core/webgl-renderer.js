@@ -381,7 +381,7 @@ function midFrameFlush() {
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
   // MSDF uniforms — pxRange from atlas metadata, weightOffset for thickness tuning
   gl.uniform1f(cu_pxRange, msdfPxRange);
-  gl.uniform1f(cu_weightOffset, 0.0);
+  gl.uniform1f(cu_weightOffset, state.GLYPH_WEIGHT || 0.0);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
@@ -411,7 +411,7 @@ export function flushFrame() {
   gl.uniform2f(cu_charSize, glyphW, glyphH);
   gl.uniform1f(cu_navH, state.NAV_H * state.dpr);
   gl.uniform1f(cu_pxRange, msdfPxRange);
-  gl.uniform1f(cu_weightOffset, 0.0);
+  gl.uniform1f(cu_weightOffset, state.GLYPH_WEIGHT || 0.0);
 
   gl.bindVertexArray(charVAO);
   gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);

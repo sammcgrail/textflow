@@ -12,6 +12,9 @@ export const state = {
   // Per-mode font multiplier. 1 = the shared default; a mode that needs a
   // denser grid sets this in init() and MUST reset it in cleanup().
   FONT_SCALE: 1,
+  // Per-mode MSDF glyph weight (0 = normal, ~0.05-0.1 = bolder). Same contract as FONT_SCALE:
+  // set it in init(), reset it to 0 in cleanup().
+  GLYPH_WEIGHT: 0,
   NAV_H: 32,
   dpr: 1,
   isMobile: false,
