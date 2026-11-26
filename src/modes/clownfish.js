@@ -5,8 +5,7 @@ import { state } from '../core/state.js';
 import { resize } from '../core/canvas.js';
 import { DATA } from './clownfish-data.js';
 
-// clownfish: after ASCII Lab's Clownfish (@ascii.lab), github.com/sapozhkov/ascii-lab-public
-// (01-clownfish/clownfish.py). A JavaScript port of that renderer: a procedural 3D clownfish
+// clownfish: a procedural 3D clownfish
 // (body profile, stripes, dorsal/anal/pelvic/pectoral fins, a fan tail, eyes) swims a round of
 // marks with thrust and drag; an anemone of 50 arms x 14 spring-chain nodes sways in the surge
 // and parts around the fish; a lazy camera follows, orbits round the anemone and zooms in and out
@@ -1281,8 +1280,6 @@ function cleanupClownfish() {
   G = null; S = null; userZoom = 1; P.ok = false;
 }
 
-var CREDIT = "after ASCII Lab's Clownfish (@ascii.lab), github.com/sapozhkov/ascii-lab-public";
-var CREDIT_S = "after ASCII Lab's Clownfish (@ascii.lab)";
 function text(s, x, y, r, gg, b, a) {
   for (var i = 0; i < s.length; i++) {
     var c = s.charCodeAt(i);
@@ -1358,14 +1355,12 @@ function renderClownfish() {
     var gain = mx * GAIN > 1 ? 1 / mx : GAIN;
     drawChar(CH[c], i % W, (i / W) | 0, (rr * gain * 255) | 0, (gq * gain * 255) | 0, (bq * gain * 255) | 0, 1);
   }
-  // HUD: the reel's note line, and the credit
+  // HUD: the reel's note line
   var note = 'tail ' + S.hz.toFixed(1) + ' Hz   speed ' + S.speed.toFixed(2) + '   chars ' + chars;
   text(note, 2, 1, 120, 132, 150, 0.9);
   var hint = state.isMobile ? 'tap: feed   drag: part the arms   pinch: zoom' : 'click: feed   drag: part the arms   scroll: zoom';
   if (W >= note.length + hint.length + 8) text(hint, W - hint.length - 2, 1, 120, 132, 150, 0.9);
   else text(hint, 2, 2, 100, 112, 130, 0.85);
-  var cr = W >= CREDIT.length + 4 ? CREDIT : CREDIT_S;
-  text(cr, Math.max(1, ((W - cr.length) / 2) | 0), H - 1, 92, 102, 120, 0.85);
 }
 
 registerMode(MODE, { init: initClownfish, render: renderClownfish, cleanup: cleanupClownfish });

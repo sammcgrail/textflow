@@ -346,4 +346,5 @@ export const MODES = [
   { id: "superknight", label: "superknight" },
   { id: "babymobile", label: "babymobile" },
   { id: "clownfish", label: "clownfish" },
+  { id: "timber", label: "timber" },
 ];

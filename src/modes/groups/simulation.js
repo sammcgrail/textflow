@@ -219,3 +219,4 @@ import '../knight.js';
 import '../superknight.js';
 import '../babymobile.js';
 import '../clownfish.js';
+import '../timber.js';
